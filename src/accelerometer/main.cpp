@@ -2,14 +2,17 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
+#include <TaskScheduler.h>
 #include "mpu6050.h"
 
 // ==== Test Parameters ====
 #define SAMPLE_RATE_HZ 500UL
 #define SAMPLE_DELAY_MS 10UL * 1000UL
 #define SAMPLE_WINDOW_MS 30UL * 1000UL
-#define SAMPLE_PERIOD_MS 1000UL / SAMPLE_PERIOD_HZ
+#define SAMPLE_PERIOD_MS 1000UL / SAMPLE_RATE_HZ
 #define N_DECIMALS 3
+
+#define N_SAMPLES (unsigned long) (SAMPLE_WINDOW_MS / SAMPLE_PERIOD_MS)
 
 // ==== Calibration Parameters ====
 #define X_ACCEL_OFFSET 0
@@ -25,6 +28,28 @@
 
 File logFile;
 
+void getSample();
+bool getSampleOnEnable();
+void getSampleOnDisable();
+
+Scheduler runner;
+Task getSampleTask(SAMPLE_PERIOD_MS, N_SAMPLES, getSample);
+
+void getSample()
+{
+
+}
+
+bool getSampleOnEnable()
+{
+    return true;
+}
+
+void getSampleOnDisable()
+{
+
+}
+
 void setup()
 {
     Serial.begin(9600);
@@ -38,8 +63,14 @@ void setup()
         Serial.println("Unable to connect to SD card");
         while (1);
     }
+
+    getSampleTask.setOnEnable(getSampleOnEnable);
+    getSampleTask.setOnDisable(getSampleOnDisable);
+
+    getSampleTask.enableDelayed(SAMPLE_DELAY_MS);
 }
 
 void loop()
 {
+    runner.execute();
 }
