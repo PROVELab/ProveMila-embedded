@@ -35,9 +35,25 @@ void getSampleOnDisable();
 Scheduler runner;
 Task getSampleTask(SAMPLE_PERIOD_MS, N_SAMPLES, getSample);
 
-void getSample()
+void writeAccelValuesToSD(float xAccelG, float yAccelG, float zAceelG, unsigned long time)
 {
 
+}
+
+void getSample()
+{
+    int16_t xAccelRaw;
+    int16_t yAccelRaw;
+    int16_t zAccelRaw;
+    unsigned long timeMillis;
+
+    mpuRead3AccelAxesRaw(&xAccelRaw, &yAccelRaw, &zAccelRaw, &timeMillis);
+
+    float xAccelG = (float) (xAccelRaw + X_ACCEL_OFFSET) / MPU_ACCEL_RANGE_LSB;
+    float yAccelG = (float) (yAccelRaw + Y_ACCEL_OFFSET) / MPU_ACCEL_RANGE_LSB;
+    float zAccelG = (float) (zAccelRaw + Z_ACCEL_OFFSET) / MPU_ACCEL_RANGE_LSB;
+
+    writeAccelValuesToSD(xAccelG, yAccelG, zAccelG, timeMillis);
 }
 
 bool getSampleOnEnable()
