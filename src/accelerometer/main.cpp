@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
 #include "mpu6050.h"
 
 // ==== Test Parameters ====
@@ -21,6 +23,8 @@
 #define MPU_ACCEL_RANGE MPU_ACCEL_RANGE_2G
 #define MPU_ACCEL_RANGE_LSB MPU_ACCEL_RANGE_2G_LSB
 
+File logFile;
+
 void setup()
 {
     Serial.begin(9600);
@@ -28,6 +32,12 @@ void setup()
     Wire.setClock(400E3);
     mpuStart();
     mpuSetAccelRange(MPU_ACCEL_RANGE);
+
+    if (!SD.begin(SD_CS))
+    {
+        Serial.println("Unable to connect to SD card");
+        while (1);
+    }
 }
 
 void loop()
