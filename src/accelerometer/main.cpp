@@ -7,12 +7,12 @@
 
 // ==== Test Parameters ====
 #define SAMPLE_RATE_HZ 500UL
-#define SAMPLE_DELAY_MS 10UL * 1000UL
-#define SAMPLE_WINDOW_MS 30UL * 1000UL
-#define SAMPLE_PERIOD_MS 1000UL / SAMPLE_RATE_HZ
-#define N_DECIMALS 3
+#define SAMPLE_DELAY_MS 1UL * 1000UL
+#define SAMPLE_WINDOW_MS 3UL * 1000UL
+#define SAMPLE_PERIOD_MS (1000UL / SAMPLE_RATE_HZ)
+#define N_DECIMALS 2
 
-#define N_SAMPLES (unsigned long) (SAMPLE_WINDOW_MS / SAMPLE_PERIOD_MS)
+#define N_SAMPLES ((unsigned long) (SAMPLE_WINDOW_MS / SAMPLE_PERIOD_MS))
 
 // ==== Calibration Parameters ====
 #define X_ACCEL_OFFSET 0
@@ -35,8 +35,19 @@ void getSampleOnDisable();
 Scheduler runner;
 Task getSampleTask(SAMPLE_PERIOD_MS, N_SAMPLES, getSample);
 
-void writeAccelValuesToSD(float xAccelG, float yAccelG, float zAceelG, unsigned long time)
+void writeAccelValuesToSD(float xAccelG, float yAccelG, float zAccelG, unsigned long time)
 {
+    char xAccelStr[8];
+    dtostrf(xAccelG, 3, N_DECIMALS, xAccelStr);
+    char yAccelStr[8];
+    dtostrf(yAccelG, 3, N_DECIMALS, yAccelStr);
+    char zAccelStr[8];
+    dtostrf(zAccelG, 3, N_DECIMALS, zAccelStr);
+
+    char csvBuf[50];
+    snprintf(csvBuf, 50, "%u,%s,%s,%s", (unsigned int) time, xAccelStr, yAccelStr, zAccelStr);
+
+    logFile.println(csvBuf);
 
 }
 
@@ -58,12 +69,20 @@ void getSample()
 
 bool getSampleOnEnable()
 {
+    Serial.print("Sampling ");
+    Serial.print(N_SAMPLES);
+    Serial.print(" samples in ");
+    Serial.print(SAMPLE_WINDOW_MS);
+    Serial.println(" ms");
+
+    logFile = SD.open("accel.csv", O_CREAT | O_TRUNC | O_WRITE);
     return true;
 }
 
 void getSampleOnDisable()
 {
-
+    Serial.println("Finished sampling");
+    logFile.close();
 }
 
 void setup()
@@ -83,6 +102,7 @@ void setup()
     getSampleTask.setOnEnable(getSampleOnEnable);
     getSampleTask.setOnDisable(getSampleOnDisable);
 
+    runner.addTask(getSampleTask);
     getSampleTask.enableDelayed(SAMPLE_DELAY_MS);
 }
 
