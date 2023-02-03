@@ -7,17 +7,17 @@
 
 // ==== Test Parameters ====
 #define SAMPLE_RATE_HZ 500UL
-#define SAMPLE_DELAY_MS 2UL * 1000UL
-#define SAMPLE_WINDOW_MS 5UL * 1000UL
+#define SAMPLE_DELAY_MS 30UL * 1000UL
+#define SAMPLE_WINDOW_MS 60UL * 1000UL
 #define SAMPLE_PERIOD_MS (1000UL / SAMPLE_RATE_HZ)
 #define N_DECIMALS 2
 
 #define N_SAMPLES ((unsigned long) (SAMPLE_WINDOW_MS / SAMPLE_PERIOD_MS))
 
 // ==== Calibration Parameters ====
-#define X_ACCEL_OFFSET 0
-#define Y_ACCEL_OFFSET 0
-#define Z_ACCEL_OFFSET 0
+#define X_ACCEL_OFFSET 481
+#define Y_ACCEL_OFFSET -85
+#define Z_ACCEL_OFFSET 79
 
 // ==== SD Parameters ====
 #define SD_CS 10
