@@ -12,6 +12,7 @@ void setup()
   Serial.begin(9600);
   if (!rf95.init())
     Serial.println("init failed");
+  rf95.setFrequency(915.0);
     
   /*
      Here is an example on how to granularly change power and rf parameters:
@@ -34,6 +35,8 @@ void setup()
 
 void loop()
 {
+  int total = 0;
+  int missed = 0;
   Serial.println("Sending packet to server");
   // Send a message to rf95_server
   uint8_t data[] = "Hello Server!";
@@ -44,7 +47,7 @@ void loop()
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
 
-  if (rf95.waitAvailableTimeout(3000))
+  if (rf95.waitAvailableTimeout(1500))
   { 
     // Should be a reply message for us now   
     if (rf95.recv(buf, &len))
@@ -57,11 +60,16 @@ void loop()
     else
     {
       Serial.println("recv failed");
+      missed += 1;
     }
   }
   else
   {
     Serial.println("No reply, is rf95_server running?");
+  }
+  total += 1;
+  if(total == 100) {
+    Serial.println("Missed/Total: " + missed + "/" + total);
   }
   delay(800);
 }
