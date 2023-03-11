@@ -61,12 +61,13 @@ void loop()
     else
     {
       Serial.println("recv failed");
-      missed += 1;
+      
     }
   }
   else
   {
     Serial.println("No reply, is rf95_server running?");
+    missed += 1;
   }
   total += 1;
   Serial.println(total);
