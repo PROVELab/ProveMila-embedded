@@ -69,7 +69,12 @@ void loop()
   }
   total += 1;
   if(total == 100) {
-    Serial.println("Missed/Total: " + missed + "/" + total);
+    //This is because serial is stupid
+    Serial.print("Missed/Total: ");
+    Serial.print(missed);
+    Serial.print(" / ");
+    Serial.print(total);
+    Serial.println();
   }
   delay(800);
 }
