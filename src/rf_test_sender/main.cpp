@@ -4,6 +4,9 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 
+int total = 0;
+int missed = 0;
+
 // Instance of the radio driver
 RH_RF95 rf95;
 
@@ -35,8 +38,6 @@ void setup()
 
 void loop()
 {
-  int total = 0;
-  int missed = 0;
   Serial.println("Sending packet to server");
   // Send a message to rf95_server
   uint8_t data[] = "Hello Server!";
@@ -68,6 +69,7 @@ void loop()
     Serial.println("No reply, is rf95_server running?");
   }
   total += 1;
+  Serial.println(total);
   if(total == 100) {
     //This is because serial is stupid
     Serial.print("Missed/Total: ");
@@ -75,6 +77,7 @@ void loop()
     Serial.print(" / ");
     Serial.print(total);
     Serial.println();
+    delay(10000000);
   }
-  delay(800);
+  //delay(800);
 }
