@@ -1,6 +1,7 @@
 #ifndef PTYPES_H
 #define PTYPES_H
 
+#define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
 typedef char byte;
 
@@ -9,7 +10,7 @@ void fillBuf(byte * b, T value){
     union {
         T value;
         byte buffer[sizeof(T)];
-    } convert_o_tron;
+    } convert_o_tron; // Yes, this is a kerbal space program reference
     convert_o_tron.value = value;
 
     for (int i = sizeof(T)-1; i >= 0; i--){
