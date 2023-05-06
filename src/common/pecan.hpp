@@ -3,14 +3,17 @@
 #include "./ptypes.hpp"
 
 enum PCAN_ERR{
+    PACKET_TOO_BIG=-3,
+    NOT_RECEIVED=-2,
     NOSPACE=-1,
     SUCCESS = 0,
+    GEN_FAILURE = 1,
 };
 
 struct CANPACKET{
-    int id;
-    byte data[8];
-    byte dataSize = 0;
+    uint16_t id;
+    uint8_t data[8];
+    uint8_t dataSize = 0;
 };
 
 // The idea is that we shouldn't
@@ -22,7 +25,7 @@ struct CANPACKET{
 struct CANLISTEN_PARAM{
     int size;
     int * listen_ids;
-    void (**handler)(CANPACKET *);
+    int (**handler)(CANPACKET *);
 };
 
 
@@ -33,13 +36,17 @@ struct CANLISTEN_PARAM{
 ///                  If NULL, the recv_pack will create its own
 /// @param listen_id the integer id we're listening for
 /// @param handler a function that takes in a
-///                pointer to the received packet
+///                pointer to the received packet and returns int
+///                for success/failure
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int waitPacket(CANPACKET * recv_pack, int listen_id, void (*handler)(CANPACKET *));
+int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *));
 int waitPackets(CANPACKET * recv_pack, CANLISTEN_PARAM * params); // Pass by Ref
 
-void sendPacket(CANPACKET p);
+int sendPacket(CANPACKET*  p);
 
+int getID(int fn_id, int node_id){
+    return fn_id << 7 + node_id;
+}
 // Only in use with sensor stuff
 void setSensorID(CANPACKET * p, byte sensorId){
     p->data[0] = sensorId;
