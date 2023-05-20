@@ -11,9 +11,9 @@ enum PCAN_ERR{
 };
 
 struct CANPACKET{
-    uint16_t id;
-    uint8_t data[8];
-    uint8_t dataSize = 0;
+    int id;
+    char data[8];
+    char dataSize = 0;
 };
 
 // The idea is that we shouldn't
@@ -27,7 +27,6 @@ struct CANLISTEN_PARAM{
     int * listen_ids;
     int (**handler)(CANPACKET *);
 };
-
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in 
@@ -44,36 +43,12 @@ int waitPackets(CANPACKET * recv_pack, CANLISTEN_PARAM * params); // Pass by Ref
 
 int sendPacket(CANPACKET*  p);
 
-int getID(int fn_id, int node_id){
-    return fn_id << 7 + node_id;
-}
+int getID(int fn_id, int node_id);
 // Only in use with sensor stuff
-void setSensorID(CANPACKET * p, byte sensorId){
-    p->data[0] = sensorId;
-}
+void setSensorID(CANPACKET * p, char sensorId);
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int writeData(CANPACKET * p, byte * dataPoint, int size){
-    
-    int i = p->dataSize;
-    if (i + size > MAX_SIZE_PACKET_DATA){
-        return NOSPACE;
-    }
-
-    for (; i < size; i++){
-        // DataSize can be interpreted as both
-        // Size, and Index
-        p->data[p->dataSize+i] = dataPoint[i];
-        p->dataSize++;
-
-        // This check should've been working above
-        // But just in case, we'll do it in the loop as well
-        if (i > MAX_SIZE_PACKET_DATA){
-            return NOSPACE;
-        }
-    }
-    return SUCCESS;
-}
+int writeData(CANPACKET * p, char * dataPoint, int size);
 
 #endif
