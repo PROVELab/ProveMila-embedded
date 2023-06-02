@@ -18,7 +18,7 @@ int writeData(CANPACKET * p, char * dataPoint, int size){
     for (; i < size; i++){
         // DataSize can be interpreted as both
         // Size, and Index
-        p->data[p->dataSize+i] = dataPoint[i];
+        p->data[p->dataSize] = dataPoint[i];
         p->dataSize++;
 
         // This check should've been working above

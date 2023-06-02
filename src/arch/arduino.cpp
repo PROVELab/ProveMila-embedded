@@ -1,5 +1,5 @@
-#include "../common/pecan.hpp"
 #include "Arduino.h"
+#include "../common/pecan.hpp"
 #include "CAN.h"
 
 int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *)){
@@ -25,17 +25,18 @@ int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *)
     return NOT_RECEIVED;
 }
 
-int waitPackets(CANPACKET * recv_pack, CANLISTEN_PARAM * params){
-
-} // Pass by Ref
 
 int sendPacket(CANPACKET * p){
     if (p->dataSize > MAX_SIZE_PACKET_DATA){
         return PACKET_TOO_BIG;
     }
     CAN.beginPacket(p->id);
-    CAN.write(p->data, p->dataSize);
-    if (!CAN.endPacket()){
-        return SUCCESS;
-    } return GEN_FAILURE;
+    for (int i = 0; i < p->dataSize; i++){
+        CAN.write( p->data[i]);
+    }
+    if(CAN.endPacket()){
+        Serial.println("Success!!!");
+    }
+    return SUCCESS;
+
 }

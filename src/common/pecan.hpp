@@ -12,7 +12,7 @@ enum PCAN_ERR{
 
 struct CANPACKET{
     int id;
-    char data[8];
+    char data[8] = {0};
     char dataSize = 0;
 };
 
