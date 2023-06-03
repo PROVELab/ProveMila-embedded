@@ -1,6 +1,9 @@
 #ifndef PECAN_H
 #define PECAN_H
 #include "./ptypes.hpp"
+#include <mbed.h>
+extern CAN can1;
+
 
 enum PCAN_ERR{
     PACKET_TOO_BIG=-3,
@@ -17,10 +20,10 @@ struct CANPacket {
 };
 
 // 
-struct PCANListenParamsCollection{
-    CANListenParam arr[1000];
-    int size = 0;
-};
+// struct PCANListenParamsCollection{
+//     CANListenParam arr[1000];
+//     int size = 0;
+// };
 
 // A single CANListenParam
 struct CANListenParam {
@@ -38,7 +41,7 @@ struct CANListenParam {
 ///                pointer to the received packet and returns int
 ///                for success/failure
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *));
+int waitPacket(CANPacket * recv_pack, int listen_id, int (* handler)(CANPacket *));
 
 int sendPacket(CANPacket*  p);
 
