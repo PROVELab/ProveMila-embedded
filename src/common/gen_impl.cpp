@@ -4,11 +4,11 @@ int getID(int fn_id, int node_id){
     return (fn_id << 7) + node_id;
 }
 
-void setSensorID(CANPACKET * p, char sensorId){
+void setSensorID(CANPacket * p, char sensorId){
     p->data[0] = sensorId;
 }
 
-int writeData(CANPACKET * p, char * dataPoint, int size){
+int writeData(CANPacket * p, char * dataPoint, int size){
     
     int i = p->dataSize;
     if (i + size > MAX_SIZE_PACKET_DATA){

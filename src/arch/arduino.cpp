@@ -2,9 +2,9 @@
 #include "../common/pecan.hpp"
 #include "CAN.h"
 
-int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *)){
+int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)){
     if (recv_pack == NULL){
-        CANPACKET p;
+        CANPacket p;
         recv_pack = &p;
         // We can only use this for handler
         // Because stack
@@ -26,7 +26,7 @@ int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *)
 }
 
 
-int sendPacket(CANPACKET * p){
+int sendPacket(CANPacket * p){
     if (p->dataSize > MAX_SIZE_PACKET_DATA){
         return PACKET_TOO_BIG;
     }

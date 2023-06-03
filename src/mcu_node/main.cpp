@@ -3,24 +3,21 @@
 #include <rtos.h>
 Thread thread;
 
-int receiveHandler(CANPACKET * pack){
+int receiveHandler(CANPacket * pack){
     printf("MCU received:\n");
     printf("%d-%s.\n", (pack->id), (pack->data));
     return SUCCESS;
 }
-
-CAN can2(p30, p29, 500E3);
-
 
 int main()
 {
     // CANPACKET p;
     // char hello[] = "Shynn";
     printf("MCU startup \n");
+    CAN can2(p30, p29, 500E3);
 
+    CANPacket p;
     int out;
-    CANMessage msg;
-    CANPACKET p;
     while(1){
         // p.id = 15;
         // p.dataSize = 0;

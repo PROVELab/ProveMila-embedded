@@ -20,7 +20,7 @@ void setup()
 
 }
 
-int receiveHandler(CANPACKET * pack){
+int receiveHandler(CANPacket * pack){
     Serial.print("Telemetry received:");
     Serial.println(pack->data);
     return SUCCESS;
@@ -28,7 +28,7 @@ int receiveHandler(CANPACKET * pack){
 
 void loop()
 {
-    CANPACKET p;
+    CANPacket  p;
     char hello[] = "Shynn\0";
     p.dataSize = 0;
     p.id = 11;
