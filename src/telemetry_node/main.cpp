@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "CAN.h"
 #include "../common/pecan.hpp"
 // GITHUB NOTES
 // We should convert PROVELab GitHub to an organization
@@ -9,9 +10,17 @@
 void setup()
 {
     Serial.begin(9600);
+    // start the CAN bus at 500 kbps
+    if (!CAN.begin(500E3)) {
+        Serial.println("Starting CAN, joystick failed!");
+        while (1);
+    }
+    Serial.println("Telemetry startup succesful");
+    // CAN.loopback();
+
 }
 
-int receiveHandler(CANPACKET * pack){
+int receiveHandler(CANPacket * pack){
     Serial.print("Telemetry received:");
     Serial.println(pack->data);
     return SUCCESS;
@@ -19,12 +28,16 @@ int receiveHandler(CANPACKET * pack){
 
 void loop()
 {
-    CANPACKET p;
-    p.id = 0;
-    char hello[] = "Shynn";
+    CANPacket  p;
+    char hello[] = "Shynn\0";
+    p.dataSize = 0;
+    p.id = 11;
+
     Serial.println("Telemetry Sent.");
-    writeData(&p, hello, 5);
-    while (waitPacket(&p, 11, receiveHandler) == NOT_RECEIVED){
-        ;
-    }
+    writeData(&p, hello, 6);
+    Serial.println(p.data);
+    sendPacket(&p);
+    Serial.println("Post Send;");
+    // Serial.println(CAN.parsePacket());
+    delay(1000);
 }

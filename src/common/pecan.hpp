@@ -10,22 +10,22 @@ enum PCAN_ERR{
     GEN_FAILURE = 1,
 };
 
-struct CANPACKET{
+struct CANPacket {
     int id;
-    char data[8];
+    char data[8] = {0};
     char dataSize = 0;
 };
 
-// The idea is that we shouldn't
-// be passing all of this by value
-// again and again and again, rather
-// we pass this struct by reference
-// and its elements can be accessed
-// in order to handle multiple listen_ids
-struct CANLISTEN_PARAM{
-    int size;
-    int * listen_ids;
-    int (**handler)(CANPACKET *);
+// 
+struct PCANListenParamsCollection{
+    CANListenParam arr[1000];
+    int size = 0;
+};
+
+// A single CANListenParam
+struct CANListenParam {
+    int listen_ids;
+    int (*handler)(CANPacket *);
 };
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
@@ -38,17 +38,16 @@ struct CANLISTEN_PARAM{
 ///                pointer to the received packet and returns int
 ///                for success/failure
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int waitPacket(CANPACKET * recv_pack, int listen_id, int (*handler)(CANPACKET *));
-int waitPackets(CANPACKET * recv_pack, CANLISTEN_PARAM * params); // Pass by Ref
+int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *));
 
-int sendPacket(CANPACKET*  p);
+int sendPacket(CANPacket*  p);
 
 int getID(int fn_id, int node_id);
 // Only in use with sensor stuff
-void setSensorID(CANPACKET * p, char sensorId);
+void setSensorID(CANPacket * p, char sensorId);
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int writeData(CANPACKET * p, char * dataPoint, int size);
+int writeData(CANPacket * p, char * dataPoint, int size);
 
 #endif

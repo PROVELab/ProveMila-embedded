@@ -5,7 +5,7 @@
 #define MAX_BUFFER_SIZE 32
 #define MOTOR_ID 11
 
-int receiveHandler(CANPACKET * pack){
+int receiveHandler(CANPacket * pack){
     static BufferedSerial serial_port(USBTX, USBRX);
     char buf[MAX_BUFFER_SIZE] = {0};
     UART_Packet *new_packet;
@@ -25,13 +25,22 @@ int receiveHandler(CANPACKET * pack){
 
 int main()
 {
-    CANPACKET p;
-    p.id = 11;
-    char hello[] = "Shynn";
-    printf("MCU Sent \n");
-    writeData(&p, hello, 5);
-    if (waitPacket(&p, 00, receiveHandler) == NOT_RECEIVED){
-        ;
-    }
+    // CANPACKET p;
+    // char hello[] = "Shynn";
+    printf("MCU startup \n");
+    CAN can2(p30, p29, 500E3);
 
+    CANPacket p;
+    int out;
+    while(1){
+        // p.id = 15;
+        // p.dataSize = 0;
+        // writeData(&p, hello, 5);
+        // printf("%d\n", sendPacket(&p));
+        // if ((out = can2.read(msg))){
+        //     printf("Msg len: %d\n", msg.len);
+        // }
+        while (waitPacket(&p, 11, receiveHandler) == NOT_RECEIVED){
+        }
+    }
 }
