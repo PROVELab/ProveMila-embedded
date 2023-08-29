@@ -69,4 +69,24 @@ int writeData(CANPACKET * p, byte * dataPoint, int size){
     return SUCCESS;
 }
 
+/* "Scheduler/TaskManager" */
+class Schedule{
+private:
+    Task tasks[20];
+    int ctr = 0;
+public:
+    // Add the task to the task array
+    void scheduleTask(Task t);
+    // Loop through the tasks, enabling all of them and 
+    // listening for packets
+    void mainloop();
+};
+
+struct Task{
+    void (*function)(void); // Function to call
+    int interval; // Milliseconds between task runs
+    int startdelay; // Seconds until starting
+    bool locked; // Lock CAN - Only applicable to multithreading
+};
+
 #endif
