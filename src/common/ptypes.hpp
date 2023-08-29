@@ -3,13 +3,12 @@
 
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
-typedef char byte;
 
 template <typename T>
-void fillBuf(byte * b, T value){
+void fillBuf(char * b, T value){
     union {
         T value;
-        byte buffer[sizeof(T)];
+        char buffer[sizeof(T)];
     } convert_o_tron; // Yes, this is a kerbal space program reference
     convert_o_tron.value = value;
 
@@ -19,10 +18,10 @@ void fillBuf(byte * b, T value){
 }
 
 template <typename T>
-void unFillBuf(byte * b, T * valRef){
+void unFillBuf(char * b, T * valRef){
     union {
         T value;
-        byte buffer[sizeof(T)];
+        char buffer[sizeof(T)];
     } convert_o_tron;
     for (int i = 0; i < sizeof(T); i++){
         convert_o_tron.buffer[i] = b[i];
