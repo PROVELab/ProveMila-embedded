@@ -16,17 +16,17 @@ struct CANPacket {
     char dataSize = 0;
 };
 
-// 
-struct PCANListenParamsCollection{
-    CANListenParam arr[1000];
-    int size = 0;
-};
-
 // A single CANListenParam
 struct CANListenParam {
     int listen_ids;
     int (*handler)(CANPacket *);
 };
+
+struct PCANListenParamsCollection{
+    CANListenParam arr[1000];
+    int size = 0;
+};
+
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in 
@@ -50,24 +50,28 @@ void setSensorID(CANPacket * p, char sensorId);
 // For Max Length
 int writeData(CANPacket * p, char * dataPoint, int size);
 
+struct Task{
+    void (*function)(void); // Function to call
+    unsigned int interval; // Milliseconds between task runs
+    bool locked; // Lock CAN - Only applicable to multithreading
+};
+
 /* "Scheduler/TaskManager" */
 class Schedule{
 private:
-    Task tasks[20];
-    int ctr = 0;
+    Task tasks[MAX_TASK_COUNT]; // A little mini-queue
+    int ctr = 0; // Counts how many events are in queue
 public:
-    // Add the task to the task array
-    void scheduleTask(Task t);
-    // Loop through the tasks, enabling all of them and 
-    // listening for packets
-    void mainloop();
-};
-
-struct Task{
-    void (*function)(void); // Function to call
-    int interval; // Milliseconds between task runs
-    int startdelay; // Seconds until starting
-    bool locked; // Lock CAN - Only applicable to multithreading
+    /* 
+    Add the task to the task queue (will all be enabled
+    when mainloop is called)
+    return: PCAN_ERR - denotes if the we have too many tasks,
+        or success
+     */
+    PCAN_ERR scheduleTask(Task t);
+    // Loop through the tasks, enabling all of them with
+    // their specifications listening for packets
+    [[noreturn]] void mainloop();
 };
 
 #endif

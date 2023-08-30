@@ -1,8 +1,11 @@
 #include "../common/pecan.hpp"
 #include "mbed.h"
+#include "mbed_events.h"
+
 
 CAN can1(p30, p29, 500E3);
 
+// Specific Packet stuff
 int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)){
     // If we don't get one passed in,
     // that means the sender doesn't want it
@@ -24,8 +27,6 @@ int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)
     }
     return NOT_RECEIVED;
 }
-
-
 int sendPacket(CANPacket * p){
     if (p->dataSize > MAX_SIZE_PACKET_DATA){
         return PACKET_TOO_BIG;
@@ -34,4 +35,19 @@ int sendPacket(CANPacket * p){
     if (can1.write(msg)){
         return SUCCESS;
     } return GEN_FAILURE;
+}
+
+void Scheduler::mainloop(){
+    EventQueue * queue = mbed_event_queue();
+
+    // Thread tOutput;
+    // tOutput.start(callback(&outputQueue, &EventQueue::dispatch_forever));
+    // tOutput.join();
+
+    int i = 0;
+    for (i < ctr; i++){
+        Task t = tasks[i];
+        queue.call_every(t.interval, t.function, void);
+    }
+
 }
