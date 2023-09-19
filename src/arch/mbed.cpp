@@ -38,16 +38,14 @@ int sendPacket(CANPacket * p){
 }
 
 void Scheduler::mainloop(){
-    EventQueue * queue = mbed_event_queue();
+    EventQueue queue(32* EVENTS_EVENT_SIZE);
 
-    // Thread tOutput;
-    // tOutput.start(callback(&outputQueue, &EventQueue::dispatch_forever));
-    // tOutput.join();
-
-    int i = 0;
-    for (i < ctr; i++){
+    Thread tOutput;
+    for (int i = 0;i < ctr; i++){
         Task t = tasks[i];
-        queue.call_every(t.interval, t.function, void);
+        queue.call_every(t.interval, t.function);
     }
 
+    tOutput.start(callback(&queue, &EventQueue::dispatch_forever));
+    tOutput.join();
 }

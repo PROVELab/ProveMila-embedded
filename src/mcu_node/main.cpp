@@ -9,24 +9,21 @@ int receiveHandler(CANPacket * pack){
     return SUCCESS;
 }
 
-int main()
-{
-    // // CANPACKET p;
-    // // char hello[] = "Shynn";
-    // printf("MCU startup \n");
-    // CAN can2(p30, p29, 500E3);
+void the_func(){
+    printf("Every 0.5s\n");
+}
 
-    // CANPacket p;
-    // int out;
-    // while(1){
-    //     // p.id = 15;
-    //     // p.dataSize = 0;
-    //     // writeData(&p, hello, 5);
-    //     // printf("%d\n", sendPacket(&p));
-    //     // if ((out = can2.read(msg))){
-    //     //     printf("Msg len: %d\n", msg.len);
-    //     // }
-    //     while (waitPacket(&p, 11, receiveHandler) == NOT_RECEIVED){
-    //     }
-    // }
+void the_func2(){
+    printf("Every 1s\n");
+}
+
+int main() {
+    printf("Begin\n");
+    // Scheduler s;
+    
+    // Task t;
+    // t.function = the_func;
+    // t.interval = 500;
+    // s.scheduleTask(t);
+    // s.mainloop();
 }

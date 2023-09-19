@@ -57,13 +57,13 @@ struct Task{
 };
 
 /* "Scheduler/TaskManager" */
-class Schedule{
+class Scheduler{
 private:
     Task tasks[MAX_TASK_COUNT]; // A little mini-queue
     int ctr = 0; // Counts how many events are in queue
 public:
-    /* 
-    Add the task to the task queue (will all be enabled
+    Scheduler(){}
+    /* Add the task to the task queue (will all be enabled
     when mainloop is called)
     return: PCAN_ERR - denotes if the we have too many tasks,
         or success
