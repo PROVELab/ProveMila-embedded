@@ -1,6 +1,14 @@
 #ifndef PECAN_H
 #define PECAN_H
 #include "./ptypes.hpp"
+#ifdef __MBED__
+#include "mbed_chrono.h"
+#include "mbed.h"
+#include "mbed_events.h"
+
+#endif
+
+
 
 enum PCAN_ERR{
     PACKET_TOO_BIG=-3,
@@ -51,18 +59,28 @@ void setSensorID(CANPacket * p, char sensorId);
 int writeData(CANPacket * p, char * dataPoint, int size);
 
 struct Task{
-    void (*function)(void); // Function to call
-    unsigned int interval; // Milliseconds between task runs
+    void (*function)(int); // Function to call
+    int delay = 0;
+    int interval; // Milliseconds between task runs
     bool locked; // Lock CAN - Only applicable to multithreading
 };
+
+void test(int);
 
 /* "Scheduler/TaskManager" */
 class Scheduler{
 private:
-    Task tasks[MAX_TASK_COUNT]; // A little mini-queue
     int ctr = 0; // Counts how many events are in queue
+    Task tasks[20];
+// Unfortunately we need a small amount of platform-specific code
+// because we want the queue just there as part of OOP
+#ifdef __MBED__
+    EventQueue queue;
+#endif
+#ifdef ARDUNO_AVR_UNO
+#endif 
 public:
-    Scheduler(){}
+    Scheduler();
     /* Add the task to the task queue (will all be enabled
     when mainloop is called)
     return: PCAN_ERR - denotes if the we have too many tasks,
@@ -71,7 +89,8 @@ public:
     PCAN_ERR scheduleTask(Task t);
     // Loop through the tasks, enabling all of them with
     // their specifications listening for packets
-    [[noreturn]] void mainloop();
+    [[noreturn]] void mainloop(char * inp);
+
 };
 
 #endif

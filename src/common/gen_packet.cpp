@@ -29,12 +29,3 @@ int writeData(CANPacket * p, char * dataPoint, int size){
     }
     return SUCCESS;
 }
-
-PCAN_ERR Scheduler::scheduleTask(Task t){
-    if (ctr >= MAX_TASK_COUNT){
-        return NOSPACE;
-    }
-    this->tasks[ctr] = t;
-    ctr++;
-    return SUCCESS;
-}

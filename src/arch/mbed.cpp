@@ -37,15 +37,45 @@ int sendPacket(CANPacket * p){
     } return GEN_FAILURE;
 }
 
-void Scheduler::mainloop(){
-    EventQueue queue(32* EVENTS_EVENT_SIZE);
+void func(int a){}
 
-    Thread tOutput;
-    for (int i = 0;i < ctr; i++){
-        Task t = tasks[i];
-        queue.call_every(t.interval, t.function);
+Scheduler::Scheduler() : queue(0){
+}
+
+PCAN_ERR Scheduler::scheduleTask(Task t){
+    if (ctr >= MAX_TASK_COUNT){
+        return NOSPACE;
     }
+    this->tasks[ctr] = t;
+    ctr++;
+    printf("Counter incremented. Currently %d\n", ctr);
+    return SUCCESS;
+}
 
+void Scheduler::mainloop(char * inp){
+
+    Thread tOutput, tOutput2;
+    printf("Mainloop\n");
+    // ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[0] = make_user_allocated_event(this->tasks[0].function, 0);
+    // auto va = make_user_allocated_event(this->tasks[0].function, 0);
+    
+    // va.delay(tasks[0].delay);
+    // va.period(tasks[0].interval);
+    // va.call_on(&this->queue);
+    // events::UserAllocatedEvent<void (*)(int), void (int)> va;
+    for (int i = 0;i < ctr; i++){
+        printf("I, ctr %d %d\n", i, ctr);
+        Task t = this->tasks[i];
+        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i] = make_user_allocated_event(t.function, i);
+        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].delay(t.delay);
+        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].period(t.interval);
+        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].call_on(&queue);
+        printf("I, ctr %d %d\n", i, ctr);
+
+    }
+    printf("Dispatching\n");
     tOutput.start(callback(&queue, &EventQueue::dispatch_forever));
-    tOutput.join();
+    tOutput2.start(callback(&queue, &EventQueue::dispatch_forever));
+    // tOutput.join();
+    while(1);
 }
