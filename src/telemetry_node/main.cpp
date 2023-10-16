@@ -21,23 +21,23 @@ void setup()
 }
 
 int receiveHandler(CANPacket * pack){
-    Serial.print("Telemetry received:");
-    Serial.println(pack->data);
-    return SUCCESS;
+    // Serial.print("Telemetry received:");
+    // Serial.println(pack->data);
+    // return SUCCESS;
 }
 
 void loop()
 {
-    CANPacket  p;
-    char hello[] = "Shynn\0";
-    p.dataSize = 0;
-    p.id = 11;
+    // CANPacket  p;
+    // char hello[] = "Shynn\0";
+    // p.dataSize = 0;
+    // p.id = 11;
 
-    Serial.println("Telemetry Sent.");
-    writeData(&p, hello, 6);
-    Serial.println(p.data);
-    sendPacket(&p);
-    Serial.println("Post Send;");
-    // Serial.println(CAN.parsePacket());
-    delay(1000);
+    // Serial.println("Telemetry Sent.");
+    // writeData(&p, hello, 6);
+    // Serial.println(p.data);
+    // sendPacket(&p);
+    // Serial.println("Post Send;");
+    // // Serial.println(CAN.parsePacket());
+    // delay(1000);
 }

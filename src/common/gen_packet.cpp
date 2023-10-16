@@ -1,16 +1,17 @@
 #include "pecan.hpp"
+
 // The general, independent implementation
-int getID(int fn_id, int node_id){
+int16_t getID(int16_t fn_id, int16_t node_id){
     return (fn_id << 7) + node_id;
 }
 
-void setSensorID(CANPacket * p, char sensorId){
+void setSensorID(CANPacket * p, uint8_t sensorId){
     p->data[0] = sensorId;
 }
 
-int writeData(CANPacket * p, char * dataPoint, int size){
+int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
     
-    int i = p->dataSize;
+    int16_t i = p->dataSize;
     if (i + size > MAX_SIZE_PACKET_DATA){
         return NOSPACE;
     }
@@ -18,7 +19,8 @@ int writeData(CANPacket * p, char * dataPoint, int size){
     for (; i < size; i++){
         // DataSize can be interpreted as both
         // Size, and Index
-        p->data[p->dataSize] = dataPoint[i];
+        // Casting to 16-bit because compiler not happy
+        p->data[(int16_t)p->dataSize] = dataPoint[i];
         p->dataSize++;
 
         // This check should've been working above

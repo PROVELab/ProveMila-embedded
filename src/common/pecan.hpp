@@ -1,14 +1,7 @@
 #ifndef PECAN_H
 #define PECAN_H
 #include "./ptypes.hpp"
-#ifdef __MBED__
-#include "mbed_chrono.h"
-#include "mbed.h"
-#include "mbed_events.h"
-
-#endif
-
-
+#include <stdint.h>
 
 enum PCAN_ERR{
     PACKET_TOO_BIG=-3,
@@ -19,20 +12,21 @@ enum PCAN_ERR{
 };
 
 struct CANPacket {
-    int id;
-    char data[8] = {0};
-    char dataSize = 0;
+    int16_t id;
+    int8_t data[8] = {0};
+    int8_t dataSize = 0;
 };
 
-// A single CANListenParam
+// A single CANListenParam - one id and one function call
 struct CANListenParam {
-    int listen_ids;
-    int (*handler)(CANPacket *);
+    int16_t listen_ids;
+    int16_t (*handler)(CANPacket *);
 };
 
+// Multiple CANListenParams from above ^
 struct PCANListenParamsCollection{
     CANListenParam arr[1000];
-    int size = 0;
+    int16_t size = 0;
 };
 
 
@@ -46,39 +40,33 @@ struct PCANListenParamsCollection{
 ///                pointer to the received packet and returns int
 ///                for success/failure
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *));
+int16_t waitPacket(CANPacket * recv_pack, int16_t listen_id, int16_t (*handler)(CANPacket *));
 
-int sendPacket(CANPacket*  p);
+// Sends a packet
+int16_t sendPacket(CANPacket* p);
 
-int getID(int fn_id, int node_id);
+// Constructs a correct CAN ID for packet via function code and specific node id
+int16_t getID(int16_t fn_id, int16_t node_id);
 // Only in use with sensor stuff
-void setSensorID(CANPacket * p, char sensorId);
+void setSensorID(CANPacket * p, uint8_t sensorId);
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int writeData(CANPacket * p, char * dataPoint, int size);
+int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size);
 
 struct Task{
-    void (*function)(int); // Function to call
-    int delay = 0;
-    int interval; // Milliseconds between task runs
+    void (*function)(uint16_t); // Function to call
+    int16_t delay = 0;
+    int16_t interval; // Milliseconds between task runs
     bool locked; // Lock CAN - Only applicable to multithreading
 };
-
-void test(int);
 
 /* "Scheduler/TaskManager" */
 class Scheduler{
 private:
-    int ctr = 0; // Counts how many events are in queue
+    int16_t ctr = 0; // Counts how many events are in queue
     Task tasks[20];
-// Unfortunately we need a small amount of platform-specific code
-// because we want the queue just there as part of OOP
-#ifdef __MBED__
-    EventQueue queue;
-#endif
-#ifdef ARDUNO_AVR_UNO
-#endif 
+
 public:
     Scheduler();
     /* Add the task to the task queue (will all be enabled
@@ -89,8 +77,7 @@ public:
     PCAN_ERR scheduleTask(Task t);
     // Loop through the tasks, enabling all of them with
     // their specifications listening for packets
-    [[noreturn]] void mainloop(char * inp);
-
+    [[noreturn]] void mainloop(int8_t * inp);
 };
 
 #endif

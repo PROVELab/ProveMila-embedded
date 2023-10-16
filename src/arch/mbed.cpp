@@ -2,11 +2,10 @@
 #include "mbed.h"
 #include "mbed_events.h"
 
-
 CAN can1(p30, p29, 500E3);
 
 // Specific Packet stuff
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)){
+int16_t waitPacket(CANPacket * recv_pack, int16_t listen_id, int16_t (*handler)(CANPacket *)){
     // If we don't get one passed in,
     // that means the sender doesn't want it
     if (recv_pack == NULL){
@@ -15,31 +14,30 @@ int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)
     }
 
     CANMessage msg;
-    int out;
+    int8_t out;
     if ((out = can1.read(msg))){
         recv_pack->id = msg.id;
         recv_pack->dataSize = msg.len;
         printf("Msg len: %d\n", msg.len);
-        for (int i = 0; i < msg.len; i++){
+        for (int8_t i = 0; i < msg.len; i++){
             recv_pack->data[i] = msg.data[i];
         }
         return handler(recv_pack);
     }
     return NOT_RECEIVED;
 }
-int sendPacket(CANPacket * p){
+
+int16_t sendPacket(CANPacket * p){
     if (p->dataSize > MAX_SIZE_PACKET_DATA){
         return PACKET_TOO_BIG;
     }
-    CANMessage msg(p->id, p->data, p->dataSize);
+    CANMessage msg(p->id, (uint8_t*) p->data, p->dataSize);
     if (can1.write(msg)){
         return SUCCESS;
     } return GEN_FAILURE;
 }
 
-void func(int a){}
-
-Scheduler::Scheduler() : queue(0){
+Scheduler::Scheduler(){
 }
 
 PCAN_ERR Scheduler::scheduleTask(Task t){
@@ -52,30 +50,21 @@ PCAN_ERR Scheduler::scheduleTask(Task t){
     return SUCCESS;
 }
 
-void Scheduler::mainloop(char * inp){
+void Scheduler::mainloop(int8_t * inp){
+    EventQueue queue;
 
     Thread tOutput, tOutput2;
     printf("Mainloop\n");
-    // ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[0] = make_user_allocated_event(this->tasks[0].function, 0);
-    // auto va = make_user_allocated_event(this->tasks[0].function, 0);
-    
-    // va.delay(tasks[0].delay);
-    // va.period(tasks[0].interval);
-    // va.call_on(&this->queue);
-    // events::UserAllocatedEvent<void (*)(int), void (int)> va;
-    for (int i = 0;i < ctr; i++){
-        printf("I, ctr %d %d\n", i, ctr);
+    for (uint16_t i = 0;i < ctr; i++){
         Task t = this->tasks[i];
-        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i] = make_user_allocated_event(t.function, i);
-        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].delay(t.delay);
-        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].period(t.interval);
-        ((UserAllocatedEvent<void (*)(int), void (int)> *)inp)[i].call_on(&queue);
-        printf("I, ctr %d %d\n", i, ctr);
+        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i] = make_user_allocated_event(t.function, i);
+        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].delay(t.delay);
+        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].period(t.interval);
+        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].call_on(&queue);
 
     }
     printf("Dispatching\n");
     tOutput.start(callback(&queue, &EventQueue::dispatch_forever));
     tOutput2.start(callback(&queue, &EventQueue::dispatch_forever));
-    // tOutput.join();
     while(1);
 }

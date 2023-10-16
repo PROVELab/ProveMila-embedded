@@ -9,16 +9,16 @@ int receiveHandler(CANPacket * pack){
     return SUCCESS;
 }
 
-void the_func( int a){
+void the_func(uint16_t a){
     printf("Every 1s, time: %u\n", (unsigned int) time(NULL));
 }
 
-void the_func2(int a){
+void the_func2(uint16_t a){
     printf("Every 0.2s, time: %u\n", (unsigned int) time(NULL));
 }
 
 int main() {
-    char events[2*(9+4 +3)*sizeof(int)];
+    int8_t events[2*(9+4 +3)*sizeof(int)];
     printf("Begin\n");
     Scheduler s;
     set_time(0);
