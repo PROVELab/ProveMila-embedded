@@ -2,6 +2,9 @@
 #define PECAN_H
 #include "./ptypes.hpp"
 
+#define Param_Count 20
+#define MAX_SIZE_PACKET_DATA 8
+
 enum PCAN_ERR{
     PACKET_TOO_BIG=-3,
     NOT_RECEIVED=-2,
@@ -12,20 +15,19 @@ enum PCAN_ERR{
 
 struct CANPacket {
     int id;
-    char data[8] = {0};
+    char data[MAX_SIZE_PACKET_DATA] = {0};
     char dataSize = 0;
-};
-
-// 
-struct PCANListenParamsCollection{
-    CANListenParam arr[1000];
-    int size = 0;
 };
 
 // A single CANListenParam
 struct CANListenParam {
     int listen_ids;
     int (*handler)(CANPacket *);
+};
+
+struct PCANListenParamsCollection{
+    CANListenParam arr[Param_Count];
+    int size = 0;
 };
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
@@ -42,7 +44,7 @@ int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)
 
 int sendPacket(CANPacket*  p);
 
-int getID(int fn_id, int node_id);
+int combinedID(int fn_id, int node_id);
 // Only in use with sensor stuff
 void setSensorID(CANPacket * p, char sensorId);
 

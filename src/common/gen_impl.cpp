@@ -1,6 +1,6 @@
 #include "pecan.hpp"
 // The general, independent implementation
-int getID(int fn_id, int node_id){
+int combinedID(int fn_id, int node_id){
     return (fn_id << 7) + node_id;
 }
 
@@ -18,7 +18,7 @@ int writeData(CANPacket * p, char * dataPoint, int size){
     for (; i < size; i++){
         // DataSize can be interpreted as both
         // Size, and Index
-        p->data[p->dataSize] = dataPoint[i];
+        p->data[(int)p->dataSize] = dataPoint[i];
         p->dataSize++;
 
         // This check should've been working above
@@ -28,4 +28,29 @@ int writeData(CANPacket * p, char * dataPoint, int size){
         }
     }
     return SUCCESS;
+}
+
+template <typename T>
+void fillBuf(char * b, T value){
+    union {
+        T value;
+        char buffer[sizeof(T)];
+    } convert_o_tron;
+    convert_o_tron.value = value;
+
+    for (int i = sizeof(T)-1; i >= 0; i--){
+        b[i] = convert_o_tron.buffer[i];
+    }
+}
+
+template <typename T>
+void unFillBuf(char * b, T * valRef){
+    union {
+        T value;
+        char buffer[sizeof(T)];
+    } convert_o_tron;
+    for (int i = 0; i < sizeof(T); i++){
+        convert_o_tron.buffer[i] = b[i];
+    }
+    *valRef = convert_o_tron.value;
 }
