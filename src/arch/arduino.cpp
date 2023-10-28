@@ -2,7 +2,8 @@
 #include "../common/pecan.hpp"
 #include "CAN.h"
 
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)){
+
+int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     if (recv_pack == NULL){
         CANPacket p;
         recv_pack = &p;
@@ -10,17 +11,22 @@ int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)
         // Because stack
     }
     
-    int packetsize = CAN.parsePacket();
+    int packetsize;
+    CANListenParam clp;
     int id;
-    if (!packetsize &&
-        (id = CAN.packetId()) == listen_id
-    ){
-        recv_pack->id = CAN.packetId();
-        recv_pack->dataSize = packetsize;
-        for (int i = 0; i < packetsize; i++){
-            recv_pack->data[i] = CAN.read();
+    if (!(packetsize = CAN.parsePacket())){
+        id = CAN.packetId();
+        for (int i = 0; i < plpc->size; i++){
+            clp = plpc->arr[i];
+            if (matcher[clp.mt](id, clp.listen_id)){
+                recv_pack->id = id;
+                recv_pack->dataSize = packetsize;
+                for (int j = 0; j < recv_pack->dataSize; j++){
+                    recv_pack->data[j] = recv_pack->data[j];
+                }
+                return clp.handler(recv_pack);
+            }
         }
-        return handler(recv_pack);
     }
     return NOT_RECEIVED;
 }
@@ -36,6 +42,8 @@ int sendPacket(CANPacket * p){
     }
     if(CAN.endPacket()){
         Serial.println("Success!!!");
+    } else {
+        return GEN_FAILURE;
     }
     return SUCCESS;
 

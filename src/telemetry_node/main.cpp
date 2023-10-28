@@ -16,8 +16,6 @@ void setup()
         while (1);
     }
     Serial.println("Telemetry startup succesful");
-    // CAN.loopback();
-
 }
 
 int receiveHandler(CANPacket * pack){
@@ -29,15 +27,15 @@ int receiveHandler(CANPacket * pack){
 void loop()
 {
     CANPacket  p;
-    char hello[] = "Shynn\0";
-    p.dataSize = 0;
-    p.id = 11;
+    p.dataSize = 3;
+    p.id = combinedID(0b1111, 0b0);
+    p.data[0] = 'h';
+    p.data[0] = 'i';
+    p.data[0] = '\0';
+    Serial.println("Sending");
+    if (sendPacket(&p) == GEN_FAILURE){
+        Serial.println(":(");
+    }
 
-    Serial.println("Telemetry Sent.");
-    writeData(&p, hello, 6);
-    Serial.println(p.data);
-    sendPacket(&p);
-    Serial.println("Post Send;");
-    // Serial.println(CAN.parsePacket());
     delay(1000);
 }

@@ -8,6 +8,16 @@ void setSensorID(CANPacket * p, char sensorId){
     p->data[0] = sensorId;
 }
 
+int addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
+    if (plpc->size + 1 > Param_Count){
+        return NOSPACE;
+    } else {
+        plpc->arr[plpc->size] = clp;
+        plpc->size++;
+        return SUCCESS;
+    }
+}
+
 int writeData(CANPacket * p, char * dataPoint, int size){
     
     int i = p->dataSize;
@@ -54,3 +64,12 @@ void unFillBuf(char * b, T * valRef){
     }
     *valRef = convert_o_tron.value;
 }
+
+bool exact(int id, int mask) {
+    return id == mask;
+}
+
+bool similar(int id, int mask){
+    return (id & mask) == id;
+}
+

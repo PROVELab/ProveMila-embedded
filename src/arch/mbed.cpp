@@ -3,7 +3,7 @@
 
 CAN can1(p30, p29, 500E3);
 
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)){
+int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     // If we don't get one passed in,
     // that means the sender doesn't want it
     if (recv_pack == NULL){
@@ -12,15 +12,22 @@ int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *)
     }
 
     CANMessage msg;
-    int out;
+    CANListenParam clp;
+    int out, id;
     if ((out = can1.read(msg))){
-        recv_pack->id = msg.id;
-        recv_pack->dataSize = msg.len;
-        printf("Msg len: %d\n", msg.len);
-        for (int i = 0; i < msg.len; i++){
-            recv_pack->data[i] = msg.data[i];
+        id = msg.id;
+        for (int i = 0; i < plpc->size; i++){
+            clp = plpc->arr[i];
+            if (matcher[clp.mt](id, clp.listen_id)){
+                recv_pack->id = msg.id;
+                recv_pack->dataSize = msg.len;
+                printf("Msg len: %d\n", msg.len);
+                for (int j = 0; j < msg.len; j++){
+                    recv_pack->data[j] = msg.data[i];
+                }
+                return clp.handler(recv_pack);
+            }
         }
-        return handler(recv_pack);
     }
     return NOT_RECEIVED;
 }

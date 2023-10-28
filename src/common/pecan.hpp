@@ -13,6 +13,11 @@ enum PCAN_ERR{
     GEN_FAILURE = 1,
 };
 
+enum MATCH_TYPE{
+    MATCH_EXACT=0,
+    MATCH_SIMILAR=1,
+};
+
 struct CANPacket {
     int id;
     char data[MAX_SIZE_PACKET_DATA] = {0};
@@ -21,8 +26,9 @@ struct CANPacket {
 
 // A single CANListenParam
 struct CANListenParam {
-    int listen_ids;
+    int listen_id;
     int (*handler)(CANPacket *);
+    MATCH_TYPE mt;
 };
 
 struct PCANListenParamsCollection{
@@ -40,13 +46,18 @@ struct PCANListenParamsCollection{
 ///                pointer to the received packet and returns int
 ///                for success/failure
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int waitPacket(CANPacket * recv_pack, int listen_id, int (*handler)(CANPacket *));
+int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc);
+int addParam(PCANListenParamsCollection * plpc, CANListenParam clp);
 
 int sendPacket(CANPacket*  p);
 
 int combinedID(int fn_id, int node_id);
 // Only in use with sensor stuff
 void setSensorID(CANPacket * p, char sensorId);
+
+bool exact(int id, int mask);
+bool similar(int id, int mask);
+static bool (*matcher[2])(int, int) = {exact, similar};
 
 // Write size bytes to the packet, accounting
 // For Max Length
