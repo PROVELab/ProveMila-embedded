@@ -1,7 +1,7 @@
 #include "../common/pecan.hpp"
 #include "mbed.h"
 
-CAN can1(p30, p29, 500E3);
+extern CAN can1;
 
 int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     // If we don't get one passed in,
@@ -21,7 +21,7 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
             if (matcher[clp.mt](id, clp.listen_id)){
                 recv_pack->id = msg.id;
                 recv_pack->dataSize = msg.len;
-                printf("Msg len: %d\n", msg.len);
+
                 for (int j = 0; j < msg.len; j++){
                     recv_pack->data[j] = msg.data[i];
                 }
@@ -34,11 +34,14 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
 
 
 int sendPacket(CANPacket * p){
+    can1.mode(CAN::LocalTest);
+
     if (p->dataSize > MAX_SIZE_PACKET_DATA){
         return PACKET_TOO_BIG;
     }
     CANMessage msg(p->id, p->data, p->dataSize);
     if (can1.write(msg)){
         return SUCCESS;
-    } return GEN_FAILURE;
+    } 
+    return GEN_FAILURE;
 }
