@@ -3,7 +3,7 @@
 #include <rtos.h>
 Thread thread;
 
-CAN can1(p30, p29, 125000);
+CAN can1(p30, p29, 500E3);
 
 int receiveHandler(CANPacket * pack){
     printf("MCU received:\n");
@@ -13,15 +13,20 @@ int receiveHandler(CANPacket * pack){
 
 int main()
 {
+    can1.reset();
     // CANPACKET p;
     // char hello[] = "Shynn";
     can1.mode(CAN::LocalTest);
     CANMessage cm;
+    CANMessage p;
     cm.data[0] = 'h';
     cm.id = 1;
     cm.len = 1;
-    printf("Send: %d\n", can1.write(cm));
-    printf("Recv: %d\n", can1.read(cm));
+    for (int i = 0; i < 5; i++){
+        printf("Send: %d\n", can1.write(cm));
+        printf("Recv: %d\n", can1.read(p));
+        printf("Received id: %d\n", p.id);
+    }
 
 
     // printf("MCU startup \n");
