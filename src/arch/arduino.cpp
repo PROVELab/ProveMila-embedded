@@ -15,6 +15,7 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     CANListenParam clp;
     int id;
     if (!(packetsize = CAN.parsePacket())){
+        printf("Packet Size: %d\n", packetsize);
         id = CAN.packetId();
         for (int i = 0; i < plpc->size; i++){
             clp = plpc->arr[i];

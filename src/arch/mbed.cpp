@@ -1,7 +1,7 @@
 #include "../common/pecan.hpp"
 #include "mbed.h"
 
-extern CAN can1;
+CAN can1(p30, p29, 500E3);
 
 int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     // If we don't get one passed in,
@@ -23,7 +23,7 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
                 recv_pack->dataSize = msg.len;
 
                 for (int j = 0; j < msg.len; j++){
-                    recv_pack->data[j] = msg.data[i];
+                    recv_pack->data[j] = msg.data[j];
                 }
                 return clp.handler(recv_pack);
             }

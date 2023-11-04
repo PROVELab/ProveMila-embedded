@@ -27,11 +27,9 @@ int receiveHandler(CANPacket * pack){
 void loop()
 {
     CANPacket  p;
-    p.dataSize = 3;
+    p.dataSize = 8;
     p.id = combinedID(0b1111, 0b0);
-    p.data[0] = 'h';
-    p.data[0] = 'i';
-    p.data[0] = '\0';
+    strcpy( p.data, "hi lin!");
     Serial.println("Sending");
     if (sendPacket(&p) == GEN_FAILURE){
         Serial.println(":(");
