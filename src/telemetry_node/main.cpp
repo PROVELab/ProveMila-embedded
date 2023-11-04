@@ -35,5 +35,13 @@ void loop()
         Serial.println(":(");
     }
 
+    p.dataSize = 8;
+    p.id = combinedID(0b1110, 0b0);
+    strcpy( p.data, "hi lin!");
+    Serial.println("Sending");
+    if (sendPacket(&p) == GEN_FAILURE){
+        Serial.println(":(");
+    }
+
     delay(1000);
 }

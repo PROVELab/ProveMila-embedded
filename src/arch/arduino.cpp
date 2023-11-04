@@ -2,6 +2,12 @@
 #include "../common/pecan.hpp"
 #include "CAN.h"
 
+int defaultPacketRecv(CANPacket * packet){
+    Serial.print("Received packet, id ");
+    Serial.print(packet->id);
+    Serial.print(", with data ");
+    Serial.println(packet->data);
+}
 
 int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     if (recv_pack == NULL){
@@ -28,6 +34,7 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
                 return clp.handler(recv_pack);
             }
         }
+        return plpc->defaultHandler(recv_pack);
     }
     return NOT_RECEIVED;
 }

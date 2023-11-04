@@ -3,6 +3,10 @@
 
 CAN can1(p30, p29, 500E3);
 
+int defaultPacketRecv(CANPacket * packet){
+    printf("Received packet, id %d, with data %s", packet->id, packet->data);
+}
+
 int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     // If we don't get one passed in,
     // that means the sender doesn't want it
@@ -28,6 +32,8 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
                 return clp.handler(recv_pack);
             }
         }
+        // If we got this far, we don't have any matches, just a general packet. Call default.
+        return plpc->defaultHandler(recv_pack);
     }
     return NOT_RECEIVED;
 }

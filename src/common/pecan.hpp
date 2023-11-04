@@ -31,8 +31,11 @@ struct CANListenParam {
     MATCH_TYPE mt;
 };
 
+int defaultPacketRecv(CANPacket *);
+
 struct PCANListenParamsCollection{
     CANListenParam arr[Param_Count];
+    int (*defaultHandler)(CANPacket *) = defaultPacketRecv;
     int size = 0;
 };
 
