@@ -3,10 +3,10 @@
 #include <rtos.h>
 Thread thread;
 
-
 int receiveHandler(CANPacket * pack){
-    printf("MCU received from Telemetry:\n");
+    printf("MCU received from Telemetry: ");
     printf("%d-%s\n", (pack->id), (pack->data));
+    printf("\n");
     return SUCCESS;
 }
 
@@ -28,27 +28,27 @@ int main()
     // }
 
 
-    printf("MCU startup \n");
+    printf("Booting up MCU\n");
 
-    PCANListenParamsCollection plpc;
-    CANListenParam clp;
 
-    clp.handler = receiveHandler;
-    clp.listen_id = combinedID(0b1111, 0b0);
-    clp.mt = MATCH_EXACT;
-
-    if (addParam(&plpc, clp) != SUCCESS){
-        printf("No Space!");
-        printf("Error\n");
-        return -1;
-    }
-
-    CANPacket p;
-    while(1){
-
-        printf("Waiting\n");
-
-        while (waitPackets(&p, &plpc) == NOT_RECEIVED){
+    while (1){
+        CANPacket  p;
+        p.dataSize = 8;
+        p.id = combinedID(0b1111, 0b0);
+        strcpy( p.data, "hi lin!");
+        printf("Sending\n");
+        if (sendPacket(&p) == GEN_FAILURE){
+            printf(":(\n");
         }
+
+        p.dataSize = 8;
+        p.id = combinedID(0b1110, 0b0);
+        strcpy( p.data, "bye lin");
+        printf("Sending\n");
+        if (sendPacket(&p) == GEN_FAILURE){
+            printf(":(\n");
+        }
+        ThisThread::sleep_for(4s);
     }
+
 }

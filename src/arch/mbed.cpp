@@ -4,7 +4,8 @@
 CAN can1(p30, p29, 500E3);
 
 int defaultPacketRecv(CANPacket * packet){
-    printf("Received packet, id %d, with data %s", packet->id, packet->data);
+    printf("Default handler: id %d, with data: %s\n", packet->id, packet->data);
+    return 0;
 }
 
 int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
@@ -20,15 +21,15 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     int out, id;
     if ((out = can1.read(msg))){
         id = msg.id;
+        recv_pack->id = msg.id;
+        recv_pack->dataSize = msg.len;
+
+        for (int j = 0; j < msg.len; j++){
+            recv_pack->data[j] = msg.data[j];
+        }
         for (int i = 0; i < plpc->size; i++){
             clp = plpc->arr[i];
             if (matcher[clp.mt](id, clp.listen_id)){
-                recv_pack->id = msg.id;
-                recv_pack->dataSize = msg.len;
-
-                for (int j = 0; j < msg.len; j++){
-                    recv_pack->data[j] = msg.data[j];
-                }
                 return clp.handler(recv_pack);
             }
         }

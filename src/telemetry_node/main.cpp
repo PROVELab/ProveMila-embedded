@@ -19,29 +19,34 @@ void setup()
 }
 
 int receiveHandler(CANPacket * pack){
-    Serial.print("Telemetry received:");
+    Serial.print("Telemetry received from MCU:");
+    Serial.print(pack->id);
+    Serial.print(", ");
     Serial.println(pack->data);
     return SUCCESS;
 }
 
 void loop()
 {
-    CANPacket  p;
-    p.dataSize = 8;
-    p.id = combinedID(0b1111, 0b0);
-    strcpy( p.data, "hi lin!");
-    Serial.println("Sending");
-    if (sendPacket(&p) == GEN_FAILURE){
-        Serial.println(":(");
+    PCANListenParamsCollection plpc;
+    CANListenParam clp;
+
+    clp.handler = receiveHandler;
+    clp.listen_id = combinedID(0b1110, 0b0);
+    clp.mt = MATCH_SIMILAR;
+
+    if (addParam(&plpc, clp) != SUCCESS){
+        Serial.println("No Space!");
+        Serial.println("Error\n");
+        return;
     }
 
-    p.dataSize = 8;
-    p.id = combinedID(0b1110, 0b0);
-    strcpy( p.data, "hi lin!");
-    Serial.println("Sending");
-    if (sendPacket(&p) == GEN_FAILURE){
-        Serial.println(":(");
-    }
+    CANPacket p;
+    while(1){
 
-    delay(1000);
+        Serial.println("Waiting\n");
+
+        while (waitPackets(&p, &plpc) == NOT_RECEIVED){
+        }
+    }
 }

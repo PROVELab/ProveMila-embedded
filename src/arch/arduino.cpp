@@ -3,7 +3,7 @@
 #include "CAN.h"
 
 int defaultPacketRecv(CANPacket * packet){
-    Serial.print("Received packet, id ");
+    Serial.print("Default Received packet, id ");
     Serial.print(packet->id);
     Serial.print(", with data ");
     Serial.println(packet->data);
@@ -20,17 +20,16 @@ int waitPackets(CANPacket * recv_pack, PCANListenParamsCollection * plpc){
     int packetsize;
     CANListenParam clp;
     int id;
-    if (!(packetsize = CAN.parsePacket())){
-        printf("Packet Size: %d\n", packetsize);
+    if ((packetsize = CAN.parsePacket())){
         id = CAN.packetId();
+        recv_pack->id = id;
+        recv_pack->dataSize = packetsize;
+        for (int j = 0; j < recv_pack->dataSize; j++){
+            recv_pack->data[j] = CAN.read();
+        }
         for (int i = 0; i < plpc->size; i++){
             clp = plpc->arr[i];
             if (matcher[clp.mt](id, clp.listen_id)){
-                recv_pack->id = id;
-                recv_pack->dataSize = packetsize;
-                for (int j = 0; j < recv_pack->dataSize; j++){
-                    recv_pack->data[j] = recv_pack->data[j];
-                }
                 return clp.handler(recv_pack);
             }
         }
