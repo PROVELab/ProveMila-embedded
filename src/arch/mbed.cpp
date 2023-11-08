@@ -2,6 +2,7 @@
 #include "mbed.h"
 #include "mbed_events.h"
 
+typedef UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> * mbed_event;
 CAN can1(p30, p29, 500E3);
 
 // Specific Packet stuff
@@ -37,30 +38,18 @@ int16_t sendPacket(CANPacket * p){
     } return GEN_FAILURE;
 }
 
-Scheduler::Scheduler(){
-}
 
-PCAN_ERR Scheduler::scheduleTask(Task t){
-    if (ctr >= MAX_TASK_COUNT){
-        return NOSPACE;
-    }
-    this->tasks[ctr] = t;
-    ctr++;
-    printf("Counter incremented. Currently %d\n", ctr);
-    return SUCCESS;
-}
-
-void Scheduler::mainloop(int8_t * inp){
+void PScheduler::mainloop(int8_t * inp){
     EventQueue queue;
 
     Thread tOutput, tOutput2;
     printf("Mainloop\n");
     for (uint16_t i = 0;i < ctr; i++){
-        Task t = this->tasks[i];
-        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i] = make_user_allocated_event(t.function, i);
-        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].delay(t.delay);
-        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].period(t.interval);
-        ((UserAllocatedEvent<void (*)(uint16_t), void (uint16_t)> *)inp)[i].call_on(&queue);
+        PTask t = this->tasks[i];
+        ((mbed_event)inp)[i] = make_user_allocated_event(t.function, i);
+        ((mbed_event)inp)[i].delay(t.delay);
+        ((mbed_event)inp)[i].period(t.interval);
+        ((mbed_event)inp)[i].call_on(&queue);
 
     }
     printf("Dispatching\n");

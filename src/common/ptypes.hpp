@@ -4,6 +4,7 @@
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
 #define MAX_TASK_COUNT 20
+#define MAX_PCAN_PARAMS 20
 
 template <typename T>
 void fillBuf(char * b, T value){

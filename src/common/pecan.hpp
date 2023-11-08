@@ -13,7 +13,7 @@ enum PCAN_ERR{
 
 struct CANPacket {
     int16_t id;
-    int8_t data[8] = {0};
+    int8_t data[MAX_SIZE_PACKET_DATA] = {0};
     int8_t dataSize = 0;
 };
 
@@ -25,7 +25,7 @@ struct CANListenParam {
 
 // Multiple CANListenParams from above ^
 struct PCANListenParamsCollection{
-    CANListenParam arr[1000];
+    CANListenParam arr[MAX_PCAN_PARAMS];
     int16_t size = 0;
 };
 
@@ -54,27 +54,27 @@ void setSensorID(CANPacket * p, uint8_t sensorId);
 // For Max Length
 int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size);
 
-struct Task{
-    void (*function)(uint16_t); // Function to call
-    int16_t delay = 0;
+struct PTask{
+    void (*function)(void); // Function to call
+    int16_t delay = 0; // Milliseconds from start before a task runs
     int16_t interval; // Milliseconds between task runs
     bool locked; // Lock CAN - Only applicable to multithreading
 };
 
 /* "Scheduler/TaskManager" */
-class Scheduler{
+class PScheduler{
 private:
     int16_t ctr = 0; // Counts how many events are in queue
-    Task tasks[20];
+    PTask tasks[MAX_TASK_COUNT];
 
 public:
-    Scheduler();
+    PScheduler();
     /* Add the task to the task queue (will all be enabled
     when mainloop is called)
     return: PCAN_ERR - denotes if the we have too many tasks,
         or success
      */
-    PCAN_ERR scheduleTask(Task t);
+    PCAN_ERR scheduleTask(PTask t);
     // Loop through the tasks, enabling all of them with
     // their specifications listening for packets
     [[noreturn]] void mainloop(int8_t * inp);

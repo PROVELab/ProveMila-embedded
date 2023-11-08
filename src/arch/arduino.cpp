@@ -1,6 +1,8 @@
 #include "Arduino.h"
 #include "../common/pecan.hpp"
 #include "CAN.h"
+#include <TaskScheduler.h>
+typedef Task ard_event;
 
 int16_t waitPacket(CANPacket * recv_pack, int16_t listen_id, int16_t (*handler)(CANPacket *)){
     if (recv_pack == NULL){
@@ -38,4 +40,18 @@ int16_t sendPacket(CANPacket * p){
         Serial.println("Success!!!");
     }
     return SUCCESS;
+}
+
+void PScheduler::mainloop(int8_t * inp){
+    Scheduler ts;
+    Task * tasks = (Task *) inp;
+    Task tss[20] ={};
+    for (int i = 0; i < this->ctr; i++){
+        tss[i].set(
+            this->tasks[i].interval,
+            TASK_FOREVER,
+            this->tasks[i].function
+        );
+    }
+    ts.enableAll();
 }
