@@ -1,5 +1,6 @@
 #include <mbed.h>
 #include <rtos.h>
+#include "../common/pecan.hpp"
 
 #if !DEVICE_CAN
 #error[NOT_SUPPORTED] CAN not supported
@@ -63,7 +64,6 @@ Thread thread;
 #define MOTOR_RATED_CURRENT 0x6075
 #define CURRENT_DEMAND 0x201A
 
-#
 DigitalOut led1(LED1);
 DigitalOut led2(LED2);
 // The constructor takes in RX, and TX pin respectively.
@@ -212,6 +212,40 @@ void setupPDO() {
     // Reset device
     // Set device to operational mode
 }
+// Function, receiveSDO, consumes a CAN packet and prints the metadata.
+void receiveSDO(CANPacket * packet) {
+    // Decode CAN-ID
+    uint8_t func_code = (packet->id) >> 7;
+    uint8_t node_id = ((packet->id) && 0x007f);
+
+    // Decode data 
+    uint8_t byte_0 = packet->data[0]; // Command byte
+    uint8_t byte_1 = packet->data[1]; // Object dictionary index
+    uint8_t byte_2 = packet->data[2]; // Object dictionary index
+    uint8_t byte_3 = packet->data[3]; // Object dictionary sub-index
+    uint8_t byte_4 = packet->data[4]; // Data
+    uint8_t byte_5 = packet->data[5]; // ...
+    uint8_t byte_6 = packet->data[6]; // ...
+    uint8_t byte_7 = packet->data[7]; // ...
+
+    // Print metadata
+    printf("===== Received SDO =====\n");
+    printf("Function Code: %u\n", func_code);
+    printf("Node ID: %u\n\n", node_id);
+    printf("Byte 0\n");
+    printf("-- CCS: %u\n", (byte_0 && 0xE0) >> 5);
+    printf("-- n: %u\n", (byte_0 && 0x0C) >> 2);
+    printf("-- e: %u\n", (byte_0 && 0x02) >> 1);
+    printf("-- s: %u\n\n", byte_0 && 0x01);
+    printf("Bytes [1,2]:\n");
+    printf("-- OD Index: %u\n\n", (((uint16_t)byte_1 << 8) | byte_2));
+    printf("Byte 3:\n");
+    printf("-- OD Sub-Index: %u\n\n", (byte_3));
+    printf("Bytes [4,7]\n");
+    printf("-- Data: %lu\n", ((uint32_t)byte_4 << 24) | ((uint32_t)byte_5 << 16) | ((uint32_t)byte_6 << 8) | byte_7);
+    printf("========================\n\n");
+}
+
 // Function, startBootload, starts the bootloading initialization.
 void startBootload()
 {
