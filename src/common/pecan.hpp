@@ -1,70 +1,95 @@
 #ifndef PECAN_H
 #define PECAN_H
-#include "./ptypes.hpp"
 #include <stdint.h>
 
-enum PCAN_ERR{
-    PACKET_TOO_BIG=-3,
-    NOT_RECEIVED=-2,
-    NOSPACE=-1,
+#include "./ptypes.hpp"
+
+// Various PCAN Error Code return values
+enum PCAN_ERR {
+    PACKET_TOO_BIG = -3,
+    NOT_RECEIVED = -2,
+    NOSPACE = -1,
     SUCCESS = 0,
     GEN_FAILURE = 1,
 };
 
+// Exact match or Similar match (with mask)
+enum MATCH_TYPE {
+    MATCH_EXACT = 0,
+    MATCH_SIMILAR = 1,
+};
+
+// A CANPacket: takes in 11-bit id, 8 bytes of data
 struct CANPacket {
     int16_t id;
     int8_t data[MAX_SIZE_PACKET_DATA] = {0};
     int8_t dataSize = 0;
 };
 
-// A single CANListenParam - one id and one function call
+// A single CANListenParam
 struct CANListenParam {
-    int16_t listen_ids;
-    int16_t (*handler)(CANPacket *);
+    int16_t listen_id;
+    int16_t (*handler)(CANPacket*);
+    MATCH_TYPE mt;
 };
 
-// Multiple CANListenParams from above ^
-struct PCANListenParamsCollection{
+// The default handler for a packet who
+// we couldn't match with other params
+int16_t defaultPacketRecv(CANPacket*);
+
+// A collection containing an array of params to listen for
+// and the default handler if none of the params match with
+// a given packet
+struct PCANListenParamsCollection {
     CANListenParam arr[MAX_PCAN_PARAMS];
+    int16_t (*defaultHandler)(CANPacket*) = defaultPacketRecv;
     int16_t size = 0;
 };
 
-
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
-/// @param recv_pack a pointer to a packet-sized place in 
+/// @param recv_pack a pointer to a packet-sized place in
 ///                  such that the caller can see what
 ///                  the received packet is if necessary
 ///                  If NULL, the recv_pack will create its own
-/// @param listen_id the integer id we're listening for
-/// @param handler a function that takes in a
-///                pointer to the received packet and returns int
-///                for success/failure
+/// @param plpc A PCANListenParamsCollection, which specifies a bunch
+///                  of ids to listen for, and their corresponding
+///                  handler functions
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int16_t waitPacket(CANPacket * recv_pack, int16_t listen_id, int16_t (*handler)(CANPacket *));
+int16_t waitPackets(CANPacket* recv_pack, PCANListenParamsCollection* plpc);
 
-// Sends a packet
+/// Adds a CANListenParam to the collection
+int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp);
+
+/// Sends a CANPacket p
 int16_t sendPacket(CANPacket* p);
 
-// Constructs a correct CAN ID for packet via function code and specific node id
-int16_t getID(int16_t fn_id, int16_t node_id);
+// Combines a function id and node id into a full 11-bit id
+int16_t combinedID(int16_t fn_id, int16_t node_id);
+
 // Only in use with sensor stuff
-void setSensorID(CANPacket * p, uint8_t sensorId);
+void setSensorID(CANPacket* p, uint8_t sensorId);
+
+// Returns true if id == mask
+bool exact(int id, int mask);
+// Returns true if id matches the bits of mask
+bool similar(int id, int mask);
+static bool (*matcher[2])(int, int) = {exact, similar};
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size);
+int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
-struct PTask{
-    void (*function)(void); // Function to call
-    int16_t delay = 0; // Milliseconds from start before a task runs
-    int16_t interval; // Milliseconds between task runs
-    bool locked; // Lock CAN - Only applicable to multithreading
+struct PTask {
+    void (*function)(void);  // Function to call
+    int16_t delay = 0;       // Milliseconds from start before a task runs
+    int16_t interval;        // Milliseconds between task runs
+    bool locked;             // Lock CAN - Only applicable to multithreading
 };
 
 /* "Scheduler/TaskManager" */
-class PScheduler{
+class PScheduler {
 private:
-    int16_t ctr = 0; // Counts how many events are in queue
+    int16_t ctr = 0;  // Counts how many events are in queue
     PTask tasks[MAX_TASK_COUNT];
 
 public:
@@ -77,7 +102,7 @@ public:
     PCAN_ERR scheduleTask(PTask t);
     // Loop through the tasks, enabling all of them with
     // their specifications listening for packets
-    [[noreturn]] void mainloop(int8_t * inp);
+    [[noreturn]] void mainloop(int8_t* inp);
 };
 
 #endif
