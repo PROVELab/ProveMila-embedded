@@ -1,6 +1,7 @@
 # Do this for a single-line comment
 /* Do this for a multi-line comment */
 =Pad,0
+=POLY,{0xed2f; 0xe92f; 0x8fdb; 0x968b; 0x9eb2}
 TP1-4 : Tire Pressure Sensor 1
 TP2-4 : Tire Pressure Sensor 2
 TP3-4
@@ -10,3 +11,4 @@ S2-6
 S3-6
 S4-6 : Generic Sensor 4
 S5-6
+ROHAN1-7 : Rohans special sensor

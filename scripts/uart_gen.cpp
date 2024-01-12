@@ -126,5 +126,26 @@ int32_t generate_header(Sensor_Data &sd, uint8_t * arr){
 }
 
 int32_t generate_CRC(uint8_t* packet_arr, int32_t size_of_packet, uint8_t* crc_pos){
+   
+    // This iterates independently
+    static int count = 0;
 
+    uint16_t crc = polys[count];
+
+    for (int i = 0; i < size_of_packet; i++){
+        uint8_t data_byte = packet_arr[i];
+
+        crc ^= (uint16_t)byte << 8;
+        for (int i = 0; i < 8; ++i) {
+            if (crc & 0x8000) {
+                crc = (crc << 1) ^ 0x1021;
+            } else {
+                crc = crc << 1;
+            }
+        }
+    }
+    count %= 5;
+    count++;
+    return crc;
 }
+

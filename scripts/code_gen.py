@@ -1,5 +1,5 @@
 sensors = {}
-config = {'Header':16, 'Packet':32, 'CRC':16, 'Pad':0, 'SEN':-2147483648, 'PACKAGE': ''}
+config = {'Header':16, 'Packet':32, 'CRC':16, 'Pad':0, 'SEN':-2147483648, 'PACKAGE': '', 'POLY':""}
 
 # Make sure that, if we have a packet with the full sensor data,
 # we can fit it in the max packet size
@@ -24,7 +24,13 @@ def gen_cpp(output_file):
         f.write("//" + f"-"*30 + "//\n")
         f.write(f"#define SENSOR_CT {len(sensors.keys())}\n")
         f.write(f'#define DATA_STRUCT_SIZE {len(sensors.keys())*5}\n\n')
-        f.write("//" + f"-"*30 + "//\n")
+        f.write("//" + f"-"*30 + "//\n\n")
+        f.write("// Polynomials for CRC stuff\n")
+
+        polys = config["POLY"].replace("{", "").replace("}", "").split(";")
+        f.write("static int16_t polys[] = {")
+        for i, p in enumerate(polys): f.write(p +("," if i != len(polys)-1 else ""))
+        f.write("};\n\n")
         f.write('MBED_PACKED(struct) Sensor_Data {\n')
         # Null = Sentinel Value
         _ = [f.write(
@@ -91,7 +97,7 @@ def parse_def_file(file_name):
                 config_key, config_val = line.split(",")
                 if (config_val == ""):
                     pass
-                config[config_key] = int(config_val)
+                config[config_key] = (config_val)
             elif temp_char == "/" and f.read(1) == "*":
                 while True:
                     if f.read(1) == "*" and f.read(1) == "/":
