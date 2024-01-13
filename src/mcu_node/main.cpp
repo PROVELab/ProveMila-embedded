@@ -217,8 +217,7 @@ void setupPDOTwo() {
     sendSDO(MOTOR_CONT_ID, 0x1801, 0x01, disableTxPdo);
 
     // Clear the number of PDO entries to zero before mapping
-    uint8_t zero = 0;
-    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, zero);
+    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, 0);
 
     // Construct PDO entries for motor temperature, and current requested
     uint8_t pdoEntryBuffer[4];
