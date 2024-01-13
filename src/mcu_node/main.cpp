@@ -178,7 +178,7 @@ void setupPDOOne() {
 
     // Motor speed 
     constructTrasmitPDOEntry(VELOCITY_ACTUAL_VALUE, 0, 0x20, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x03, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x01, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
@@ -186,7 +186,7 @@ void setupPDOOne() {
 
     // Motor dc current actual
     constructTrasmitPDOEntry(MOTOR_DC_CURRENT, 0, 0x20, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x04, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x02, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
