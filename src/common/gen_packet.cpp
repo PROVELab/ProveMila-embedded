@@ -10,7 +10,7 @@ void setSensorID(CANPacket * p, uint8_t sensorId){
 }
 
 int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
-    if (plpc->size + 1 > Param_Count){
+    if (plpc->size + 1 > MAX_PCAN_PARAMS){
         return NOSPACE;
     } else {
         plpc->arr[plpc->size] = clp;

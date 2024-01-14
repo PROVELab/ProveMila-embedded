@@ -10,7 +10,7 @@ int16_t defaultPacketRecv(CANPacket *packet) {
     Serial.print("Default Received packet, id ");
     Serial.print(packet->id);
     Serial.print(", with data ");
-    Serial.println(packet->data);
+    Serial.println((char*) packet->data);
 }
 
 int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
@@ -62,13 +62,21 @@ int16_t sendPacket(CANPacket *p) {
     return SUCCESS;
 }
 
+/**
+ * @brief 
+ * 
+ * @param inp Just pass in null, it's not used; this will allocate
+ *              20 stuff on stack by itself 
+ */
 void PScheduler::mainloop(int8_t *inp) {
     Scheduler ts;
-    Task *tasks = (Task *)inp;
-    Task tss[20] = {};
+    Task tss[MAX_TASK_COUNT] = {};
     for (int16_t i = 0; i < this->ctr; i++) {
         tss[i].set(this->tasks[i].interval, TASK_FOREVER,
                    this->tasks[i].function);
+        ts.addTask(tss[i]);
     }
     ts.enableAll();
+    while(1)
+        ts.execute();
 }
