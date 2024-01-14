@@ -64,6 +64,9 @@ Thread thread;
 #define MOTOR_RATED_CURRENT 0x6075
 #define CURRENT_DEMAND 0x201A
 
+#define MOTOR_TEMPERATURE 0x2025
+#define MOTOR_DC_CURRENT 0x2023
+
 DigitalOut led1(LED1);
 DigitalOut led2(LED2);
 // The constructor takes in RX, and TX pin respectively.
@@ -116,7 +119,7 @@ void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t data)
     uint8_t command = (0b001 << 5) | ((4 - sizeof(data)) << 2) | (0b11);
 
     // Build CANOpen packet byte
-    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, data, 0, 0, 0};
+    uint8_t buffer[8] = {command, index, (index >> 8), subindex, data, 0, 0, 0};
 
     // Send packet
     sendCANOpenPacket(R_SDO, nodeID, buffer);
@@ -146,6 +149,107 @@ void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
 
     // Send packet
     sendCANOpenPacket(R_SDO, nodeID, buffer);
+}
+
+
+// Configure PDO channels for the motor, only use when controller is in
+// operational state.
+void constructTrasmitPDOEntry(uint16_t index, uint8_t sub, uint8_t datasize, uint8_t* buffer) {
+    // First 2 bytes are the index of the object dictionary entry
+    buffer[0] = index & 0xFF;        // Low byte of index
+    buffer[1] = index >> 8;          // High byte of index
+    // Next byte is the subindex
+    buffer[2] = sub;
+    // Last byte is the datasize
+    buffer[3] = datasize;
+}
+
+void setupPDOOne() {
+    // Disable PDO communication for TX PDO by setting COB-ID to 0x80000000
+    uint32_t disableTxPdo = 0x80000000;
+    sendSDO(MOTOR_CONT_ID, 0x1800, 0x01, disableTxPdo);
+
+    // Clear the number of PDO entries to zero before mapping
+    uint8_t zero = 0;
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x00, zero);
+
+    // Construct PDO entries for velocity and motor dc current actual
+    uint8_t pdoEntryBuffer[4];
+
+    // Motor speed 
+    constructTrasmitPDOEntry(VELOCITY_ACTUAL_VALUE, 0, 0x20, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x01, pdoEntryBuffer);
+    pdoEntryBuffer[0] = 0;
+    pdoEntryBuffer[1] = 0;
+    pdoEntryBuffer[2] = 0;
+    pdoEntryBuffer[3] = 0;
+
+    // Motor dc current actual
+    constructTrasmitPDOEntry(MOTOR_DC_CURRENT, 0, 0x20, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x02, pdoEntryBuffer);
+    pdoEntryBuffer[0] = 0;
+    pdoEntryBuffer[1] = 0;
+    pdoEntryBuffer[2] = 0;
+    pdoEntryBuffer[3] = 0;
+
+
+    // Set the actual number of PDO entries after mapping
+    uint8_t numEntries = 2;
+    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x00, numEntries);
+
+
+    // Set transmission type for TX PDO
+    uint8_t transmissionType = 0xff; // Async transmission
+    sendSDO(MOTOR_CONT_ID, 0x1800, 0x02, transmissionType);
+
+    uint16_t pdoNumber = 1; // This is TPDO1
+    uint16_t cobId = (pdoNumber << 11) | (1 << 7) | (MOTOR_CONT_ID & 0x7F);
+    sendSDO(MOTOR_CONT_ID, 0x1800, 0x01, cobId);
+
+    // Save parameters 
+    // Reset device
+    // Set device to operational mode
+}
+
+void setupPDOTwo() {
+    // Disable PDO communication for TX PDO by setting COB-ID to 0x80000000
+    uint32_t disableTxPdo = 0x80000000;
+    sendSDO(MOTOR_CONT_ID, 0x1801, 0x01, disableTxPdo);
+
+    // Clear the number of PDO entries to zero before mapping
+    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, 0);
+
+    // Construct PDO entries for motor temperature, and current requested
+    uint8_t pdoEntryBuffer[4];
+
+    // Motor temperature
+    constructTrasmitPDOEntry(MOTOR_TEMPERATURE, 0, 0x08, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x01, pdoEntryBuffer);
+    pdoEntryBuffer[0] = 0;
+    pdoEntryBuffer[1] = 0;
+    pdoEntryBuffer[2] = 0;
+    pdoEntryBuffer[3] = 0;
+
+    // Motor current requested
+    constructTrasmitPDOEntry(CURRENT_DEMAND, 0, 0x10, pdoEntryBuffer);
+    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x02, pdoEntryBuffer);
+    pdoEntryBuffer[0] = 0;
+    pdoEntryBuffer[1] = 0;
+    pdoEntryBuffer[2] = 0;
+    pdoEntryBuffer[3] = 0;
+
+    // Set the actual number of PDO entries after mapping
+    uint8_t numEntries = 2;
+    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, numEntries);
+
+
+    // Set transmission type for TX PDO
+    uint8_t transmissionType = 0xff; // Async transmission
+    sendSDO(MOTOR_CONT_ID, 0x1801, 0x02, transmissionType);
+
+    uint16_t pdoNumber = 2; // This is TPDO2
+    uint16_t cobId = (pdoNumber << 11) | (1 << 7) | (MOTOR_CONT_ID & 0x7F);
+    sendSDO(MOTOR_CONT_ID, 0x1801, 0x01, cobId);
 }
 
 // Function, receiveSDO, consumes a CAN packet and prints the metadata.
