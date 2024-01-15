@@ -127,11 +127,11 @@ int32_t generate_header(Sensor_Data &sd, uint8_t * arr){
 
 int32_t generate_CRC(uint8_t* packet_arr, int32_t size_of_packet, uint8_t* crc_pos){
    
-    //Variable used to keep track of what poly is being used
-    uint8_t count = 0;
-
-    //Array of hashes to iterate over
-    uint32_t polys[5] = {0xed2f, 0xe92f, 0x8fdb, 0x968b, 0x9eb2}
+    // Index into the polynomial array;
+    // Because it's static, it will persist across
+    // function calls, meaning that the 2nd time this function is called
+    // it will be = 1, then 2, etc according to the ++ below
+    static uint8_t count = 0;
 
     uint16_t crc = polys[count];
 
@@ -143,7 +143,7 @@ int32_t generate_CRC(uint8_t* packet_arr, int32_t size_of_packet, uint8_t* crc_p
             if (crc & 0x8000) {
                 crc = (crc << 1) ^ 0x1021;
             } else {
-                crc = crc << 1;
+                crc <<= 1;
             }
         }
     }
