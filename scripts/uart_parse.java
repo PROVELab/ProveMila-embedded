@@ -177,8 +177,10 @@ public class uart_parse {
     }
 
     public static void main(String[] args){
-        System.out.println("Hello World!");
         try (Scanner s = new Scanner(System.in)) {
+for (int j = 0; j < 5; j++){
+            System.out.print("Input HexString: ");
+
             String hex = s.nextLine();
             System.out.println("Received hex " + hex);
 
@@ -225,10 +227,12 @@ public class uart_parse {
             System.out.println("CRC matched: " + verify(fullPacketExcludingCRC, crc_int));
 
             // System.out.println("=".repeat(10));
+}
         } catch (Exception e) {
             e.printStackTrace();;
             // TODO: handle exception
         }
-    }
+
+}
 
 }

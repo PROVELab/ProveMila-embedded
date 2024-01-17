@@ -166,17 +166,20 @@ void print_hex(uint8_t byte){
 }
 
 int main(int argc, char ** argv){
+Sensor_Data sd;
+sd.TP1_data = 0;
+sd.S_data = 1;
+sd.S4_data = 2;
+sd.S5_data = 3;
+for (int i = 0; i < 5; i ++){
     // Cygwin weirdness bleh
     // like if you're going to do something, do it right
     // lmao
     (void)setvbuf(stdout, NULL, _IONBF, 0);
-    printf("Hello World!\n");
+
+    sd.TP1_data++;sd.S_data++;sd.S4_data++;sd.S5_data++;
+
     uint8_t buf[HEADER_SIZE_BYTES + MAX_DATA_SIZE_BYTES + CRC_SIZE_BYTES] = {0};
-    Sensor_Data sd;
-    sd.TP1_data = 10; // 11
-    sd.S_data = 11; //12
-    sd.S4_data = 12; // 12
-    sd.S5_data = 13; //15
     int out = generate_header(sd, buf);
     printf("Generated header of %d bytes\n", out);
     printf("Header is: \n");
@@ -200,5 +203,8 @@ int main(int argc, char ** argv){
         print_hex(buf[i]);
     }
     printf("\n");
+    int junk;
+    while ((junk = getchar())!='\n'){}
+}
     return 0;
 }
