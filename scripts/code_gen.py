@@ -12,7 +12,10 @@ def gen_cpp(output_file):
     with open(output_file, "w") as f:
         f.write('#ifndef PCAN_UART\n#define PCAN_UART\n\n')
         f.write("//" + f"-"*30 + "//\n")
-        f.write('#include "mbed.h"\n')
+
+        if bool(config["PC"]):f.write("#include <cstdint>\n#include <stdio.h>\n")
+        else: f.write('#include "mbed.h"\n')
+        
         f.write("//" + f"-"*30 + "//\n")
         f.write(f'#define SENTINEL {config["SEN"]} \n')
         f.write(f'#define HEADER_SIZE_BITS {config["Header"]}\n')
@@ -28,11 +31,11 @@ def gen_cpp(output_file):
         f.write("// Polynomials for CRC stuff\n")
 
         polys = config["POLY"].replace("{", "").replace("}", "").split(";")
-        f.write("static int16_t polys[] = {")
+        f.write("static uint16_t polys[] = {")
         for i, p in enumerate(polys): f.write(p +("," if i != len(polys)-1 else ""))
         f.write("};\n\n")
         if bool(config["PC"]):
-            f.write('struct __attribute__((__packed__)) Sensor_Data {\n')
+            f.write('#pragma pack(1)\nstruct __attribute__((__packed__)) Sensor_Data {\n')
         else:
             f.write('MBED_PACKED(struct) Sensor_Data {\n')
         # Null = Sentinel Value
@@ -43,7 +46,7 @@ def gen_cpp(output_file):
         ) for sensor, sdetails in sensors.items()]
 
         # End Struct
-        f.write("}\n")
+        f.write("};\n")
         f.write('#endif')
     print("Generated C++ file")
 
@@ -52,11 +55,10 @@ def gen_java(output_file):
     with open(output_file, "w") as f:
         if (config["PACKAGE"] != ""):
             f.write(f"package {config['PACKAGE']}\n\n")
-        f.write("import java.util.AbstractMap.SimpleEntry;\n")
         f.write("import java.util.Map;\n")
         f.write("import java.util.HashMap;\n")
         f.write("import java.util.Collections;\n")
-        f.write("class Sensors_Info {\n")
+        f.write("class Sensors_CFG {\n")
         f.write(' '*4 + f'final static int HEADER_SIZE_BITS = {config["Header"]};\n')
         f.write(' '*4 + f'final static int HEADER_SIZE_BYTES = {config["Header"]//8};\n')
         f.write(' '*4 + f'final static int MAX_DATA_SIZE_BITS = {bit_ct};\n')
@@ -72,11 +74,21 @@ def gen_java(output_file):
             i+=1
             f.write(f'"{sensor}"' + (", " if i != len(sensors.keys()) else ""))
         f.write("\n" + " "*4 + "};\n")
-        f.write(f'    public static final Map<String, SimpleEntry<Integer, String>> sensor_details =')
-        f.write(' Collections.unmodifiableMap(new HashMap<String, SimpleEntry<Integer, String>>(){{\n')
+        polys = config["POLY"].replace("{", "").replace("}", "").split(";")
+        i = 0
+        f.write("    final static short[] polys = new short[]{")
+        for poly in polys:
+            if i % 2 == 0:
+                f.write("\n")
+                f.write(" "*8) 
+            i+=1
+            f.write(f'(short) {poly.strip()}' + (", " if i != len(polys) else ""))
+        f.write("\n" + " "*4 + "};\n")
+        f.write('    public static final Map<String, SensorTuple<Integer, String>> sensor_details =')
+        f.write(' Collections.unmodifiableMap(new HashMap<String, SensorTuple<Integer, String>>(){{\n')
         for sensor, sdetails in sensors.items():
             if sdetails[1]: f.write(f"        // {sdetails[1]}\n")
-            f.write(f'        put("{sensor}", new SimpleEntry<Integer, String>(')
+            f.write(f'        put("{sensor}", new SensorTuple<Integer, String>(')
             f.write(f"{sdetails[0]}, {(chr(34) + sdetails[1] + chr(34)) if sdetails[1] else 'null'}));\n")
         f.write("    }});\n")
         f.write('}\n')

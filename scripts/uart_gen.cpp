@@ -56,7 +56,7 @@ int32_t pack_byte(uint8_t* remaining_bits, uint32_t data, uint8_t * byte, uint8_
  *                  send only the exact amount of bytes over
  *                  UART rather than sending excess.
  */
-int32_t emplace(Sensor_Data &sd, uint8_t * arr, uint8_t size){
+int32_t emplace(Sensor_Data &sd, uint8_t * arr){
     uint8_t * working_ptr = (uint8_t*)&sd;
 
     // Use this index to iterate and place
@@ -68,12 +68,12 @@ int32_t emplace(Sensor_Data &sd, uint8_t * arr, uint8_t size){
     // Size of this particular sensor data in bits
     // and the data itself
     uint8_t bits_to_pack;
-    int32_t data;
+    uint32_t data;
 
     for (int32_t i = 0; i < DATA_STRUCT_SIZE; i+=5){
         bits_to_pack = working_ptr[i];
         // If there is valid data there (it's not ~null), then we do the packing
-        if ((data = *((int32_t*) (working_ptr + i + 1))) != SENTINEL){
+        if ((data = *((uint32_t*) (working_ptr + i + 1))) != (uint32_t)SENTINEL){
             // Basically, while we haven't packed all the bits, pack the 
             // remaining bits and iterate over the buffer
             while (bits_to_pack != 0){
@@ -89,7 +89,7 @@ int32_t emplace(Sensor_Data &sd, uint8_t * arr, uint8_t size){
     // If we reach here, we packed all the bits for 
     // all the sensor's data that we have so far; let's finish off by returning
     // the amount of bytes we used. Recall index is always true size-1
-    return (byte_index != 0 || bit_ct != 0) ? byte_index+1 : 0;
+    return (bit_ct != 0) ? (byte_index+1) : (byte_index);
 }
 
 /**
@@ -111,18 +111,18 @@ int32_t generate_header(Sensor_Data &sd, uint8_t * arr){
     int32_t sensor_num;
     int32_t sensor_struct_pos;
     for (sensor_num = 0; sensor_num < SENSOR_CT; sensor_num++){
-        sensor_struct_pos = sensor_num * 5 + 1
+        sensor_struct_pos = sensor_num * 5 + 1;
         // Is there data at this sensor position?
-        bool data = ((int32_t) (&working_ptr[sensor_struct_pos])) != SENTINEL;
+        bool data = *((uint32_t*) (working_ptr + sensor_struct_pos)) != (uint32_t)SENTINEL;
         // Place 1 bit (1 if there is data, 0 if there isn't) in the proper place
         bits_written = pack_byte(&bits_to_write, (uint32_t) data, &arr[working_byte_index], bits_written);
-        bits_to_write = 0;
+        bits_to_write = 1;
         if (bits_written == 8){
             working_byte_index += 1;
             bits_written = 0;
         }
     }
-    return (SENSOR_CT % 8 == 0) ? SENSOR_CT / 8 : (SENSOR_CT/8)+1;
+    return HEADER_SIZE_BYTES;
 }
 
 int32_t generate_CRC(uint8_t* packet_arr, int32_t size_of_packet, uint8_t* crc_pos){
@@ -139,16 +139,66 @@ int32_t generate_CRC(uint8_t* packet_arr, int32_t size_of_packet, uint8_t* crc_p
         uint8_t data_byte = packet_arr[i];
 
         crc ^= (uint16_t)data_byte << 8;
-        for (int i = 0; i < 8; ++i) {
-            if (crc & 0x8000) {
+        for (int i = 0; i < 8; ++i) 
+            if (crc & 0x8000) 
                 crc = (crc << 1) ^ 0x1021;
-            } else {
+            else 
                 crc <<= 1;
-            }
-        }
+
     }
+    count++;
     count %= 5;
-    count ++;
-    return crc;
+    *((uint16_t*) crc_pos) = crc;
+    return CRC_SIZE_BYTES;
 }
 
+void print_hex(uint8_t byte){
+    uint8_t halves[2] = {(uint8_t)(byte >> 4), (uint8_t)(byte & 0x0F)};
+    for (int i = 0; i < 2; i++){
+        uint8_t half = halves[i];
+        if (half < 10){
+            printf("%d", half);
+        }
+        else {
+            printf("%c", 'A' + half % 10);
+        }
+    }
+}
+
+int main(int argc, char ** argv){
+    // Cygwin weirdness bleh
+    // like if you're going to do something, do it right
+    // lmao
+    (void)setvbuf(stdout, NULL, _IONBF, 0);
+    printf("Hello World!\n");
+    uint8_t buf[HEADER_SIZE_BYTES + MAX_DATA_SIZE_BYTES + CRC_SIZE_BYTES] = {0};
+    Sensor_Data sd;
+    sd.TP1_data = 10; // 11
+    sd.S_data = 11; //12
+    sd.S4_data = 12; // 12
+    sd.S5_data = 13; //15
+    int out = generate_header(sd, buf);
+    printf("Generated header of %d bytes\n", out);
+    printf("Header is: \n");
+    for (int i = 0; i < HEADER_SIZE_BYTES; i++){
+        print_byte(buf[i]);
+    }
+    printf("\n");
+    printf("Body is:\n");
+    int data_size = emplace(sd, buf + HEADER_SIZE_BYTES);
+    for (int i = 0; i < data_size; i++){
+        print_byte(buf[HEADER_SIZE_BYTES + i]);
+    }
+    printf("\n");
+    printf("CRC:\n");
+    generate_CRC(buf, HEADER_SIZE_BYTES + data_size, &buf[HEADER_SIZE_BYTES + data_size ]);
+    for (int i = 0; i < CRC_SIZE_BYTES; i++){
+        print_byte(buf[HEADER_SIZE_BYTES + data_size + i]);
+    }
+    printf("\n");
+    for (int i = 0; i < HEADER_SIZE_BYTES + data_size + CRC_SIZE_BYTES; i++){
+        print_hex(buf[i]);
+    }
+    printf("\n");
+    return 0;
+}
