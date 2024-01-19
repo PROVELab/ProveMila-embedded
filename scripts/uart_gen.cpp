@@ -166,16 +166,25 @@ void print_hex(uint8_t byte){
 }
 
 int main(int argc, char ** argv){
+// Cygwin weirdness bleh
+// like if you're going to do (port) something, do it right
+// lmao
+(void)setvbuf(stdout, NULL, _IONBF, 0);
 Sensor_Data sd;
 sd.TP1_data = 0;
 sd.S_data = 1;
 sd.S4_data = 2;
 sd.S5_data = 3;
+printf("This program generates 5 packets in one go");
+printf(" (because CRC count variable is runtime dependent).\n");
+printf("It generates one packet with data {0, 1, 2, 3} for TP1, S, S4, S5.");
+printf("\nThen it prints that packet (both as a bitstring and in a hexstring).");
+printf("\nYou can take that hexstring and give it to the java code, \nto verify that the data");
+printf(" was encoded properly.\nAfter you check one packet, just press enter to gen the next (increments"); 
+printf(" all data by one)!\n");
+printf("Press enter to signify you understand the above message.");
+do {} while (getchar()!='\n');
 for (int i = 0; i < 5; i ++){
-    // Cygwin weirdness bleh
-    // like if you're going to do something, do it right
-    // lmao
-    (void)setvbuf(stdout, NULL, _IONBF, 0);
 
     sd.TP1_data++;sd.S_data++;sd.S4_data++;sd.S5_data++;
 
@@ -198,7 +207,7 @@ for (int i = 0; i < 5; i ++){
     for (int i = 0; i < CRC_SIZE_BYTES; i++){
         print_byte(buf[HEADER_SIZE_BYTES + data_size + i]);
     }
-    printf("\n");
+    printf("\nPacket in hex: ");
     for (int i = 0; i < HEADER_SIZE_BYTES + data_size + CRC_SIZE_BYTES; i++){
         print_hex(buf[i]);
     }

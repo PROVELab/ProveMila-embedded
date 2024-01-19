@@ -177,13 +177,21 @@ public class uart_parse {
     }
 
     public static void main(String[] args){
+        System.out.println("Enter packets as hexstrings one by one, and ");
+        System.out.println("this java code will parse and display what that packet");
+        System.out.println("signifies. Press enter to start.");
+        // Wait for user to to press newline
+        try{while (System.in.read() != '\n'){}} catch (Exception E){E.printStackTrace();}
+        // Begin the thing
         try (Scanner s = new Scanner(System.in)) {
 for (int j = 0; j < 5; j++){
             System.out.print("Input HexString: ");
-
+            // Take in the hexstring
             String hex = s.nextLine();
+            System.out.println("=".repeat(10));
             System.out.println("Received hex " + hex);
 
+            // Convert hexstring header section to bytes
             byte[] header = bytesFromHex(hex.substring(0, Sensors_CFG.HEADER_SIZE_BYTES * 2));
             System.out.println("Header Gathered: ");
             for (int i = 0; i < Sensors_CFG.HEADER_SIZE_BYTES; i ++){
@@ -197,6 +205,7 @@ for (int j = 0; j < 5; j++){
             System.out.println("=".repeat(10));
             // Let's parse the rest of the packet, first figure
             // out how many more bytes to read from the buffer/bus
+            // for the rest of the data section of the packet
             int bits = bits_in_data_section(available_sensors);
             int bytes = (bits != 0) ? (bits / 8) + 1 : 0;
             System.out.println("Data size (bytes): " + bytes);
@@ -207,7 +216,7 @@ for (int j = 0; j < 5; j++){
             }
             System.out.println();
 
-            // Get/Show the data
+            // Get/Show the data for each sensor
             Map<String, Integer> recv_data = parse_packet(data_section, available_sensors);
             System.out.println("Data: ");
             for (String key : recv_data.keySet()){
@@ -215,18 +224,24 @@ for (int j = 0; j < 5; j++){
             }
 
             // CRC/VERIFICATION
-            System.out.println("=".repeat(10) + "\n");
+            System.out.println("=".repeat(10));
             System.out.println("Verification");
 
+            // Take the full packet without the crc (to calculate the crc upon
+            // as verification). This wouldn't be separate in real code,
+            // we'd have just one buffer storing 1 packet, and we'd use offsets to specify
+            // different parts of 3 packet, but here I didn't want to overcomplicate,
+            // so I'm just reconverting the part of the hexstring into bytes that I'm interested
+            // in, rather than from a global bytes like we will later.
+            // And then take the crc part
             byte[] fullPacketExcludingCRC = bytesFromHex(hex.substring(0, (Sensors_CFG.HEADER_SIZE_BYTES + bytes)*2));
-            System.out.println(hex.substring((Sensors_CFG.HEADER_SIZE_BYTES + bytes)*2));
             byte[] crc = bytesFromHex(hex.substring((Sensors_CFG.HEADER_SIZE_BYTES + bytes)*2));
+            // Print CRC that we got from the packet
             print_byte(crc[0]); print_byte(crc[1]); System.out.println();
-            int crc_int = 0x0;
-            crc_int = ByteBuffer.wrap(crc).getShort();
-            System.out.println("CRC matched: " + verify(fullPacketExcludingCRC, crc_int));
-
-            // System.out.println("=".repeat(10));
+            int crc_int = ByteBuffer.wrap(crc).getShort();
+            System.out.println("=".repeat(10));
+            // Calculate and verify CRC
+            System.out.println("CRC matched: *" + verify(fullPacketExcludingCRC, crc_int) + "*");
 }
         } catch (Exception e) {
             e.printStackTrace();;

@@ -14,7 +14,7 @@ all: uart
 uart: uart.o
 	${LD} -o uart ${HEADERS} uart.o
 
-uart.o: uart_gen.cpp packet_config.hpp code_gen
+uart.o: uart_gen.cpp code_gen packet_config.hpp 
 	${CPPC} ${CFLAGS} -c -o uart.o uart_gen.cpp
 
 code_gen: sensors.def
