@@ -1,4 +1,5 @@
 #include "packet_config.hpp"
+#include "uart_gen.hpp"
 /**
  * Author: SHYNN!!!
  * This code takes in sensor data
@@ -165,7 +166,7 @@ void print_hex(uint8_t byte){
     }
 }
 
-int main(int argc, char ** argv){
+int not_main(int argc, char ** argv){
 // Cygwin weirdness bleh
 // like if you're going to do (port) something, do it right
 // lmao
