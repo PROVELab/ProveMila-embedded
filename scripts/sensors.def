@@ -1,4 +1,4 @@
-# Do this for a single-line comment
+\# Do this for a single-line comment
 /* Do this for a multi-line comment */
 # Generate for PC (particularly GCC, not MBED Compiler)
 =PC,True
