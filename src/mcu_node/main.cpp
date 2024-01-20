@@ -85,7 +85,6 @@ void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
     // Construct packetID (COB-ID).
     int packetID = (functionCode << 7) | nodeID;
     can.write(CANMessage(packetID, data));
-    led1 = !led1;
 }
 
 // Function, sendSDO, sends an array of data of at most 4 bytes in size.
@@ -154,7 +153,7 @@ void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
 
 // Configure PDO channels for the motor, only use when controller is in
 // operational state.
-void constructTrasmitPDOEntry(uint16_t index, uint8_t sub, uint8_t datasize, uint8_t* buffer) {
+void constructTPDOEntry(uint16_t index, uint8_t sub, uint8_t datasize, uint8_t* buffer) {
     // First 2 bytes are the index of the object dictionary entry
     buffer[0] = index & 0xFF;        // Low byte of index
     buffer[1] = index >> 8;          // High byte of index
@@ -192,11 +191,9 @@ void setupPDOOne() {
     pdoEntryBuffer[2] = 0;
     pdoEntryBuffer[3] = 0;
 
-
     // Set the actual number of PDO entries after mapping
     uint8_t numEntries = 2;
     sendSDO(MOTOR_CONT_ID, 0x1A00, 0x00, numEntries);
-
 
     // Set transmission type for TX PDO
     uint8_t transmissionType = 0xff; // Async transmission
@@ -331,7 +328,8 @@ int main()
     CANMessage msg;
     while (1)
     {
-        ThisThread::sleep_for(500ms);
+        sendSDO();
+        //ThisThread::sleep_for(500ms);
         printf("Hello World!\n");
     }
 }
