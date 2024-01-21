@@ -24,7 +24,7 @@ Thread thread;
 #define T_PDO4 9
 #define R_PDO4 10
 #define T_SDO 11
-#define R_SDO 12
+#define R_SDO 0x600
 
 #define OVERVOLTAGE_LIMIT 0x2054
 #define UNDERVOLTAGE_LIMIT 0x2055
@@ -322,14 +322,27 @@ void startBootload()
     sendSDO(MOTOR_CONT_ID, MOTOR_RATED_CURRENT, 0, (uint32_t)PLACEHOLDER);                                                        // Motor rated current
 }
 
+uint16_t testSDO(CANPacket *packet) {
+    char* string = (char*)packet->data;
+    printf("Recieved: %s\n", string);
+}
+
 int main()
 {
     can.mode(CAN::Mode::LocalTest);
     CANMessage msg;
     while (1)
     {
-        sendSDO();
-        //ThisThread::sleep_for(500ms);
-        printf("Hello World!\n");
+        PCANListenParamsCollection pclp;
+        CANListenParam clp;
+
+        clp.listen_id = R_SDO | MOTOR_CONT_ID;
+        clp.mt = exact;
+        clp.handler = testSDO;
+
+        addParam(&pclp, clp);
+        sendSDO(MOTOR_CONT_ID, 0x1008, 0x00, 0x00);
+        while(waitPackets(NULL, &pclp) != NOT_RECEIVED)
+            ;
     }
 }
