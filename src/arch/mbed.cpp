@@ -7,7 +7,7 @@ typedef UserAllocatedEvent<void (*)(uint16_t), void(uint16_t)>* mbed_event;
 CAN can1(p30, p29, 500E3);
 
 int16_t defaultPacketRecv(CANPacket* packet) {
-    printf("Default handler: id %d, with data: %s\n", packet->id, packet->data);
+    // printf("Default handler: id %d, with data: %s\n", packet->id, packet->data);
     return 0;
 }
 
@@ -57,7 +57,9 @@ int16_t sendPacket(CANPacket* p) {
     return GEN_FAILURE;
 }
 
+
 void PScheduler::mainloop(int8_t* inp) {
+    /*
     EventQueue queue;
 
     Thread tOutput, tOutput2;
@@ -74,4 +76,6 @@ void PScheduler::mainloop(int8_t* inp) {
     tOutput2.start(callback(&queue, &EventQueue::dispatch_forever));
     while (1)
         ;
+    
+    */
 }
