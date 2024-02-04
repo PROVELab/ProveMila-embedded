@@ -26,8 +26,12 @@ Thread thread;
 #define T_SDO 0x580 // Server to client
 #define R_SDO 0x600 // Client to server
 
-#define SDO_UPLOAD 0b01000000 // Read
-#define SDO_DOWNLOAD 0b00101111 // Write
+// Command Byte
+#define SDO_UPLOAD 0x40
+#define SDO_DOWNLOAD_4B 0x23
+#define SDO_DOWNLOAD_3B 0x27 
+#define SDO_DOWNLOAD_2B 0x2B
+#define SDO_DOWNLOAD_1B 0x2F
 
 #define OVERVOLTAGE_LIMIT 0x2054
 #define UNDERVOLTAGE_LIMIT 0x2055
@@ -81,70 +85,40 @@ void configNMT(uint8_t nmtComm, uint8_t addrNode)
 
 void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
 {
-    // Construct packetID (COB-ID).
-    int packetID = (functionCode << 7) | nodeID;
-    can.write(CANMessage(packetID, data));
-}
-
-// Function, sendSDO, sends an array of data of at most 4 bytes in size.
-void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t *data)
-{
-    // Build command byte
-    uint8_t command = (1 << 5) | ((4 - sizeof data) << 2) | (0b11);
-
-    // Build CANOpen packet byte
-    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, 0, 0, 0, 0};
-    memcpy(buffer + 4, data, 4);
-
-    // Send packet
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    int can_id = (functionCode << 7) | nodeID;
+    can.write(CANMessage(can_id, data));
 }
 
 void readSDO(int nodeID, uint16_t index, uint8_t subindex)
 {
-    uint8_t command = SDO_UPLOAD; // Server to client (Motor controller to MCU)
-
+    uint8_t command = SDO_UPLOAD; // Server to client (i.e. Motor controller to MCU)
     uint8_t buffer[8] = {command, index, index >> 8, subindex, 0, 0, 0, 0};
-
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
-// Function, sendSDO, sends data of one byte in size.
-void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t data)
+void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t data)
 {
-    // Build command byte
-    uint8_t command = (1 << 5) | ((4 - sizeof(data)) << 2) | (0b11);
-
-    // Build CANOpen packet byte
-    uint8_t buffer[8] = {command, index, (index >> 8), subindex, data, 0, 0, 0};
-
-    // Send packet
+    uint8_t buffer[8] = {SDO_DOWNLOAD_1B, index, (index >> 8), subindex, data, 0, 0, 0};
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
-// Function, sendSDO, consumes node id, object dictionary index, object dictionary subindex, and the uint16_t SDO data, and sends an SDO packet.
-void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint16_t data)
+void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint16_t data)
 {
-    // Build command byte
-    uint8_t command = (1 << 5) | ((4 - sizeof(data)) << 2) | (0b11);
-
-    // Build CANOpen packet byte
-    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, (0x00ff & data), ((0xff00 & data) >> 8), 0, 0};
-
-    // Send packet
+    uint8_t buffer[8] = {SDO_DOWNLOAD_2B, index, ((index & 0xff00) >> 8), subindex, (0x00ff & data), ((0xff00 & data) >> 8), 0, 0};
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
-// Function, sendSDO, consumes node id, object dictionary index, object dictionary subindex, and the uint32_t SDO data, and sends an SDO packet.
-void sendSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
+void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
 {
-    // Build command byte
-    uint8_t command = (1 << 5) | ((4 - sizeof(data)) << 2) | (0b11);
+    uint8_t buffer[8] = {SDO_DOWNLOAD_4B, index, ((index & 0xff00) >> 8), subindex, ((0xff000000 & data) >> 24), ((0x00ff0000 & data) >> 16), ((0x0000ff00 & data) >> 8), (0x000000ff & data)};
+    sendCANOpenPacket(R_SDO, nodeID, buffer);
+}
 
-    // Build CANOpen packet byte
-    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, ((0xff000000 & data) >> 24), ((0x00ff0000 & data) >> 16), ((0x0000ff00 & data) >> 8), (0x000000ff & data)};
-
-    // Send packet
+void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t *data)
+{
+    uint8_t command = (1 << 5) | ((4 - sizeof data) << 2) | (0b11);
+    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, 0, 0, 0, 0};
+    memcpy(buffer + 4, data, 4);
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
@@ -163,18 +137,18 @@ void constructTPDOEntry(uint16_t index, uint8_t sub, uint8_t datasize, uint8_t* 
 void setupPDO1() {
     // Disable PDO communication for TX PDO by setting COB-ID to 0x80000000
     uint32_t disableTxPdo = 0x80000000;
-    sendSDO(MOTOR_CONT_ID, 0x1800, 0x01, disableTxPdo);
+    writeSDO(MOTOR_CONT_ID, 0x1800, 0x01, disableTxPdo);
 
     // Clear the number of PDO entries to zero before mapping
     uint8_t zero = 0;
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x00, zero);
+    writeSDO(MOTOR_CONT_ID, 0x1A00, 0x00, zero);
 
     // Construct PDO entries for velocity and motor dc current actual
     uint8_t pdoEntryBuffer[4];
 
     // Motor speed 
     constructTPDOEntry(VELOCITY_ACTUAL_VALUE, 0, 0x20, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x01, pdoEntryBuffer);
+    writeSDO(MOTOR_CONT_ID, 0x1A00, 0x01, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
@@ -182,7 +156,7 @@ void setupPDO1() {
 
     // Motor dc current actual
     constructTPDOEntry(MOTOR_DC_CURRENT, 0, 0x20, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x02, pdoEntryBuffer);
+    writeSDO(MOTOR_CONT_ID, 0x1A00, 0x02, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
@@ -190,15 +164,15 @@ void setupPDO1() {
 
     // Set the actual number of PDO entries after mapping
     uint8_t numEntries = 2;
-    sendSDO(MOTOR_CONT_ID, 0x1A00, 0x00, numEntries);
+    writeSDO(MOTOR_CONT_ID, 0x1A00, 0x00, numEntries);
 
     // Set transmission type for TX PDO
     uint8_t transmissionType = 0xff; // Async transmission
-    sendSDO(MOTOR_CONT_ID, 0x1800, 0x02, transmissionType);
+    writeSDO(MOTOR_CONT_ID, 0x1800, 0x02, transmissionType);
 
     uint16_t pdoNumber = 1; // This is TPDO1
     uint16_t cobId = (pdoNumber << 11) | (1 << 7) | (MOTOR_CONT_ID & 0x7F);
-    sendSDO(MOTOR_CONT_ID, 0x1800, 0x01, cobId);
+    writeSDO(MOTOR_CONT_ID, 0x1800, 0x01, cobId);
 
     // Save parameters 
     // Reset device
@@ -208,17 +182,17 @@ void setupPDO1() {
 void setupPDO2() {
     // Disable PDO communication for TX PDO by setting COB-ID to 0x80000000
     uint32_t disableTxPdo = 0x80000000;
-    sendSDO(MOTOR_CONT_ID, 0x1801, 0x01, disableTxPdo);
+    writeSDO(MOTOR_CONT_ID, 0x1801, 0x01, disableTxPdo);
 
     // Clear the number of PDO entries to zero before mapping
-    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, (uint8_t)0x00);
+    writeSDO(MOTOR_CONT_ID, 0x1A01, 0x00, (uint8_t)0x00);
 
     // Construct PDO entries for motor temperature, and current requested
     uint8_t pdoEntryBuffer[4];
 
     // Motor temperature
     constructTPDOEntry(MOTOR_TEMPERATURE, 0, 0x08, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x01, pdoEntryBuffer);
+    writeSDO(MOTOR_CONT_ID, 0x1A01, 0x01, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
@@ -226,7 +200,7 @@ void setupPDO2() {
 
     // Motor current requested
     constructTPDOEntry(CURRENT_DEMAND, 0, 0x10, pdoEntryBuffer);
-    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x02, pdoEntryBuffer);
+    writeSDO(MOTOR_CONT_ID, 0x1A01, 0x02, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
     pdoEntryBuffer[1] = 0;
     pdoEntryBuffer[2] = 0;
@@ -234,15 +208,15 @@ void setupPDO2() {
 
     // Set the actual number of PDO entries after mapping
     uint8_t numEntries = 2;
-    sendSDO(MOTOR_CONT_ID, 0x1A01, 0x00, numEntries);
+    writeSDO(MOTOR_CONT_ID, 0x1A01, 0x00, numEntries);
 
     // Set transmission type for TX PDO
     uint8_t transmissionType = 0xff; // Async transmission
-    sendSDO(MOTOR_CONT_ID, 0x1801, 0x02, transmissionType);
+    writeSDO(MOTOR_CONT_ID, 0x1801, 0x02, transmissionType);
 
     uint16_t pdoNumber = 2; // This is TPDO2
     uint16_t cobId = (pdoNumber << 11) | (1 << 7) | (MOTOR_CONT_ID & 0x7F);
-    sendSDO(MOTOR_CONT_ID, 0x1801, 0x01, cobId);
+    writeSDO(MOTOR_CONT_ID, 0x1801, 0x01, cobId);
 }
 
 // Function, receiveSDO, consumes a CAN packet and prints the metadata.
@@ -279,43 +253,41 @@ void receiveSDO(CANPacket * packet) {
     printf("========================\n\n");
 }
 
-// Function, startBootload, starts the bootloading initialization.
+// Starts bootload sequence.
 void startBootload()
 {
-    uint8_t buffer[1] = {0};
-
     // Set mode of operation.
-    sendSDO(MOTOR_CONT_ID, 0x6060, 0, (uint8_t)9); // 9: Velocity mode
+    writeSDO(MOTOR_CONT_ID, 0x6060, 0, (uint8_t)9); // 9: Velocity mode
 
     // Set motor type.
-    sendSDO(MOTOR_CONT_ID, 0x2034, 0, buffer);
+    writeSDO(MOTOR_CONT_ID, 0x2034, 0, (uint8_t)0);
 
     // Set controller/motor protections.
-    sendSDO(MOTOR_CONT_ID, OVERVOLTAGE_LIMIT, 0, (uint16_t)PLACEHOLDER);                                         // Overvoltage limit
-    sendSDO(MOTOR_CONT_ID, UNDERVOLTAGE_LIMIT, UNDERVOLTAGE_LIMIT_SUBINDEX, (uint8_t)PLACEHOLDER);               // Undervoltage limit
-    sendSDO(MOTOR_CONT_ID, UNDERVOLTAGE_MIN_VOLTAGE, UNDERVOLTAGE_MIN_VOLTAGE_SUBINDEX, (uint16_t)PLACEHOLDER);  // Undervoltage min voltage
-    sendSDO(MOTOR_CONT_ID, MAXIMUM_CONTROLLER_CURRENT, 0, (uint32_t)PLACEHOLDER);                                // Maximum controller current
-    sendSDO(MOTOR_CONT_ID, SECONDARY_CURRENT_PROTECTION, 0, (uint32_t)PLACEHOLDER);                              // Secondary current protection
-    sendSDO(MOTOR_CONT_ID, MOTOR_MAXIMUM_TEMPERATURE, MOTOR_MAXIMUM_TEMPERATURE_SUBINDEX, (uint8_t)PLACEHOLDER); // Motor maximum temperature
-    sendSDO(MOTOR_CONT_ID, MAXIMUM_VELOCITY, MAXIMUM_VELOCITY_SUBINDEX, (uint32_t)PLACEHOLDER);                  // Maximum velocity
+    writeSDO(MOTOR_CONT_ID, OVERVOLTAGE_LIMIT, 0, (uint16_t)PLACEHOLDER);                                         // Overvoltage limit
+    writeSDO(MOTOR_CONT_ID, UNDERVOLTAGE_LIMIT, UNDERVOLTAGE_LIMIT_SUBINDEX, (uint8_t)PLACEHOLDER);               // Undervoltage limit
+    writeSDO(MOTOR_CONT_ID, UNDERVOLTAGE_MIN_VOLTAGE, UNDERVOLTAGE_MIN_VOLTAGE_SUBINDEX, (uint16_t)PLACEHOLDER);  // Undervoltage min voltage
+    writeSDO(MOTOR_CONT_ID, MAXIMUM_CONTROLLER_CURRENT, 0, (uint32_t)PLACEHOLDER);                                // Maximum controller current
+    writeSDO(MOTOR_CONT_ID, SECONDARY_CURRENT_PROTECTION, 0, (uint32_t)PLACEHOLDER);                              // Secondary current protection
+    writeSDO(MOTOR_CONT_ID, MOTOR_MAXIMUM_TEMPERATURE, MOTOR_MAXIMUM_TEMPERATURE_SUBINDEX, (uint8_t)PLACEHOLDER); // Motor maximum temperature
+    writeSDO(MOTOR_CONT_ID, MAXIMUM_VELOCITY, MAXIMUM_VELOCITY_SUBINDEX, (uint32_t)PLACEHOLDER);                  // Maximum velocity
 
     // Perform motor position measurement.
-    sendSDO(MOTOR_CONT_ID, MOTOR_POLE_PAIRS, 0, (uint8_t)PLACEHOLDER);                                                            // Motor pole pairs
-    sendSDO(MOTOR_CONT_ID, FEEDBACK_TYPE, FEEDBACK_TYPE_SUBINDEX, (uint8_t)PLACEHOLDER);                                          // Feedback type
-    sendSDO(MOTOR_CONT_ID, MOTOR_PHASE_OFFSET, MOTOR_PHASE_OFFSET_SUBINDEX, (uint16_t)PLACEHOLDER);                               // Motor phase offset
-    sendSDO(MOTOR_CONT_ID, HALL_CONFIGURATION, HALL_CONFIGURATION_SUBINDEX, (uint8_t)PLACEHOLDER);                                // Hall configuration
-    sendSDO(MOTOR_CONT_ID, FEEDBACK_RESOLUTION, FEEDBACK_RESOLUTION_SUBINDEX, (uint16_t)PLACEHOLDER);                             // Feedback resolution
-    sendSDO(MOTOR_CONT_ID, ELECTRICAL_ANGLE_FILTER, ELECTRICAL_ANGLE_FILTER_SUBINDEX, (uint16_t)PLACEHOLDER);                     // Electrical angle filter
-    sendSDO(MOTOR_CONT_ID, MOTOR_PHASE_OFFSET_COMPENSATION, MOTOR_PHASE_OFFSET_COMPENSATION_SUBINDEX, (uint16_t)PLACEHOLDER);     // Motor phase offset compensation
-    sendSDO(MOTOR_CONT_ID, VELOCITY_ENCODER_FACTOR_NUMERATOR, VELOCITY_ENCODER_FACTOR_NUMERATOR_SUBINDEX, (uint32_t)PLACEHOLDER); // Velocity encoder factor Numerator
-    sendSDO(MOTOR_CONT_ID, VELOCITY_ENCODER_FACTOR_DIVISOR, VELOCITY_ENCODER_FACTOR_DIVISOR_SUBINDEX, (uint32_t)PLACEHOLDER);     // Velocity encoder factor Divisor
+    writeSDO(MOTOR_CONT_ID, MOTOR_POLE_PAIRS, 0, (uint8_t)PLACEHOLDER);                                                            // Motor pole pairs
+    writeSDO(MOTOR_CONT_ID, FEEDBACK_TYPE, FEEDBACK_TYPE_SUBINDEX, (uint8_t)PLACEHOLDER);                                          // Feedback type
+    writeSDO(MOTOR_CONT_ID, MOTOR_PHASE_OFFSET, MOTOR_PHASE_OFFSET_SUBINDEX, (uint16_t)PLACEHOLDER);                               // Motor phase offset
+    writeSDO(MOTOR_CONT_ID, HALL_CONFIGURATION, HALL_CONFIGURATION_SUBINDEX, (uint8_t)PLACEHOLDER);                                // Hall configuration
+    writeSDO(MOTOR_CONT_ID, FEEDBACK_RESOLUTION, FEEDBACK_RESOLUTION_SUBINDEX, (uint16_t)PLACEHOLDER);                             // Feedback resolution
+    writeSDO(MOTOR_CONT_ID, ELECTRICAL_ANGLE_FILTER, ELECTRICAL_ANGLE_FILTER_SUBINDEX, (uint16_t)PLACEHOLDER);                     // Electrical angle filter
+    writeSDO(MOTOR_CONT_ID, MOTOR_PHASE_OFFSET_COMPENSATION, MOTOR_PHASE_OFFSET_COMPENSATION_SUBINDEX, (uint16_t)PLACEHOLDER);     // Motor phase offset compensation
+    writeSDO(MOTOR_CONT_ID, VELOCITY_ENCODER_FACTOR_NUMERATOR, VELOCITY_ENCODER_FACTOR_NUMERATOR_SUBINDEX, (uint32_t)PLACEHOLDER); // Velocity encoder factor Numerator
+    writeSDO(MOTOR_CONT_ID, VELOCITY_ENCODER_FACTOR_DIVISOR, VELOCITY_ENCODER_FACTOR_DIVISOR_SUBINDEX, (uint32_t)PLACEHOLDER);     // Velocity encoder factor Divisor
 
     // Configure velocity mode parameters.
-    sendSDO(MOTOR_CONT_ID, TARGET_VELOCITY, 0, (uint32_t)PLACEHOLDER);                                                            // Target velocity
-    sendSDO(MOTOR_CONT_ID, VELOCITY_ACTUAL_VALUE, 0, (uint32_t)PLACEHOLDER);                                                      // Velocity actual value
-    sendSDO(MOTOR_CONT_ID, VELOCITY_CONTROL_REGULATOR_P_GAIN, VELOCITY_CONTROL_REGULATOR_P_GAIN_SUBINDEX, (uint16_t)PLACEHOLDER); // Velocity control regulator P gain
-    sendSDO(MOTOR_CONT_ID, VELOCITY_CONTROL_REGULATOR_I_GAIN, VELOCITY_CONTROL_REGULATOR_I_GAIN_SUBINDEX, (uint16_t)PLACEHOLDER); // Velocity control regulator I gain
-    sendSDO(MOTOR_CONT_ID, MOTOR_RATED_CURRENT, 0, (uint32_t)PLACEHOLDER);                                                        // Motor rated current
+    writeSDO(MOTOR_CONT_ID, TARGET_VELOCITY, 0, (uint32_t)PLACEHOLDER);                                                            // Target velocity
+    writeSDO(MOTOR_CONT_ID, VELOCITY_ACTUAL_VALUE, 0, (uint32_t)PLACEHOLDER);                                                      // Velocity actual value
+    writeSDO(MOTOR_CONT_ID, VELOCITY_CONTROL_REGULATOR_P_GAIN, VELOCITY_CONTROL_REGULATOR_P_GAIN_SUBINDEX, (uint16_t)PLACEHOLDER); // Velocity control regulator P gain
+    writeSDO(MOTOR_CONT_ID, VELOCITY_CONTROL_REGULATOR_I_GAIN, VELOCITY_CONTROL_REGULATOR_I_GAIN_SUBINDEX, (uint16_t)PLACEHOLDER); // Velocity control regulator I gain
+    writeSDO(MOTOR_CONT_ID, MOTOR_RATED_CURRENT, 0, (uint32_t)PLACEHOLDER);                                                        // Motor rated current
 }
 
 int16_t testSDO(CANPacket *packet) {
