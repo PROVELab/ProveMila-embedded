@@ -1,5 +1,8 @@
 #include <mbed.h>
-
 #include "../common/pecan.hpp"
 
-int main() {}
+// Put MCU Code here: MT, Sched, 
+// CAN, etc; tie it altogether
+int main() {
+
+}

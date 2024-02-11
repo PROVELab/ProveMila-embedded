@@ -1,10 +1,11 @@
 #include "Arduino.h"
 
-#include <TaskScheduler.h>
-
 #include "../common/pecan.hpp"
 #include "CAN.h"
-typedef Task ard_event;
+
+// Assume Serial.begin called. Else this code won't
+// work. Recall that you can call Serial.begin even
+// while headless.
 
 int16_t defaultPacketRecv(CANPacket *packet) {
     Serial.print("Default Received packet, id ");
@@ -14,6 +15,7 @@ int16_t defaultPacketRecv(CANPacket *packet) {
 }
 
 int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
+    // If we 
     if (recv_pack == NULL) {
         CANPacket p;
         recv_pack = &p;
@@ -60,23 +62,4 @@ int16_t sendPacket(CANPacket *p) {
         return GEN_FAILURE;
     }
     return SUCCESS;
-}
-
-/**
- * @brief 
- * 
- * @param inp Just pass in null, it's not used; this will allocate
- *              20 stuff on stack by itself 
- */
-void PScheduler::mainloop(int8_t *inp) {
-    Scheduler ts;
-    Task tss[MAX_TASK_COUNT] = {};
-    for (int16_t i = 0; i < this->ctr; i++) {
-        tss[i].set(this->tasks[i].interval, TASK_FOREVER,
-                   this->tasks[i].function);
-        ts.addTask(tss[i]);
-    }
-    ts.enableAll();
-    while(1)
-        ts.execute();
 }
