@@ -73,36 +73,11 @@ void setSensorID(CANPacket* p, uint8_t sensorId);
 bool exact(int id, int mask);
 // Returns true if id matches the bits of mask
 bool similar(int id, int mask);
+// A static array of function ptrs, where i=0 is exact and i=1 is similar
 static bool (*matcher[2])(int, int) = {exact, similar};
 
 // Write size bytes to the packet, accounting
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
-
-struct PTask {
-    void (*function)(void);  // Function to call
-    int16_t delay = 0;       // Milliseconds from start before a task runs
-    int16_t interval;        // Milliseconds between task runs
-    bool locked;             // Lock CAN - Only applicable to multithreading
-};
-
-/* "Scheduler/TaskManager" */
-class PScheduler {
-private:
-    int16_t ctr = 0;  // Counts how many events are in queue
-    PTask tasks[MAX_TASK_COUNT];
-
-public:
-    PScheduler();
-    /* Add the task to the task queue (will all be enabled
-    when mainloop is called)
-    return: PCAN_ERR - denotes if the we have too many tasks,
-        or success
-     */
-    PCAN_ERR scheduleTask(PTask t);
-    // Loop through the tasks, enabling all of them with
-    // their specifications listening for packets
-    [[noreturn]] void mainloop(int8_t* inp);
-};
 
 #endif

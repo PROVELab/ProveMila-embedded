@@ -1,4 +1,4 @@
-# PECAN!!!
+# PCAN!!!
 
 If you want platform specific code in the header file, think a lot beforehand 
 (pecan architecture is averse to platform-specific headers, we want a general implementation
@@ -12,6 +12,3 @@ If you still think its necessary, do like so
 #ifdef ARDUNO_AVR_UNO
 #endif 
 ```
-
-TODO:
-- Fix matcher functions and make it platform-agnostic

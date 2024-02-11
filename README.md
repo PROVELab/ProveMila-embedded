@@ -8,3 +8,16 @@ The `src` folder contains the source code for all the embedded components of the
 In VSCode, under C/C++ extension format style, place this: 
 { BasedOnStyle: Google, UseTab: Never, IndentWidth: 4, AccessModifierOffset: -4, ColumnLimit: 80}
 for our linting style
+
+## Optimizations
+To improve compile time (multi-factor reduction) on linux, copy .mbedignore into the platformio folder via:
+cp .mbedignore ~/.platformio/packages/framework-mbed/platformio/.mbedignore
+from home directory
+When writing code,
+peephole optimize what you can (or ask Shynn to do so).
+
+## Permission Issues
+if you get an issue with permissions, do this:
+sudo chmod a+rw /dev/ttyACM0
+where ttyACM0 represents the specific port which is not
+being uploaded to
