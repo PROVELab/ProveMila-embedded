@@ -98,19 +98,19 @@ void readSDO(int nodeID, uint16_t index, uint8_t subindex)
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_1B, index, (index >> 8), subindex, data, 0, 0, 0};
+    uint8_t buffer[8] = {SDO_DOWNLOAD_1B, index, index >> 8, subindex, data, 0, 0, 0};
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint16_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_2B, index, ((index & 0xff00) >> 8), subindex, (0x00ff & data), ((0xff00 & data) >> 8), 0, 0};
+    uint8_t buffer[8] = {SDO_DOWNLOAD_2B, index, index >> 8, subindex, data, data >> 8, 0, 0};
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_4B, index, ((index & 0xff00) >> 8), subindex, ((0xff000000 & data) >> 24), ((0x00ff0000 & data) >> 16), ((0x0000ff00 & data) >> 8), (0x000000ff & data)};
+    uint8_t buffer[8] = {SDO_DOWNLOAD_4B, index, index >> 8, subindex, data, data >> 8, data >> 16, data >> 24};
     sendCANOpenPacket(R_SDO, nodeID, buffer);
 }
 
