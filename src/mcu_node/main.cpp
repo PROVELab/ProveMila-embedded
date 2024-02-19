@@ -85,7 +85,7 @@ void configNMT(uint8_t nmtComm, uint8_t addrNode)
 
 void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
 {
-    int can_id = (functionCode << 7) | nodeID;
+    int can_id = functionCode | nodeID;
     can.write(CANMessage(can_id, data));
 }
 
@@ -309,9 +309,12 @@ int main()
         clp.handler = testSDO;
 
         addParam(&pclp, clp);
+
         readSDO(MOTOR_CONT_ID, 0x1008, 0x00);
-        printf("Sent SDO upload message (read request)\n");
-        while(waitPackets(NULL, &pclp) != NOT_RECEIVED)
+
+        ThisThread::sleep_for(1s);
+
+        while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
             ;
     }
 }
