@@ -29,7 +29,7 @@ Thread thread;
 // Command Byte
 #define SDO_UPLOAD 0x40
 #define SDO_DOWNLOAD_4B 0x23
-#define SDO_DOWNLOAD_3B 0x27 
+#define SDO_DOWNLOAD_3B 0x27
 #define SDO_DOWNLOAD_2B 0x2B
 #define SDO_DOWNLOAD_1B 0x2F
 
@@ -146,7 +146,7 @@ void setupPDO1() {
     // Construct PDO entries for velocity and motor dc current actual
     uint8_t pdoEntryBuffer[4];
 
-    // Motor speed 
+    // Motor speed
     constructTPDOEntry(VELOCITY_ACTUAL_VALUE, 0, 0x20, pdoEntryBuffer);
     writeSDO(MOTOR_CONT_ID, 0x1A00, 0x01, pdoEntryBuffer);
     pdoEntryBuffer[0] = 0;
@@ -174,7 +174,7 @@ void setupPDO1() {
     uint16_t cobId = (pdoNumber << 11) | (1 << 7) | (MOTOR_CONT_ID & 0x7F);
     writeSDO(MOTOR_CONT_ID, 0x1800, 0x01, cobId);
 
-    // Save parameters 
+    // Save parameters
     // Reset device
     // Set device to operational mode
 }
@@ -225,7 +225,7 @@ void receiveSDO(CANPacket * packet) {
     uint8_t func_code = (packet->id) >> 7;
     uint8_t node_id = ((packet->id) && 0x007f);
 
-    // Decode data 
+    // Decode data
     uint8_t byte_0 = packet->data[0]; // Command byte
     uint8_t byte_1 = packet->data[1]; // Object dictionary index
     uint8_t byte_2 = packet->data[2]; // Object dictionary index
@@ -291,13 +291,21 @@ void startBootload()
 }
 
 int16_t testSDO(CANPacket *packet) {
-    char* string = (char*)packet->data;
-    printf("Recieved: %s\n", string);
+    // char* string = (char*)(packet->data + 4);
+    char str[5];
+    memcpy(str, packet->data + 4, 4);
+    str[4] = '\0';
+    printf("String:\n");
+    printf("Received: %u\n", str[0]);
+    printf("Received: %u\n", str[1]);
+    printf("Received: %u\n", str[2]);
+    printf("Received: %u\n", str[3]);
+    return 0;
 }
 
 int main()
 {
-    can.mode(CAN::Mode::LocalTest);
+    can.frequency(500E3);
     CANMessage msg;
     while (1)
     {

@@ -76,6 +76,6 @@ void PScheduler::mainloop(int8_t* inp) {
     tOutput2.start(callback(&queue, &EventQueue::dispatch_forever));
     while (1)
         ;
-    
+
     */
 }
