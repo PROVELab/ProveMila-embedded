@@ -1,6 +1,10 @@
 #include "../common/pecan.hpp"
 #include "Arduino.h"
 #include "CAN.h"
+#include "../arch/arduino.hpp"
+
+PCANListenParamsCollection plpc;
+PScheduler ts;
 
 void setup() {
     Serial.begin(9600);

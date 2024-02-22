@@ -1,5 +1,5 @@
 #include "pecan.hpp"
-
+#include <Arduino.h>
 // The general, independent implementation
 int16_t combinedID(int16_t fn_id, int16_t node_id){
     return (fn_id << 7) + node_id;
@@ -74,4 +74,10 @@ bool exact(int id, int mask) {
 bool similar(int id, int mask){
     return (id & mask) == id;
 }
+
+bool exactFunction(int id,int mask){    //mask should be 4 bit function code
+    //Serial.println("attempting to match Function");
+    return ((id>>7)&0b1111) == ((mask>>7)&0b1111);//only compares the functionCodes
+}
+
 
