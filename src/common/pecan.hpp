@@ -31,6 +31,13 @@ struct CANListenParam {
     int16_t listen_id;
     int16_t (*handler)(CANPacket*);
     MATCH_TYPE mt;
+
+    CANListenParam() {}
+    CANListenParam(int16_t x, int16_t (*y)(CANPacket*), MATCH_TYPE z) {
+        listen_id = x;
+        handler = y;
+        mt = z;
+    }
 };
 
 // The default handler for a packet who
