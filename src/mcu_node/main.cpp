@@ -23,8 +23,8 @@ Thread thread;
 #define R_PDO3 0x400
 #define T_PDO4 0x480
 #define R_PDO4 0x500
-#define T_SDO 0x580 // Server to client
-#define R_SDO 0x600 // Client to server
+#define SERVER_TO_CLIENT_SDO 0x580
+#define CLIENT_TO_SERVER_SDO 0x600
 
 // Command Byte
 #define SDO_UPLOAD 0x40
@@ -92,34 +92,34 @@ void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
 void readSDO(int nodeID, uint16_t index, uint8_t subindex)
 {
     uint8_t command = SDO_UPLOAD; // Server to client (i.e. Motor controller to MCU)
-    uint8_t buffer[8] = {command, index, index >> 8, subindex, 0, 0, 0, 0};
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    uint8_t buffer[8] = {command, (uint8_t) index, (uint8_t) (index >> 8), subindex, 0, 0, 0, 0};
+    sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_1B, index, index >> 8, subindex, data, 0, 0, 0};
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    uint8_t buffer[8] = {SDO_DOWNLOAD_1B, (uint8_t) index, (uint8_t) (index >> 8), subindex, data, 0, 0, 0};
+    sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint16_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_2B, index, index >> 8, subindex, data, data >> 8, 0, 0};
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    uint8_t buffer[8] = {SDO_DOWNLOAD_2B, (uint8_t) index, (uint8_t) (index >> 8), subindex, (uint8_t) data, (uint8_t) (data >> 8), 0, 0};
+    sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint32_t data)
 {
-    uint8_t buffer[8] = {SDO_DOWNLOAD_4B, index, index >> 8, subindex, data, data >> 8, data >> 16, data >> 24};
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    uint8_t buffer[8] = {SDO_DOWNLOAD_4B, (uint8_t) index, (uint8_t) (index >> 8), subindex, (uint8_t) data, (uint8_t) (data >> 8), (uint8_t) (data >> 16), (uint8_t) (data >> 24)};
+    sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
 void writeSDO(int nodeID, uint16_t index, uint8_t subindex, uint8_t *data)
 {
     uint8_t command = (1 << 5) | ((4 - sizeof data) << 2) | (0b11);
-    uint8_t buffer[8] = {command, index, ((index & 0xff00) >> 8), subindex, 0, 0, 0, 0};
+    uint8_t buffer[8] = {command, (uint8_t) index, (uint8_t) ((index & 0xff00) >> 8), subindex, 0, 0, 0, 0};
     memcpy(buffer + 4, data, 4);
-    sendCANOpenPacket(R_SDO, nodeID, buffer);
+    sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
 // Configure PDO channels for the motor, only use when controller is in
@@ -290,17 +290,37 @@ void startBootload()
     writeSDO(MOTOR_CONT_ID, MOTOR_RATED_CURRENT, 0, (uint32_t)PLACEHOLDER);                                                        // Motor rated current
 }
 
-int16_t testSDO(CANPacket *packet) {
-    // char* string = (char*)(packet->data + 4);
-    char str[5];
-    memcpy(str, packet->data + 4, 4);
-    str[4] = '\0';
-    printf("String:\n");
-    printf("Received: %u\n", str[0]);
-    printf("Received: %u\n", str[1]);
-    printf("Received: %u\n", str[2]);
-    printf("Received: %u\n", str[3]);
+int16_t acceptSDOResponse(CANPacket *packet) {
+    char val[4] = {0};
+    memcpy(val, packet->data + 4, 4);
+    printf("Received: %lu\n",  (*((uint32_t*) val)));
     return 0;
+}
+
+void testWriteSDO(uint16_t index, uint8_t subindex, uint32_t data) {
+    PCANListenParamsCollection pclp;
+
+    CANListenParam stocSDO(SERVER_TO_CLIENT_SDO | MOTOR_CONT_ID, acceptSDOResponse, MATCH_EXACT);
+    addParam(&pclp, stocSDO);
+
+    // Read current value.
+    readSDO(MOTOR_CONT_ID, index, subindex);
+
+    while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
+        ;
+
+    // Update value.
+    writeSDO(MOTOR_CONT_ID, index, subindex, data);
+    printf("Wrote %lu to %X\n", data, index);
+
+    while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
+        ;
+    
+    // Read updated value.
+    readSDO(MOTOR_CONT_ID, index, subindex);
+
+    while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
+        ;
 }
 
 int main()
@@ -309,20 +329,7 @@ int main()
     CANMessage msg;
     while (1)
     {
-        PCANListenParamsCollection pclp;
-        CANListenParam clp;
-
-        clp.listen_id = T_SDO | MOTOR_CONT_ID;
-        clp.mt = MATCH_EXACT;
-        clp.handler = testSDO;
-
-        addParam(&pclp, clp);
-
-        readSDO(MOTOR_CONT_ID, 0x1008, 0x00);
-
+        testWriteSDO(0x2050, 0x00, 31313);
         ThisThread::sleep_for(1s);
-
-        while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
-            ;
     }
 }
