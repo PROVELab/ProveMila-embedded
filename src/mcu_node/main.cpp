@@ -33,6 +33,13 @@ Thread thread;
 #define SDO_DOWNLOAD_2B 0x2B
 #define SDO_DOWNLOAD_1B 0x2F
 
+// NMT Commands
+#define ENTER_OPERATIONAL 0x01
+#define ENTER_STOP 0x02
+#define ENTER_PREOPERATIONAL 0x03
+#define RESET_NODE 0x81
+#define RESET_COMMUNICATION 0x82
+
 #define OVERVOLTAGE_LIMIT 0x2054
 #define UNDERVOLTAGE_LIMIT 0x2055
 #define UNDERVOLTAGE_LIMIT_SUBINDEX 0x01
@@ -76,13 +83,6 @@ Thread thread;
 // The constructor takes in RX, and TX pin respectively.
 CAN can(p30, p29);
 
-// Function, configNMT, sends a CANOpen message to change the state of a device.
-void configNMT(uint8_t nmtComm, uint8_t addrNode)
-{
-    uint8_t data[2] = {nmtComm, addrNode};
-    can.write(CANMessage(0x000, data));
-}
-
 void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
 {
     int can_id = functionCode | nodeID;
@@ -91,8 +91,7 @@ void sendCANOpenPacket(int functionCode, int nodeID, uint8_t *data)
 
 void readSDO(int nodeID, uint16_t index, uint8_t subindex)
 {
-    uint8_t command = SDO_UPLOAD; // Server to client (i.e. Motor controller to MCU)
-    uint8_t buffer[8] = {command, (uint8_t) index, (uint8_t) (index >> 8), subindex, 0, 0, 0, 0};
+    uint8_t buffer[8] = {SDO_UPLOAD, (uint8_t) index, (uint8_t) (index >> 8), subindex, 0, 0, 0, 0};
     sendCANOpenPacket(CLIENT_TO_SERVER_SDO, nodeID, buffer);
 }
 
@@ -219,6 +218,12 @@ void setupPDO2() {
     writeSDO(MOTOR_CONT_ID, 0x1801, 0x01, cobId);
 }
 
+// Apply state change to all nodes by passing node_id = 0.
+void configNMT(uint16_t node_id, uint8_t nmt_command) {
+    uint8_t buffer[2] = {nmt_command, (uint8_t) node_id};
+    can.write(CANMessage(0x00, buffer));
+}
+
 // Function, receiveSDO, consumes a CAN packet and prints the metadata.
 void receiveSDO(CANPacket * packet) {
     // Decode CAN-ID
@@ -304,32 +309,57 @@ void testWriteSDO(uint16_t index, uint8_t subindex, uint32_t data) {
     addParam(&pclp, stocSDO);
 
     // Read current value.
+    printf("Reading Current Value\n");
     readSDO(MOTOR_CONT_ID, index, subindex);
 
     while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
         ;
 
     // Update value.
+    printf("Writing new value\n");
     writeSDO(MOTOR_CONT_ID, index, subindex, data);
-    printf("Wrote %lu to %X\n", data, index);
 
     while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
         ;
     
     // Read updated value.
+    printf("Reading updated value\n");
     readSDO(MOTOR_CONT_ID, index, subindex);
 
     while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
         ;
+
+    printf("\n");
+}
+
+void testReadSDO(uint16_t index, uint8_t subindex) {
+    PCANListenParamsCollection pclp;
+
+    CANListenParam stocSDO(SERVER_TO_CLIENT_SDO | MOTOR_CONT_ID, acceptSDOResponse, MATCH_EXACT);
+    addParam(&pclp, stocSDO);
+
+    printf("Reading OD Index\n");
+    readSDO(MOTOR_CONT_ID, index, subindex);
+
+    while(waitPackets(NULL, &pclp) == NOT_RECEIVED)
+        ;
+
+    printf("\n");
 }
 
 int main()
 {
     can.frequency(500E3);
     CANMessage msg;
+    uint32_t val = 10000;
     while (1)
     {
-        testWriteSDO(0x2050, 0x00, 31313);
+        // testWriteSDO(0x2050, 0x00, val);
+        // val = val + 1;
+        // testReadSDO(0x2050, 0x00);
+        printf("Enter Operational State\n");
+        configNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
+        printf("\n");
         ThisThread::sleep_for(1s);
     }
 }
