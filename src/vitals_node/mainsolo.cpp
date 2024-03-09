@@ -333,13 +333,13 @@ void anotherPrint(){
 void setup() {
     Serial.begin(9600);
     // delay(1000);
-    // Serial.println("aqui");
-    // Serial.println(8388607,BIN);
-    // for(int i=0;i<24;i++){
-    //     Serial.print(1);
-    // }
-    // Serial.println("");
-    // Serial.println((-8388607),BIN);
+    Serial.println("aqui");
+    Serial.println(8388607,BIN);
+    for(int i=0;i<24;i++){
+        Serial.print(1);
+    }
+    Serial.println("");
+    Serial.println((-8388607),BIN);
     
     // Serial.println(sampleTask.delay);  //why this and not line above
     
@@ -351,7 +351,7 @@ void setup() {
     }
     
     Serial.println("Vitals Starting");
-    // CAN.loopback();
+    CAN.loopback();
     //vitals node start
     PTask mamaDuck;
     mamaDuck.function = sendHeartbeat;
@@ -389,7 +389,7 @@ void setup() {
     //vitalsNode end
 
     //genericNode start
-    
+    /*
     CANListenParam babyDuck;
     babyDuck.handler=respondToHeartBeat;
     babyDuck.listen_id =combinedID(sendPing,vitalsID);
@@ -404,7 +404,7 @@ void setup() {
     updateData.interval=88;//can be any number doesnt matter, setting it to something just in case
     int whatever=ts.scheduleTask(&updateData);
     //genericNode end
-    
+    */
     
 }
 

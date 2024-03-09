@@ -21,12 +21,12 @@ int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
 
 int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
     
-    int16_t i = p->dataSize;
+    int16_t current_size = p->dataSize;
+    int16_t i = 0;
     if (i + size > MAX_SIZE_PACKET_DATA){
         return NOSPACE;
     }
-
-    for (; i < size; i++){
+    for (; current_size + i < current_size + size; i++){
         // DataSize can be interpreted as both
         // Size, and Index
         // Casting to 16-bit because compiler not happy

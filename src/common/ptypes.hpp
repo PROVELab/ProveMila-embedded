@@ -3,7 +3,7 @@
 
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
-#define MAX_TASK_COUNT 20
+#define MAX_TASK_COUNT 10
 #define MAX_PCAN_PARAMS 20
 
 // Fills byte buffer b with valRef using unions
