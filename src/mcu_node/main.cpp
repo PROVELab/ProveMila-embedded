@@ -36,7 +36,7 @@ Thread thread;
 // NMT Commands
 #define ENTER_OPERATIONAL 0x01
 #define ENTER_STOP 0x02
-#define ENTER_PREOPERATIONAL 0x03
+#define ENTER_PREOPERATIONAL 0x80
 #define RESET_NODE 0x81
 #define RESET_COMMUNICATION 0x82
 
@@ -221,7 +221,7 @@ void setupPDO2() {
 // Apply state change to all nodes by passing node_id = 0.
 void configNMT(uint16_t node_id, uint8_t nmt_command) {
     uint8_t buffer[2] = {nmt_command, (uint8_t) node_id};
-    can.write(CANMessage(0x00, buffer));
+    can.write(CANMessage(0x00, buffer, sizeof buffer));
 }
 
 // Function, receiveSDO, consumes a CAN packet and prints the metadata.
@@ -347,6 +347,25 @@ void testReadSDO(uint16_t index, uint8_t subindex) {
     printf("\n");
 }
 
+void testNMT() {
+    printf("Enter Operational State\n");
+    configNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
+    ThisThread::sleep_for(4s);
+
+    testReadSDO(0x2050, 0x00);
+
+    printf("Enter Stop State\n");
+    configNMT(MOTOR_CONT_ID, ENTER_STOP);
+    ThisThread::sleep_for(4s);
+
+    printf("Enter Pre-Operational State\n");
+    configNMT(MOTOR_CONT_ID, ENTER_PREOPERATIONAL);
+    ThisThread::sleep_for(4s);
+
+    printf("\n");
+
+}
+
 int main()
 {
     can.frequency(500E3);
@@ -354,12 +373,6 @@ int main()
     uint32_t val = 10000;
     while (1)
     {
-        // testWriteSDO(0x2050, 0x00, val);
-        // val = val + 1;
-        // testReadSDO(0x2050, 0x00);
-        printf("Enter Operational State\n");
-        configNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
-        printf("\n");
-        ThisThread::sleep_for(1s);
+        testNMT();
     }
 }
