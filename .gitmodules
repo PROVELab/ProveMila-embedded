@@ -1,0 +1,3 @@
+[submodule "src/mcu_node/motor_nda"]
+	path = src/mcu_node/motor_nda
+	url = https://github.com/PROVELab/motor_nda
