@@ -1,109 +1,13 @@
 #include <mbed.h>
 #include <rtos.h>
-#include <bit>
 #include "../common/pecan.hpp"
+#include "mcu_node.hpp"
 
 #if !DEVICE_CAN
 #error[NOT_SUPPORTED] CAN not supported
 #endif
 
 Thread thread;
-
-#define CAN_RD P0_30
-#define CAN_TD P0_29
-
-#define MOTOR_CONT_ID 1
-#define PLACEHOLDER 0
-
-// CAN-ID Function Codes
-#define T_PDO1 0x180
-#define R_PDO1 0x200
-#define T_PDO2 0x280
-#define R_PDO2 0x300
-#define T_PDO3 0x380
-#define R_PDO3 0x400
-#define T_PDO4 0x480
-#define R_PDO4 0x500
-#define SERVER_TO_CLIENT_SDO 0x580
-#define CLIENT_TO_SERVER_SDO 0x600
-#define DISABLE_PDO 0x80000000
-
-// Command byte specifiers
-#define SDO_UPLOAD 0x40
-#define SDO_DOWNLOAD_4B 0x23
-#define SDO_DOWNLOAD_3B 0x27
-#define SDO_DOWNLOAD_2B 0x2B
-#define SDO_DOWNLOAD_1B 0x2F
-
-// NMT commands
-#define ENTER_OPERATIONAL 0x01
-#define ENTER_STOP 0x02
-#define ENTER_PREOPERATIONAL 0x80
-#define RESET_NODE 0x81
-#define RESET_COMMUNICATION 0x82
-
-// Object dictionary entry addresses
-#define OVERVOLTAGE_LIMIT 0x2054
-#define UNDERVOLTAGE_LIMIT 0x2055
-#define UNDERVOLTAGE_LIMIT_SUBINDEX 0x01
-#define UNDERVOLTAGE_MIN_VOLTAGE 0x2055
-#define UNDERVOLTAGE_MIN_VOLTAGE_SUBINDEX 0x03
-#define MAXIMUM_CONTROLLER_CURRENT 0x2050
-#define SECONDARY_CURRENT_PROTECTION 0x2051
-#define MOTOR_MAXIMUM_TEMPERATURE 0x2057
-#define MOTOR_MAXIMUM_TEMPERATURE_SUBINDEX 0x02
-#define MAXIMUM_VELOCITY 0x2052
-#define MAXIMUM_VELOCITY_SUBINDEX 0x01
-#define MOTOR_POLE_PAIRS 0x2033
-#define FEEDBACK_TYPE 0x2040
-#define FEEDBACK_TYPE_SUBINDEX 0x01
-#define MOTOR_PHASE_OFFSET 0x2040
-#define MOTOR_PHASE_OFFSET_SUBINDEX 0x02
-#define HALL_CONFIGURATION 0x2040
-#define HALL_CONFIGURATION_SUBINDEX 0x05
-#define FEEDBACK_RESOLUTION 0x2040
-#define FEEDBACK_RESOLUTION_SUBINDEX 0x06
-#define ELECTRICAL_ANGLE_FILTER 0x2040
-#define ELECTRICAL_ANGLE_FILTER_SUBINDEX 0x07
-#define MOTOR_PHASE_OFFSET_COMPENSATION 0x2040
-#define MOTOR_PHASE_OFFSET_COMPENSATION_SUBINDEX 0x08
-#define VELOCITY_ENCODER_FACTOR_NUMERATOR 0x6094
-#define VELOCITY_ENCODER_FACTOR_NUMERATOR_SUBINDEX 0x01
-#define VELOCITY_ENCODER_FACTOR_DIVISOR 0x6094
-#define VELOCITY_ENCODER_FACTOR_DIVISOR_SUBINDEX 0x02
-#define TARGET_VELOCITY 0x60FF
-#define VELOCITY_ACTUAL_VALUE 0x606C
-#define VELOCITY_CONTROL_REGULATOR_P_GAIN 0x60F9
-#define VELOCITY_CONTROL_REGULATOR_P_GAIN_SUBINDEX 0x01
-#define VELOCITY_CONTROL_REGULATOR_I_GAIN 0x60F9
-#define VELOCITY_CONTROL_REGULATOR_I_GAIN_SUBINDEX 0x02
-#define MAXIMUM_CONTROLLER_CURRENT 0x2050
-#define MOTOR_RATED_CURRENT 0x6075
-#define CURRENT_DEMAND 0x201A
-#define MOTOR_TEMPERATURE 0x2025
-#define MOTOR_DC_CURRENT 0x2023
-
-// PDO transmission codes
-#define ASYNC 0xFF
-
-
-#define TPDO1_PARAMETER_INDEX 0x1800
-#define TPDO1_PARAMETER_COBID_SUBINDEX 0x01
-#define TPDO1_PARAMETER_TRANSMISSION_TYPE_SUBINDEX 0x02
-
-#define TPDO1_MAPPING_INDEX 0x1A00
-#define TPDO1_MAPPING_COUNT_SUBINDEX 0x00
-#define TPDO1_MAPPING_ENTRY_1_SUBINDEX 0x01
-#define TPDO1_MAPPING_ENTRY_2_SUBINDEX 0x02
-
-#define TPDO2_PARAMETER_INDEX 0x1801
-#define TPDO2_PARAMETER_COBID_SUBINDEX 0x01
-#define TPDO2_PARAMETER_TRANSMISSION_TYPE_SUBINDEX 0x02
-
-#define TPDO2_MAPPING_INDEX 0x1A01
-#define TPDO2_MAPPING_COUNT_SUBINDEX 0x00
-#define TPDO2_MAPPING_ENTRY_1_SUBINDEX 0x01
-#define TPDO2_MAPPING_ENTRY_2_SUBINDEX 0x02
 
 // The constructor takes in RX, and TX pin respectively
 CAN can(p30, p29);
@@ -191,7 +95,7 @@ void configTDPO2() {
 }
 
 // Apply state change to all nodes by passing node_id = 0.
-void configNMT(uint16_t node_id, uint8_t nmt_command) {
+void sendNMT(uint16_t node_id, uint8_t nmt_command) {
     uint8_t buffer[2] = {nmt_command, (uint8_t) node_id};
     can.write(CANMessage(0x00, buffer, sizeof buffer));
 }
@@ -287,17 +191,17 @@ void testRecvSDO(uint16_t index, uint8_t subindex) {
 
 void testNMT() {
     printf("Enter Operational State\n");
-    configNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
+    sendNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
     ThisThread::sleep_for(4s);
 
     testRecvSDO(0x2050, 0x00);
 
     printf("Enter Stop State\n");
-    configNMT(MOTOR_CONT_ID, ENTER_STOP);
+    sendNMT(MOTOR_CONT_ID, ENTER_STOP);
     ThisThread::sleep_for(4s);
 
     printf("Enter Pre-Operational State\n");
-    configNMT(MOTOR_CONT_ID, ENTER_PREOPERATIONAL);
+    sendNMT(MOTOR_CONT_ID, ENTER_PREOPERATIONAL);
     ThisThread::sleep_for(4s);
 
     printf("\n");
