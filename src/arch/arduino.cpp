@@ -126,8 +126,13 @@ void PScheduler::mainloop(PCANListenParamsCollection* listens) {
     
     while(1){
         ts.execute();
-        //Serial.println("stuck");
         waitPackets(NULL,inp);
+        //Serial.println("stuck");
+        /*
+        if(waitPackets(NULL,inp)!=-2){
+            //Serial.println("heard something");
+        }*/
+        
         //Serial.println("sage");
     }
 
