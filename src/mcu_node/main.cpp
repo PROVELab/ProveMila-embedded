@@ -144,6 +144,13 @@ int16_t acceptSDOResponse(CANPacket *packet) {
     return 0;
 }
 
+int16_t handleRPDO(CANPacket *packet) {
+    char val[2] = {0};
+    memcpy(val, packet->data, 2);
+    printf("Received: %lu\n",  (*((uint16_t*) val)));
+    return 0;
+}
+
 void testsendSDO(uint16_t index, uint8_t subindex, uint32_t data) {
     PCANListenParamsCollection pclp;
 
@@ -189,32 +196,91 @@ void testRecvSDO(uint16_t index, uint8_t subindex) {
     printf("\n");
 }
 
-void testNMT() {
-    printf("Enter Operational State\n");
-    sendNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
-    ThisThread::sleep_for(4s);
-
-    testRecvSDO(0x2050, 0x00);
-
-    printf("Enter Stop State\n");
-    sendNMT(MOTOR_CONT_ID, ENTER_STOP);
-    ThisThread::sleep_for(4s);
-
-    printf("Enter Pre-Operational State\n");
+void testConfigPDO() {
     sendNMT(MOTOR_CONT_ID, ENTER_PREOPERATIONAL);
+    
+    printf("Entered preop\n");
+
     ThisThread::sleep_for(4s);
 
-    printf("\n");
+    printf("starting mapping\n");
+    // Map TPDO1
 
+    // Disable TPDO1 communication 
+    sendSDO(MOTOR_CONT_ID, TPDO1_PARAMETER_INDEX, TPDO1_PARAMETER_COBID_SUBINDEX, (uint32_t) DISABLE_PDO);
+    
+    // Disable TPDO mapping (set number of mapped objects to 0)
+    sendSDO(MOTOR_CONT_ID, TPDO1_MAPPING_INDEX, TPDO1_MAPPING_COUNT_SUBINDEX, (uint8_t) 0);
+
+    // Map TPDO1 entries
+    mapPDOEntry(TPDO1_MAPPING_INDEX, TPDO1_MAPPING_ENTRY_1_SUBINDEX, 0x2040, 0x07, 16); // 2 bytes
+
+    // Enable TPDO mapping (set number of mapped objects to 1)
+    sendSDO(MOTOR_CONT_ID, TPDO1_MAPPING_INDEX, TPDO1_MAPPING_COUNT_SUBINDEX, (uint8_t) 1);
+
+    // Set transmission type
+    sendSDO(MOTOR_CONT_ID, TPDO1_PARAMETER_INDEX, TPDO1_PARAMETER_TRANSMISSION_TYPE_SUBINDEX, (uint8_t) 254);
+
+    // Set event timer
+    sendSDO(MOTOR_CONT_ID, TPDO1_PARAMETER_INDEX, 0x05, (uint16_t) 4000);
+
+    // Enable TPDO1 communication
+    sendSDO(MOTOR_CONT_ID, TPDO1_PARAMETER_INDEX, TPDO1_PARAMETER_COBID_SUBINDEX, (uint32_t) T_PDO1 | MOTOR_CONT_ID);
+
+    // Save parameters
+    sendSDO(MOTOR_CONT_ID, 0x1010, 0x01, (uint32_t) 0x65766173);
+    printf("Saved parameters\n");
+
+    // Reset controller
+    printf("Resetting controller\n");
+    sendNMT(MOTOR_CONT_ID, RESET_NODE);
+
+    ThisThread::sleep_for(4s); // This wait seems necessary.
+    
+    // Disable other TPDOs
+    // sendSDO(MOTOR_CONT_ID, TPDO2_PARAMETER_INDEX, TPDO2_PARAMETER_COBID_SUBINDEX, (uint32_t) DISABLE_PDO);
+    // sendSDO(MOTOR_CONT_ID, TPDO3_PARAMETER_INDEX, TPDO3_PARAMETER_COBID_SUBINDEX, (uint32_t) DISABLE_PDO);
+    // sendSDO(MOTOR_CONT_ID, TPDO4_PARAMETER_INDEX, TPDO4_PARAMETER_COBID_SUBINDEX, (uint32_t) DISABLE_PDO);
+
+    // Monitor for response
+    PCANListenParamsCollection pclp;
+    // CANListenParam monitor_RPDO(T_PDO1 | MOTOR_CONT_ID, handleRPDO, MATCH_EXACT);
+    // addParam(&pclp, monitor_RPDO);
+
+    // Enter NMT operational state
+    printf("entering op state\n");
+    sendNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
+
+    while(1){
+        waitPackets(NULL, &pclp);
+    }
+}
+
+void testNMT() {
+    while (1) {
+        printf("Enter Operational State\n");
+        sendNMT(MOTOR_CONT_ID, ENTER_OPERATIONAL);
+        ThisThread::sleep_for(4s);
+
+        testRecvSDO(0x2050, 0x00);
+
+        printf("Enter Stop State\n");
+        sendNMT(MOTOR_CONT_ID, ENTER_STOP);
+        ThisThread::sleep_for(4s);
+
+        printf("Enter Pre-Operational State\n");
+        sendNMT(MOTOR_CONT_ID, ENTER_PREOPERATIONAL);
+        ThisThread::sleep_for(4s);
+
+        printf("\n");
+    }
+    
 }
 
 int main()
 {
     can.frequency(500E3);
-    CANMessage msg;
-    uint32_t val = 10000;
-    while (1)
-    {
-        testNMT();
-    }
+    testConfigPDO();
+    // testPDOpolling();
+    // testNMT();
 }
