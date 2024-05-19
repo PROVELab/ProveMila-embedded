@@ -228,7 +228,7 @@ void testConfigPDO() {
     sendSDO(MOTOR_CONT_ID, TPDO1_PARAMETER_INDEX, TPDO1_PARAMETER_COBID_SUBINDEX, (uint32_t) T_PDO1 | MOTOR_CONT_ID);
 
     // Save parameters
-    sendSDO(MOTOR_CONT_ID, 0x1010, 0x01, (uint32_t) 0x65766173);
+    sendSDO(MOTOR_CONT_ID, 0x1010, 0x01, (uint32_t) 0x65766173); // This evaluates to "save"
     printf("Saved parameters\n");
 
     // Reset controller
