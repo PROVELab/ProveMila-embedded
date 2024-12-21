@@ -3,26 +3,35 @@
 #include "CAN.h"
 #include "../arch/arduino.hpp"
 
+//Ids for specific pings sent to sensors
 const int vitalsID=0b0000010;
 const int sendPing=0b0011;
 const int sendPong=0b0100;
 const int transmitData=0b0111;
-const int thisSensorId=6;
+//Number of children Mommy duck has to ping
 const int numberOfNodes=3;
 
 int startingSensorId=6;  //the starting id of sensor nodes, sensor nodes will be arranged in the order the appear in the text file. currently setting to three
+//Written in hard drive
+const int8_t nodeData [numberOfNodes*5*8] PROGMEM={0};//each node gets 8 bytes per data chunk, holds 5 most recent data, shift everyhting 8 bytes to make room for new data when we get it.
+//to access for example, the data for node2: 2*40 /*gets to index of first chunk of data*/ +0 first data chunk,  + 8 second data chunk, + 16 third data chunk, +24 fourth, +32 fifth. take each of these and process into long
 
-struct nodeData{        //could make variable size data?
-    int flags;      //heartbeat info
-    long milliVolts;
+//Struct for sensor ping
+struct vitalsData{        
+    int flags;      //different status of info
+    long milliVolts; //are u alive? cool
     long milliAmps;
     int milliSeconds;
-    int8_t data[8];       //storing node data here currently not necessary for vitals, but likely will be in future depending on what alogirithm is used to decide node reliability (if it needs to be able to see previous data?) could make this 2d to store data further back asw
+    int8_t data[8];   //sending what data actually holds //storing node data here currently not necessary for vitals, but likely will be in future depending on what alogirithm is used to decide node reliability (if it needs to be able to see previous data?) could make this 2d to store data further back asw
 };
-nodeData nodes[numberOfNodes]={};
+//Making nodes of vitals data struct
+vitalsData nodes[numberOfNodes]={};
+
     //example: TP1-4 : Tire Pressure Sensor 1: 1 19 82 30 60 22 75: 0 -32768 32767 100 300  
 //number 1   2-3     4-5              6-7(on present if isCritical)
 // numbits, range, warning range, critical ranges. (critical range optional)
+
+//Specific data for each sensor (tells us how to parse it later when deciphering code)
 struct nodeInfo{
     int numData;
     long ranges[16];            //ranges for each data low-high
@@ -30,6 +39,7 @@ struct nodeInfo{
     long warningRanges[16];     //"yellow" ranges for each data
     long criticalRanges[16];    //"red" ranges for each data if applicable
 };
+//Adding the constant data
 const nodeInfo lookUpInfo[] PROGMEM= {    //a constanct lookup table initialized at compile time used to find information needed to decode a nodes data based on its id.
     {4,{19,82,-32768,32767,-100,-1,9,18}, {6,16,7,4},{30, 60,100,300,-80,-20, 11,15},{22,75,0,0,0,0,10,17}},
     {4,{14,89,-32761,35767,-101,-1,7,21}, {7,17,7,4},{30, 60,100,300,-80,-20, 11,15},{22,75,0,0,0,0,10,17}},
@@ -37,6 +47,7 @@ const nodeInfo lookUpInfo[] PROGMEM= {    //a constanct lookup table initialized
 }; 
 
 nodeInfo nodeI;     //used to access stuff in lookup Info. lookupinfo is put in progmem so that memory usage doesnt increase drastically with more nodes. only ever copy over on value from array to nodeI
+//
 PCANListenParamsCollection plpc;
 
 //Task t[MAX_PCAN_PARAMS];
@@ -105,6 +116,9 @@ void printAllData(){
             Serial.println(buffer);
                 if(!(nodeI.criticalRanges[j*2]==0&&nodeI.criticalRanges[j*2+1])&&nodeI.criticalRanges[j*2]>print&&print>nodeI.criticalRanges[j*2+1]){
                     sprintf(buffer, "%ld critical: %ld-%ld",print,nodeI.criticalRanges[j*2],nodeI.criticalRanges[j*2+1]);
+
+
+
                 }else if(nodeI.warningRanges[j*2]>print||print<nodeI.warningRanges[j*2+1]){
                     sprintf(buffer, "%ld warning: %ld-%ld",print,nodeI.warningRanges[j*2],nodeI.warningRanges[j*2+1]);
                 }else{

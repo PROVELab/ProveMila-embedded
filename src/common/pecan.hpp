@@ -1,8 +1,9 @@
 #ifndef PECAN_H
 #define PECAN_H
 #include <stdint.h>
-#include <TaskSchedulerDeclarations.h>
 #include "./ptypes.hpp"
+
+
 
 // Various PCAN Error Code return values
 enum PCAN_ERR {
@@ -87,5 +88,4 @@ static bool (*matcher[3])(int, int) = {exact, similar, exactFunction};
 // Write size bytes to the packet, accounting
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
-
 #endif

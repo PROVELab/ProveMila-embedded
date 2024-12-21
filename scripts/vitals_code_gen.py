@@ -53,10 +53,8 @@ class Node:
 nodeList=[]
 startingSensorId=6#will be 6 if not otherwise initialized
 '''
-//name1 globals
-const int name1Id=6;
-int8_t name1dataArray[8];
-int8_t name1VitalsFlags=0;  //0b1=startup, 0b0111 can be for whatver other things we end up wanting idk'''
+long readMilliAmps(){
+    return 74981;'''
 def createSensorFiles():#uses nodeList
     sensorId=startingSensorId
     for node in nodeList:
@@ -67,6 +65,7 @@ def createSensorFiles():#uses nodeList
             f.write('\n//universal globals\nconst int vitalsID=0b0000010;\nconst int sendPing=0b0011;\nconst int sendPong=0b0100;\nconst int transmitData=0b0111;\nPCANListenParamsCollection plpc;\nPScheduler ts;\n')
             print("shortened name: "+node.shortenedName)
             f.write('//{0} globals\nconst int {0}Id={1};\nint8_t {0}dataArray[8];\nint8_t {0}VitalsFlags=0;'.format(node.shortenedName,sensorId))
+            f.write('long readMilliAMps(){\n')
             f.close()
 
             

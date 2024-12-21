@@ -1,11 +1,12 @@
+
+#ifndef STUFF_H
+#define STUFF_H
 #include "mbed.h"
-
 #include "../common/pecan.hpp"
-#include "mbed_events.h"
-
-typedef UserAllocatedEvent<void (*)(uint16_t), void(uint16_t)>* mbed_event;
+// The CAN var used by PCAN
 CAN can1(p30, p29, 500E3);
 
+// Default receiver
 int16_t defaultPacketRecv(CANPacket* packet) {
     printf("Default handler: id %d, with data: %s\n", packet->id, packet->data);
     return 0;
@@ -56,22 +57,4 @@ int16_t sendPacket(CANPacket* p) {
     }
     return GEN_FAILURE;
 }
-
-void PScheduler::mainloop(int8_t* inp) {
-    EventQueue queue;
-
-    Thread tOutput, tOutput2;
-    printf("Mainloop\n");
-    for (uint16_t i = 0; i < ctr; i++) {
-        PTask t = this->tasks[i];
-        ((mbed_event)inp)[i] = make_user_allocated_event(t.function, i);
-        ((mbed_event)inp)[i].delay(t.delay);
-        ((mbed_event)inp)[i].period(t.interval);
-        ((mbed_event)inp)[i].call_on(&queue);
-    }
-    printf("Dispatching\n");
-    tOutput.start(callback(&queue, &EventQueue::dispatch_forever));
-    tOutput2.start(callback(&queue, &EventQueue::dispatch_forever));
-    while (1)
-        ;
-}
+#endif

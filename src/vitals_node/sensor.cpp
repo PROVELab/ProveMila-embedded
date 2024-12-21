@@ -47,12 +47,13 @@ long readMilliVolts(){
 //name1
 
 int16_t name1RespondToHeartBeat(CANPacket *){
+        delay(1);
         CANPacket packet;
         packet.id =combinedID(sendPong,name1Id);    
         writeData(&packet, &name1VitalsFlags,  1);  
         name1VitalsFlags=0;
-        long milliAmps=readMilliAmps();
-        long milliVolts=readMilliVolts();
+        long milliAmps=1111;
+        long milliVolts=1111;
         int8_t milliVoltsArr[3]={0};
         int8_t milliAmpsArr[3]={0};
         
@@ -168,8 +169,8 @@ int16_t name2RespondToHeartBeat(CANPacket *){
         packet.id =combinedID(sendPong,name2Id);    
         writeData(&packet, &name2VitalsFlags,  1);  
         name2VitalsFlags=0;
-        long milliAmps=readMilliAmps();
-        long milliVolts=readMilliVolts();
+        long milliAmps=2222;
+        long milliVolts=2222;
         int8_t milliVoltsArr[3]={0};
         int8_t milliAmpsArr[3]={0};
         
@@ -284,8 +285,8 @@ int16_t name3RespondToHeartBeat(CANPacket *){
         packet.id =combinedID(sendPong,name3Id);    
         writeData(&packet, &name3VitalsFlags,  1);  
         name3VitalsFlags=0;
-        long milliAmps=readMilliAmps();
-        long milliVolts=readMilliVolts();
+        long milliAmps=3333;
+        long milliVolts=3333;
         int8_t milliVoltsArr[3]={0};
         int8_t milliAmpsArr[3]={0};
         
@@ -354,11 +355,11 @@ void setup() {
     name1babyDuck.handler=name1RespondToHeartBeat;
     name1babyDuck.listen_id =combinedID(sendPing,vitalsID);
     name1babyDuck.mt=MATCH_EXACT;
-    /*
+    
     if (addParam(&plpc,name1babyDuck)!= SUCCESS){    //plpc declared above setup()
         Serial.println("plpc no room");
         while(1);
-    }*/
+    }
     PTask name1Data1234;  
     name1Data1234.function=name1ProcessData1234;
     name1Data1234.interval=10000;
@@ -376,6 +377,7 @@ void setup() {
         Serial.println("plpc no room");
         while(1);
     }
+
     PTask name2Data1234;  
     name2Data1234.function=name2ProcessData1234;
     name2Data1234.interval=10007;

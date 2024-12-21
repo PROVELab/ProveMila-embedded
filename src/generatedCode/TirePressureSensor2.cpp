@@ -13,4 +13,4 @@ PScheduler ts;
 //TP2_2 globals
 const int TP2_2Id=7;
 int8_t TP2_2dataArray[8];
-int8_t TP2_2VitalsFlags=0;
+int8_t TP2_2VitalsFlags=0;long readMilliAMps(){

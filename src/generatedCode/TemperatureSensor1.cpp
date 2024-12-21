@@ -13,4 +13,4 @@ PScheduler ts;
 //TEMP1_1 globals
 const int TEMP1_1Id=8;
 int8_t TEMP1_1dataArray[8];
-int8_t TEMP1_1VitalsFlags=0;
+int8_t TEMP1_1VitalsFlags=0;long readMilliAMps(){

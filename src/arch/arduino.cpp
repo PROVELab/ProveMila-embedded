@@ -2,13 +2,13 @@
 
 #include <TaskScheduler.h>
 
-#include "../arch/arduino.hpp"
 #include "../common/pecan.hpp"
+#include "../arch/arduino.hpp"
 #include "CAN.h"
 
 #include <Arduino.h>
 
-Task dTasks [MAX_TASK_COUNT]={};    /*only one of these arrays is declared, there should only ever be on pScheduler instance, unless implementation is changed
+Task dTasks [MAX_TASK_COUNT]={};    /*only one of these arrays is declared, there should only ever be one pScheduler instance, unless implementation is changed
 to declare the array for each pScheduler instance inside main.cpp file.
 */
 
