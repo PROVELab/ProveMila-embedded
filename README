@@ -1,0 +1,12 @@
+the config file for me was located at: config file located at: /home/torrey/esp/esp-idf/components/freertos/config/include/freertos
+
+config parameters to change:
+//ensure only allocating tasks statically, which should already be the case if we only use xTaskCreateStatic:
+#define configSUPPORT_STATIC_ALLOCATION 1
+#define configSUPPORT_DYNAMIC_ALLOCATION 0 
+
+//tasks won't be interrupted until they enter blocking state
+#define  configUSE_PREEMPTION 0
+
+//tasks shouldn't be slicing if preemption is off (i think?), but lets avoid anything of this sort :) bc we shouldn't be needing it
+#define configUSE_TIME_SLICING 0

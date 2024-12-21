@@ -1,0 +1,24 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.adapterTargetName": "esp32",
+    "idf.customExtraPaths": "/home/torrey/.espressif/tools/xtensa-esp-elf-gdb/14.2_20240403/xtensa-esp-elf-gdb/bin:/home/torrey/.espressif/tools/riscv32-esp-elf-gdb/14.2_20240403/riscv32-esp-elf-gdb/bin:/home/torrey/.espressif/tools/xtensa-esp-elf/esp-14.2.0_20240906/xtensa-esp-elf/bin:/home/torrey/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20240906/riscv32-esp-elf/bin:/home/torrey/.espressif/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:/home/torrey/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240821/openocd-esp32/bin:/home/torrey/.espressif/tools/esp-rom-elfs/20240305",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "/home/torrey/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240821/openocd-esp32/share/openocd/scripts",
+        "ESP_ROM_ELF_DIR": "/home/torrey/.espressif/tools/esp-rom-elfs/20240305/"
+    },
+    "idf.espIdfPath": "/home/torrey/esp/esp-idf",
+    "idf.openOcdConfigs": [
+        "board/esp32-wrover-kit-3.3v.cfg"
+    ],
+    "idf.port": "/dev/ttyUSB0",
+    "idf.pythonBinPath": "/home/torrey/.espressif/python_env/idf5.4_py3.12_env/bin/python",
+    "idf.toolsPath": "/home/torrey/.espressif",
+    "files.associations": {
+        "task.h": "c",
+        "gpio.h": "c",
+        "freertos.h": "c",
+        "semphr.h": "c"
+    },
+    
+    "idf.flashType": "UART"
+}
