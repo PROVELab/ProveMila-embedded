@@ -10,7 +10,7 @@ StaticSemaphore_t mutexBuffers [mutexCount];    //note that the usr does not int
 
 //declare each mutex pointer, which will be used in program, essentially just giving each element of mutexes a name
 SemaphoreHandle_t* printfMutex = &(mutexes[0]);
-SemaphoreHandle_t* anotherMutex = &(mutexes[1]);
+SemaphoreHandle_t* oneAtATimeMutex = &(mutexes[1]);
 
 
 void mutexInit(void){   //initializes all mutexes in mutxes array in a loop
@@ -24,4 +24,11 @@ void mutexInit(void){   //initializes all mutexes in mutxes array in a loop
         }
     }
 
+}
+//likely shouldnt be printing anything in final design, using this for code brevity throughout developemnt
+void mutexPrint(char* str){
+    if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+        printf("%s\n",str); // Call the non-reentrant function safely.
+        xSemaphoreGive(*printfMutex); // Release the mutex.
+    }else { printf("cant print, in deadlock!\n"); }
 }
