@@ -20,7 +20,9 @@
         "semphr.h": "c",
         "twai.h": "c",
         "compare": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "mutex_declarations.h": "c",
+        "stdint.h": "c"
     },
     
     "idf.flashType": "UART"

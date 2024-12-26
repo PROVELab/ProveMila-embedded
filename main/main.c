@@ -38,18 +38,51 @@ StaticTask_t checkStatus_Buffer;
 StackType_t checkStatus_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
 StaticTask_t alert_Buffer;
 StackType_t alert_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
-void check_bus_status(void * pvParameters) {
+
+void startBus(){  //should only be called on start up and AFTER Bus has finished recovery
+    int err=twai_start();
+    if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
+        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+            printf("Failed to start or restart driver with code: %d. Rebooting\n",err);
+            xSemaphoreGive(*printfMutex); // Release the mutex.
+        }else { printf("cant print, in deadlock!\n"); }
+        esp_restart();
+    } else{
+        mutexPrint("Driver Started\n\n\n\n");
+    }
+}
+
+
+void check_bus_status(void * pvParameters){
     for(;;){
-        if (xSemaphoreTake(*oneAtATimeMutex, portMAX_DELAY)) {
-    twai_status_info_t status_info;
-    esp_err_t err = twai_get_status_info(&status_info);  // Correct function and argument
-    if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-        printf("status: %d\n",err);
-        xSemaphoreGive(*printfMutex); // Release the mutex.
-    }else { printf("cant print, in deadlock!\n"); }
-        xSemaphoreGive(*oneAtATimeMutex); // Release the mutex.
-    }else { printf("cant check alert, in deadlock!\n"); }
-    vTaskDelay(100/portTICK_PERIOD_MS);
+        twai_status_info_t status_info;
+        esp_err_t err = twai_get_status_info(&status_info);  // Correct function and argument
+        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+            printf("status error code: %d\n",err);
+            printf("TWAI Status Information:\n");
+            printf("State: %d\n", status_info.state); // Assuming `twai_state_t` can be cast to int
+            if(status_info.state==TWAI_STATE_BUS_OFF){
+                printf("initiating recovery\n");
+                int recover;
+                if ((recover=twai_initiate_recovery())!=ESP_OK){
+                    printf("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
+                    esp_restart();
+                }
+                printf("Recovery attempt Complete code: %d\n\n\n\n\n\n\n",recover);
+            }
+            printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
+            printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
+            printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
+            printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
+            printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
+            printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
+            printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
+            printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
+            printf("Bus Error Count: %lu\n", status_info.bus_error_count);
+            xSemaphoreGive(*printfMutex); // Release the mutex.
+        }else { printf("cant print, in deadlock!\n"); }
+
+        vTaskDelay(1000/portTICK_PERIOD_MS);
     }
 }
 
@@ -60,12 +93,11 @@ void twai_monitor_alerts(void * pvParameters) {
     uint32_t alerts;
 
     while (1) {
-        if (xSemaphoreTake(*oneAtATimeMutex, portMAX_DELAY)) {
         mutexPrint("monitering\n\n");
         // Block until an alert is raised
         int err = twai_read_alerts(&alerts, pdMS_TO_TICKS(10));
         if(err!=0){
-            mutexPrint("error reading alert/no alert to be had");
+            //mutexPrint("error reading alert/no alert to be had");
         }
         if (alerts & TWAI_ALERT_TX_IDLE) {
             mutexPrint("TWAI Alert: TX Idle\n");
@@ -79,17 +111,6 @@ void twai_monitor_alerts(void * pvParameters) {
                 esp_err_t err = twai_get_status_info(&status_info);  // Correct function and argument
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
             printf("Alert: The Transmission failed.");
-            printf("TWAI Status Information:\n");
-            printf("State: %d\n", status_info.state); // Assuming `twai_state_t` can be cast to int
-            printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
-            printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
-            printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
-            printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
-            printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
-            printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
-            printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
-            printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
-            printf("Bus Error Count: %lu\n", status_info.bus_error_count);
             xSemaphoreGive(*printfMutex); // Release the mutex.
                 }else { printf("cant print, in deadlock!\n"); }
         }
@@ -109,7 +130,8 @@ void twai_monitor_alerts(void * pvParameters) {
             mutexPrint("TWAI Alert: Above Error Warning Limit\n");
         }
         if (alerts & TWAI_ALERT_BUS_RECOVERED) {
-            mutexPrint("TWAI Alert: Bus Recovered\n");
+            mutexPrint("TWAI Alert: Bus Recovered, \n\nrestarting Bus\n\n\n\n");
+            startBus();
         }
         if (alerts & TWAI_ALERT_ARB_LOST) {
             mutexPrint("TWAI Alert: Arbitration Lost\n");
@@ -117,100 +139,67 @@ void twai_monitor_alerts(void * pvParameters) {
         if (alerts & TWAI_ALERT_BUS_ERROR) {
             mutexPrint("TWAI Alert: Bus Error\n");
         }
-        xSemaphoreGive(*oneAtATimeMutex); // Release the mutex.
-        }else { printf("cant check alert, in deadlock!\n"); }
+
         vTaskDelay(500/portTICK_PERIOD_MS);
     }
 }
-
-
-
-
+    //
     void sendHB( void * pvParameters )    {
-        //configASSERT( ( uint32_t ) pvParameters == 1UL );   //we can pass parameters to this task! (we passed one)
+        //configASSERT( ( uint32_t ) pvParameters == 1UL );   //we can pass parameters to this task! although, this isn't really needed for this code, and likely wont ever be used since all tasks are static
         for( ;; )        {
-            if (xSemaphoreTake(*oneAtATimeMutex, portMAX_DELAY)) {
-            mutexPrint("sending here\n");
-            /*CANPacket packet;
-    packet.id =combinedID(sendPing,vitalsID);    //
-    writeData(&packet, (int8_t*)1,  1);  //no need to write any data yet
-    sendPacket(&packet);    */
-            twai_message_t message = {
-                // Message type and format settings
+            twai_message_t message = {  //This is the struct used to create and send a CAN message. Generally speaking, only the last 3 fields should ever change.
+                .rtr = 0,               // Data vs RTR frame.  We should avoid sending RTR frames since the other CAN libraries don't explicitly support it (just send a data message with no data instead)
                 .extd = 0,              // Standard vs extended format
-                .rtr = 0,               // Data vs RTR frame
                 .ss = 0,                // Whether the message is single shot (i.e., does not repeat on error)
                 .self = 0,              // Whether the message is a self reception request (loopback)
                 .dlc_non_comp = 0,      // DLC is less than 8  I beleive, for our purposes, this should always be 0, we want to be compliant with 8 byte data frames, and not confuse arduino guys
-                // Message ID and payload
-                //.identifier = combinedID(sendPing,vitalsID),
-                .identifier=combinedID(sendPing,vitalsID),  //try with a higher prioritiy
+                .identifier=combinedID(sendPing,vitalsID),  //id of vitals Heart Beat Ping
                 .data_length_code = 4,
                 .data = {0},
             };
-            // for(int i=0;i<8;i++){
-            //     //printf("data i: %d\n", (message.data)[i]);
-            // }
 
             //Queue message for transmission
             int ret;
-            if ((ret=twai_transmit(&message, pdMS_TO_TICKS(10000))) == ESP_OK) {
+            if ((ret=twai_transmit(&message, pdMS_TO_TICKS(10000))) == ESP_OK) {    //transmits message 
                 mutexPrint("Message queued for transmission\n");
-            } else {
+            } else {    //notify in event of failure to transmit message
                 if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                printf("Failed to queue message for transmission, error code: %d",ret); // Call the non-reentrant function safely.
-                xSemaphoreGive(*printfMutex); // Release the mutex.
+                    printf("Failed to queue message for transmission, error code: %d",ret); 
+                    xSemaphoreGive(*printfMutex); // Release the mutex.
                 }else { printf("cant print, in deadlock!\n"); }
             }
-                xSemaphoreGive(*oneAtATimeMutex); // Release the mutex.
-            }else { printf("cant check alert, in deadlock!\n"); }
             vTaskDelay(1000/portTICK_PERIOD_MS);
         }
     }
-
-    void recieveHB(){
-        //Wait for message to be received
+    void recieveMSG(){   //prints information about and contents of every recieved message
         for(;;){
-            if (xSemaphoreTake(*oneAtATimeMutex, portMAX_DELAY)) {
-            //if (xSemaphoreTake(*oneAtATimeMutex, portMAX_DELAY)) {
             twai_message_t message;
-            //mutexPrint("checking for msg\n");
             if (twai_receive(&message, pdMS_TO_TICKS(0)) == ESP_OK) {   //check for message without blocking (0 ms blocking)
-                //mutexPrint("Message received\n");
-                //Process received message
-            if (message.extd) {
-                //mutexPrint("Message is in Extended Format\n");
-            } else {
-                //mutexPrint("Message is in Standard Format\n");
-            }
-            //if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                printf("ID is %ld\n", message.identifier); // Call the non-reentrant function safely.
-            //    xSemaphoreGive(*printfMutex); // Release the mutex.
-            //}else { printf("cant print, in deadlock!\n"); }
-            if (!(message.rtr)) {
-                for (int i = 0; i < message.data_length_code; i++) {
-                    //if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                        printf("Data byte %d = %d\n", i, message.data[i]); // Call the non-reentrant function safely.
-                    //    xSemaphoreGive(*printfMutex); // Release the mutex.
-                    //}else { printf("cant print, in deadlock!\n"); }
+                if (message.extd) {
+                    mutexPrint("Message is in Extended Format\n");
+                } else {
+                    mutexPrint("Message is in Standard Format\n");
+                }
+                if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                    printf("ID is %ld\n", message.identifier); 
+                    xSemaphoreGive(*printfMutex); 
+                }else { printf("cant print, in deadlock!\n"); }
+                if (!(message.rtr)) {
+                    for (int i = 0; i < message.data_length_code; i++) {
+                        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                            printf("Data byte %d = %d\n", i, message.data[i]);  //print data of recieved message byte by byte
+                        xSemaphoreGive(*printfMutex); // Release the mutex.
+                        }else { printf("cant print, in deadlock!\n"); }
+                    }
                 }
             }
-            } else {
-                //mutexPrint("Failed to receive message\n");
-            }
-                xSemaphoreGive(*oneAtATimeMutex); // Release the mutex.
-            }else { printf("cant check alert, in deadlock!\n"); }
-            //vTaskDelay(100/portTICK_PERIOD_MS);
-            taskYIELD();
+            taskYIELD();    //task runs constantly since no delay, but on lowest priority, so effectively runs in the background
         }
-    
     }
-
 void app_main(){    
     //Initialize configuration structures using macro initializers
-    // gpio_reset_pin(GPIO_NUM_21);
-    // gpio_reset_pin(GPIO_NUM_22);
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_19, GPIO_NUM_22, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL    //works with 23, 22. works with 19, 22. does not work with 4,5,15,16,21. try more for future flexibility!
+    //a hasty testing of each pin found each numbered PIN un the board (0-35) worked for TWAI for each number that appears on the board, except for pin 34, and 35, which I don't beleive are actually GPIO pins, since the datasheet says the MCU has only 34 pins, so having a pin 35 wouldnt make much sense.
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_33, GPIO_NUM_32, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL for standard behavior  
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
@@ -232,12 +221,12 @@ void app_main(){
 
     mutexInit();    //initialize mutexes
     init=1;
-    //uint32_t alerts_to_enable = TWAI_ALERT_ALL;
-// if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
-//     printf("Alerts reconfigured\n");
-// } else {
-//     printf("Failed to reconfigure alerts");
-// }
+    uint32_t alerts_to_enable = TWAI_ALERT_ALL;
+if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
+    printf("Alerts reconfigured\n");
+} else {
+    printf("Failed to reconfigure alerts");
+}
     TaskHandle_t sendHandler = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
                      sendHB,       /* Function that implements the task. */
                      "HeartBeatSend",          /* Text name for the task. */
@@ -248,7 +237,7 @@ void app_main(){
                      &sendHB_Buffer,   /* Variable to hold the task's data structure. */
                      tskNO_AFFINITY);  //assigns printHello to core 0
     TaskHandle_t recieveHandler = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
-                      recieveHB,       /* Function that implements the task. */
+                      recieveMSG,       /* Function that implements the task. */
                       "HeartBeatRecieve",          /* Text name for the task. */
                       STACK_SIZE,      /* Number of indexes in the xStack array. */
                       ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
@@ -276,8 +265,6 @@ void app_main(){
                       alert_Stack,          /* Array to use as the task's stack. */
                       &alert_Buffer,   /* Variable to hold the task's data structure. */
                       tskNO_AFFINITY);  //assigns printHello to core 0
-
-    // Configure message to transmit
 
     //vTaskStartScheduler();      /do not write vTaskStartScheduler anywhere if using IDF FreeRTOS, the scheduler begins running on initialization, we cant toggle it, and program crashes if you attempt to.
 }
