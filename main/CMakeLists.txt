@@ -1,2 +1,2 @@
-idf_component_register(SRCS "can_functions.c" "mutex_declarations.c" "main.c"
+idf_component_register(SRCS "vitalsHelper.c" "pecan.c" "main.c" "mutex_declarations.c"
                     INCLUDE_DIRS ".")

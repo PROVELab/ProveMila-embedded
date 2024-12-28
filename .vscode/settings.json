@@ -22,7 +22,13 @@
         "compare": "cpp",
         "cstdint": "cpp",
         "mutex_declarations.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "esp_heap_caps.h": "c",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "span": "cpp",
+        "esp_system.h": "c"
     },
     
     "idf.flashType": "UART"

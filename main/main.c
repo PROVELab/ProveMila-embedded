@@ -5,8 +5,13 @@
 #include "driver/gpio.h"
 #include "driver/twai.h"
 #include "freertos/semphr.h"
-#include "mutex_declarations.h"
-#include "can_functions.h"
+#include <string.h>
+
+#include "mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
+#include "pecan.h"    //helper code for CAN stuff
+#include "programConstants.h"
+#include "vitalsHelper.h"
+
 //tracing functionality to give warning for free or alloc.
 #include "esp_heap_caps.h"
 
@@ -16,7 +21,7 @@ const int sendPong=0b0100;
 const int transmitData=0b0111;
 
 int init=0;//indicates that mutexes have been initialized, so we may print a warning for allocations and frees
-void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps){
+void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps){  //is called every time memory is allocated, feature enabled in menuconfig
     if(init){
         mutexPrint("Warning, allocating memory!\n");
     }
@@ -38,6 +43,17 @@ StaticTask_t checkStatus_Buffer;
 StackType_t checkStatus_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
 StaticTask_t alert_Buffer;
 StackType_t alert_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
+
+//stuff for Vitals future use, currently only used to track recent information about a node
+struct vitalsData{        
+    int16_t flags;      //different status of info currently only init indicator, and HB indicator
+    int16_t dataCollectionTracker; //keeps a flag for each piece of data a node is supposed to send, checking that data is being sent (for the most part) as often as it should.
+    int16_t milliSeconds;
+    int8_t data[8][10];   //sending what data actually holds //storing node data here currently not necessary for vitals, but likely will be in future depending on what alogirithm is used to decide node reliability (if it needs to be able to see previous data?) could make this 2d to store data further back asw
+    int8_t dataLocation;    //stores most recent data location.
+};
+//Making nodes of vitals data struct
+struct vitalsData nodes[5]={{0}};
 
 void startBus(){  //should only be called on start up and AFTER Bus has finished recovery
     int err=twai_start();
@@ -94,8 +110,8 @@ void twai_monitor_alerts(void * pvParameters) {
 
     while (1) {
         mutexPrint("monitering\n\n");
-        // Block until an alert is raised
-        int err = twai_read_alerts(&alerts, pdMS_TO_TICKS(10));
+        //check if an alerta has been raised
+        int err = twai_read_alerts(&alerts, pdMS_TO_TICKS(0));  //do not block waiting for alert
         if(err!=0){
             //mutexPrint("error reading alert/no alert to be had");
         }
@@ -146,53 +162,62 @@ void twai_monitor_alerts(void * pvParameters) {
     //
     void sendHB( void * pvParameters )    {
         //configASSERT( ( uint32_t ) pvParameters == 1UL );   //we can pass parameters to this task! although, this isn't really needed for this code, and likely wont ever be used since all tasks are static
-        for( ;; )        {
-            twai_message_t message = {  //This is the struct used to create and send a CAN message. Generally speaking, only the last 3 fields should ever change.
-                .rtr = 0,               // Data vs RTR frame.  We should avoid sending RTR frames since the other CAN libraries don't explicitly support it (just send a data message with no data instead)
-                .extd = 0,              // Standard vs extended format
-                .ss = 0,                // Whether the message is single shot (i.e., does not repeat on error)
-                .self = 0,              // Whether the message is a self reception request (loopback)
-                .dlc_non_comp = 0,      // DLC is less than 8  I beleive, for our purposes, this should always be 0, we want to be compliant with 8 byte data frames, and not confuse arduino guys
-                .identifier=combinedID(sendPing,vitalsID),  //id of vitals Heart Beat Ping
-                .data_length_code = 4,
-                .data = {0},
-            };
+        for( ;; ) {
+            //sampple code that writes DEADFACE as data for vital's HB
+            struct CANPacket message={{0}};
+            int8_t DE=0xDE;
+            int8_t AD=0xAD;
+            int8_t FACE[2]={0xFA,0xCE};
 
-            //Queue message for transmission
-            int ret;
-            if ((ret=twai_transmit(&message, pdMS_TO_TICKS(10000))) == ESP_OK) {    //transmits message 
-                mutexPrint("Message queued for transmission\n");
-            } else {    //notify in event of failure to transmit message
-                if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                    printf("Failed to queue message for transmission, error code: %d",ret); 
+            writeData(&message,&DE,1);
+            writeData(&message,&AD,1);
+            writeData(&message,FACE,2);
+            message.id=combinedID(HBPing,vitalsID);
+            if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                    printf("currSize: %d",message.dataSize);
                     xSemaphoreGive(*printfMutex); // Release the mutex.
                 }else { printf("cant print, in deadlock!\n"); }
+            int err;
+            if((err=sendPacket(&message))){
+                if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                    printf("failed to send HB with code %d. \n",err);
+                    xSemaphoreGive(*printfMutex); // Release the mutex.
+                }else { printf("cant print, in deadlock!\n"); }
+            }else{
+                mutexPrint("sent HB\n!");
             }
+
             vTaskDelay(1000/portTICK_PERIOD_MS);
         }
     }
+
+    int16_t moniterData(struct CANPacket* message){ //example handler for a CANListenParam, stores the most recent data sent by a node
+        uint32_t index = IDTovitalsIndex(message->id);
+        struct vitalsData node=nodes[index];
+        memcpy((node.data)[0],message->data,8);
+        return 0;
+    }
     void recieveMSG(){   //prints information about and contents of every recieved message
+        struct CANPacket message; //will store any recieved message
+        //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
+        struct PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
+
+        //declare parameters here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to 'mt', 'handler' is called.
+        struct CANListenParam processBeat;
+        processBeat.handler=moniterData;
+        processBeat.listen_id =combinedID(sendPong,vitalsID);
+        processBeat.mt=MATCH_EXACT; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
+        if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
+            mutexPrint("plpc no room");
+            while(1);
+        }
+        //
+
+        //may declare more parameters...
+
+        //this task will no call the appropriate ListenParams when a CAN message is recieved in the background
         for(;;){
-            twai_message_t message;
-            if (twai_receive(&message, pdMS_TO_TICKS(0)) == ESP_OK) {   //check for message without blocking (0 ms blocking)
-                if (message.extd) {
-                    mutexPrint("Message is in Extended Format\n");
-                } else {
-                    mutexPrint("Message is in Standard Format\n");
-                }
-                if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                    printf("ID is %ld\n", message.identifier); 
-                    xSemaphoreGive(*printfMutex); 
-                }else { printf("cant print, in deadlock!\n"); }
-                if (!(message.rtr)) {
-                    for (int i = 0; i < message.data_length_code; i++) {
-                        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                            printf("Data byte %d = %d\n", i, message.data[i]);  //print data of recieved message byte by byte
-                        xSemaphoreGive(*printfMutex); // Release the mutex.
-                        }else { printf("cant print, in deadlock!\n"); }
-                    }
-                }
-            }
+            waitPackets(&message, &plpc);
             taskYIELD();    //task runs constantly since no delay, but on lowest priority, so effectively runs in the background
         }
     }
