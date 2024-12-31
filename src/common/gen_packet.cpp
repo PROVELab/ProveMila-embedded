@@ -17,9 +17,17 @@ int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
         return SUCCESS;
     }
 }
-
+int16_t setRTR(struct CANPacket * p){   //makes the given packet an RTR packet
+    if(p->dataSize !=0){
+        return 1;   //this packet has data written to it, it cant also be an rtr packet 
+    }
+    p->rtr=1;
+    return 0;
+}
 int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
-    
+    if(p->rtr){
+        return -4;  //this is an rtr packet, you cant write data to it!
+    }
     int16_t current_size = p->dataSize;
     int16_t i = 0;
     if (i + size > MAX_SIZE_PACKET_DATA){

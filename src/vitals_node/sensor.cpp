@@ -8,13 +8,14 @@ const int vitalsID=0b0000010;
 const int sendPing=0b0011;
 const int sendPong=0b0100;
 const int transmitData=0b0111;
-PCANListenParamsCollection plpc;
-PScheduler ts;
-
+PCANListenParamsCollection plpc;    //use for adding Can listen parameters (may not be necessary)   
+PScheduler ts;                      //use for scheduling tasks (may not be necessary)
+                                    //^ data collection and vitals compliance tasks are already scheduled.
+                                    //if no special behavior, all you need to fill in the the collectData<NAME>() function(s)
 //name1 globals
 const int name1Id=6;
 int8_t name1dataArray[8];
-int8_t name1VitalsFlags=0;  //0b1=startup, 0b0111 can be for whatver other things we end up wanting idk
+int8_t name1VitalsFlags=0;
 
 //name2 globas
 const int name2Id=7;
@@ -76,28 +77,31 @@ int16_t name1RespondToHeartBeat(CANPacket *){
 }
 
 long name1collectData1(){
-    return 40;
+    return 10;
 }
 long name1collectData2(){
-    long ret=random(33767);
-    ret*= random(2)*2-1;//makes ret negative half of the time 
-    Serial.print("GD1.2: ");
-    Serial.println(ret);
-    return ret;
+    // long ret=random(33767);
+    // ret*= random(2)*2-1;//makes ret negative half of the time 
+    // Serial.print("GD1.2: ");
+    // Serial.println(ret);
+    // return ret;
+    return 20;
 }
 long name1collectData3(){
-    long ret=random(120);
-    ret*= -1;//makes ret negative 
-    Serial.print("GD1.3: ");
-    Serial.println(ret);
-    return ret;
+    // long ret=random(120);
+    // ret*= -1;//makes ret negative 
+    // Serial.print("GD1.3: ");
+    // Serial.println(ret);
+    // return ret;
+    return 30;
 }
 long name1collectData4(){
-    long ret=random(9);
-    ret+=11;
-    Serial.print("GD1.4: ");
-    Serial.println(ret);
-    return ret;
+    // long ret=random(9);
+    // ret+=11;
+    // Serial.print("GD1.4: ");
+    // Serial.println(ret);
+    // return ret;
+    return 5;
 }
 void name1SendData(){
     CANPacket packet;
@@ -109,13 +113,14 @@ void name1SendData(){
 //will be called data after most commonly collected data is collect.
 void name1ProcessData1234(){   //3 options for data size, byte, int (2 bytes), or long (4 bytes). rn, everyhting is signed
     int numData=4;  //the number of dataPresent
-    int bitIndex=numData;
+    int bitIndex=0;
+    memset(name1dataArray,0,8);
     //data1:
     if(true){//insert a given condition for collecting data, could be a timer, may switch each data collection to tasks later on
     long data1=name1collectData1();
-    data1=constrain(data1,19,82);   //constrain to bounds
-    unsigned long udata1=data1-19;  //subtract lower bound
-    int data1Bits=6;    // will perform a logarithm in pyhton script to find this value: ciel(log(b2)(top-bot+1))
+    data1=constrain(data1,-10,117);   //constrain to bounds
+    unsigned long udata1=data1+10;  //subtract lower bound
+    int data1Bits=7;    // will perform a logarithm in pyhton script to find this value: ciel(log(b2)(top-bot+1))
     for(int i=0;i<data1Bits;i++){
         bitWrite(name1dataArray[bitIndex/8],bitIndex%8,bitRead(udata1,i));
         bitIndex++;
@@ -126,9 +131,9 @@ void name1ProcessData1234(){   //3 options for data size, byte, int (2 bytes), o
     //data2:
     if(true){
         long data2=name1collectData2();
-    data2=constrain(data2,-32768,32767);
-    unsigned long udata2=data2+32768;   //will need to make positive if lower bound is negative
-    int data2Bits=16;
+    data2=constrain(data2,-536870912,536870911);
+    unsigned long udata2=data2+536870912;   //will need to make positive if lower bound is negative
+    int data2Bits=30;
     for(int i=0;i<data2Bits;i++){
         bitWrite(name1dataArray[bitIndex/8],bitIndex%8,bitRead(udata2,i));
         bitIndex++;
@@ -139,15 +144,18 @@ void name1ProcessData1234(){   //3 options for data size, byte, int (2 bytes), o
     //data3:
     if(true){
         long data4=name1collectData3();
-    data4=constrain(data4,-100,-1);
-    unsigned long udata4=data4+100;   //will need to make positive if lower bound is negative
-    int data4Bits=7;
+    data4=constrain(data4,-524288,524287);
+    unsigned long udata4=data4+524288;   //will need to make positive if lower bound is negative
+    int data4Bits=20;
     for(int i=0;i<data4Bits;i++){
         bitWrite(name1dataArray[bitIndex/8],bitIndex%8,bitRead(udata4,i));
         bitIndex++;
     }
         bitWrite(name1dataArray[0],2,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
     }
+    name1SendData(0);    //will execute after most commonly run data collection, feel free to move this around to be after most least common data, or whatever
+
+    memset(name1dataArray,0,8);
     //data4:
     if(true){
         long data5=name1collectData4();
@@ -192,39 +200,39 @@ int16_t name2RespondToHeartBeat(CANPacket *){
     return 1;
 }
 long name2collectData1(){
-    return 40;
+    return 50;
 }
-long name2collectData2(){
-    long ret=random(33767);
-    ret*= random(2)*2-1;//makes ret negative half of the time 
-    Serial.print("GD2.2: ");
-    Serial.println(ret);
-    return ret;
-}
-long name2collectData3(){
-    long ret=random(120);
-    ret*= -1;//makes ret negative 
-    Serial.print("GD2.3: ");
-    Serial.println(ret);
-    return ret;
-}
-long name2collectData4(){
-    long ret=random(9);
-    ret+=11;
-    Serial.print("GD2.4: ");
-    Serial.println(ret);
-    return ret;
-}
+// long name2collectData2(){
+//     long ret=random(33767);
+//     ret*= random(2)*2-1;//makes ret negative half of the time 
+//     Serial.print("GD2.2: ");
+//     Serial.println(ret);
+//     return ret;
+// }
+// long name2collectData3(){
+//     long ret=random(120);
+//     ret*= -1;//makes ret negative 
+//     Serial.print("GD2.3: ");
+//     Serial.println(ret);
+//     return ret;
+// }
+// long name2collectData4(){
+//     long ret=random(9);
+//     ret+=11;
+//     Serial.print("GD2.4: ");
+//     Serial.println(ret);
+//     return ret;
+// }
 void name2SendData(){
     CANPacket packet;
     packet.id =combinedID(transmitData,name2Id);    
-    writeData(&packet,&name2dataArray[0],8);
+    writeData(&packet,&name2dataArray[0],1);
     sendPacket(&packet);
 }
 
 void name2ProcessData1234(){
     int numData=4;  //the number of dataPresent
-    int bitIndex=numData;
+    int bitIndex=0;
     //data1:
     if(true){//insert a given condition for collecting data, could be a timer, may switch each data collection to tasks later on
     long data1=name2collectData1();
@@ -236,45 +244,45 @@ void name2ProcessData1234(){
         bitIndex++;
     }
     //indicate we have sent this data
-    bitWrite(name2dataArray[0],0,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
+    //bitWrite(name2dataArray[0],0,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
     }
-    //data2:
-    if(true){
-        long data2=name2collectData2();
-    data2=constrain(data2,-32761,35767);
-    unsigned long udata2=data2+32761;   //will need to make positive if lower bound is negative
-    int data2Bits=17;
-    for(int i=0;i<data2Bits;i++){
-        bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata2,i));
-        bitIndex++;
-    }
-        bitWrite(name2dataArray[0],1,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
-    }
+    // //data2:
+    // if(true){
+    //     long data2=name2collectData2();
+    // data2=constrain(data2,-32761,35767);
+    // unsigned long udata2=data2+32761;   //will need to make positive if lower bound is negative
+    // int data2Bits=17;
+    // for(int i=0;i<data2Bits;i++){
+    //     bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata2,i));
+    //     bitIndex++;
+    // }
+    //     bitWrite(name2dataArray[0],1,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
+    // }
     
-    //data3:
-    if(true){
-        long data4=name2collectData3();
-    data4=constrain(data4,-101,-1);
-    unsigned long udata4=data4+101;   //will need to make positive if lower bound is negative
-    int data4Bits=7;
-    for(int i=0;i<data4Bits;i++){
-        bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata4,i));
-        bitIndex++;
-    }
-        bitWrite(name2dataArray[0],2,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
-    }
-    //data4:
-    if(true){
-        long data5=name2collectData4();
-    data5=constrain(data5,7,21);
-    unsigned long udata5=data5-7;   //will need to make positive if lower bound is negative
-    int data5Bits=4;//must be exact size as needed
-    for(int i=0;i<data5Bits;i++){
-        bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata5,i));
-        bitIndex++;
-    }
-        bitWrite(name2dataArray[0],3,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
-    }
+    // //data3:
+    // if(true){
+    //     long data4=name2collectData3();
+    // data4=constrain(data4,-101,-1);
+    // unsigned long udata4=data4+101;   //will need to make positive if lower bound is negative
+    // int data4Bits=7;
+    // for(int i=0;i<data4Bits;i++){
+    //     bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata4,i));
+    //     bitIndex++;
+    // }
+    //     bitWrite(name2dataArray[0],2,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
+    // }
+    // //data4:
+    // if(true){
+    //     long data5=name2collectData4();
+    // data5=constrain(data5,7,21);
+    // unsigned long udata5=data5-7;   //will need to make positive if lower bound is negative
+    // int data5Bits=4;//must be exact size as needed
+    // for(int i=0;i<data5Bits;i++){
+    //     bitWrite(name2dataArray[bitIndex/8],bitIndex%8,bitRead(udata5,i));
+    //     bitIndex++;
+    // }
+    //     bitWrite(name2dataArray[0],3,1); //can be done in python, checking to make sure no overflow here if decide to have more than 8 data later
+    // }
     name2SendData();
 }
 
@@ -349,7 +357,6 @@ void setup() {
     }
     randomSeed(100);
     // CAN.loopback(); i think this be frickin things up sometime idrk
-
     //name1
     CANListenParam name1babyDuck;
     name1babyDuck.handler=name1RespondToHeartBeat;

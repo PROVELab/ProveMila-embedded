@@ -70,12 +70,15 @@ int64_t getMs(){
     auto value = now_ms.time_since_epoch();
     return int64_t(value.count());
 }
+    int8_t deadData[4]={ (int8_t)0xDE, (int8_t)0xAD, (int8_t)0xFA, (int8_t)0xCE};
 int64_t HBSendTime;
 void sendHeartBeat(){
     printf("sending heartbeat \n");
     CANPacket packet;
     packet.id =combinedID(sendPing,vitalsID);    //
-    writeData(&packet, (int8_t*)1,  1);  //no need to write any data yet
+
+    //    writeData(&packet, (int8_t*)1,  1);  //no need to write any data yet
+    writeData(&packet, deadData,  4);  //no need to write any data yet
     sendPacket(&packet);    
     //auto HBSendTime= std::chrono::time_point_cast<std::chrono::milliseconds>(Kernel::Clock::now()).count();
     HBSendTime=getMs();

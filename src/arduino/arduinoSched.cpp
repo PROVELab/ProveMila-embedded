@@ -33,13 +33,13 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
 
     int8_t packetsize;
     CANListenParam clp;
-    int16_t id;
+    int32_t id;
     //Serial.print("packetSize: ");
     //Serial.println(CAN.parsePacket());
     if ((packetsize = CAN.parsePacket())) {
-        id = CAN.packetId();
-        recv_pack->id = id;
+        recv_pack->id = CAN.packetId();
         recv_pack->dataSize = packetsize;
+        recv_pack->rtr= CAN.packetRtr();
         // Read and temporarily store all the packet data into PCAN
         // packet (on stack memory)
         for (int8_t j = 0; j < recv_pack->dataSize; j++) {
@@ -49,7 +49,7 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
         // match, use default handler
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
-            if (matcher[clp.mt](id, clp.listen_id)) {
+            if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
                 return clp.handler(recv_pack);
             }
         }
@@ -58,11 +58,15 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(CANPacket *p) {
+int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
-    CAN.beginPacket(p->id);
+    if(p->id>0b11111111111){
+        CAN.beginExtendedPacket(p->id, p->dataSize, p->rtr);
+    }else{
+        CAN.beginPacket(p->id, p->dataSize, p->rtr);
+    }
     for (int8_t i = 0; i < p->dataSize; i++) {
         CAN.write(p->data[i]);
     }
@@ -117,23 +121,15 @@ void PScheduler::mainloop(PCANListenParamsCollection* listens) {
     
     PCANListenParamsCollection* inp=(PCANListenParamsCollection*) listens;
     Scheduler ts;
-    
     for (int16_t i = 0; i < this->ctr; i++) {
         ts.addTask(dTasks[i]);
     }
     ts.enableAll();
     //while (1);
-    
+    CANPacket recv_pack;
     while(1){
         ts.execute();
-        waitPackets(NULL,inp);
-        //Serial.println("stuck");
-        /*
-        if(waitPackets(NULL,inp)!=-2){
-            //Serial.println("heard something");
-        }*/
-        
-        //Serial.println("sage");
+        waitPackets(recv_pack,inp);
     }
 
 }

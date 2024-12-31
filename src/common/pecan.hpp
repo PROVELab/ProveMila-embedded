@@ -23,14 +23,15 @@ enum MATCH_TYPE {
 
 // A CANPacket: takes in 11-bit id, 8 bytes of data
 struct CANPacket {
-    int16_t id;
+    int32_t id;
     int8_t data[MAX_SIZE_PACKET_DATA] = {0};
     int8_t dataSize = 0;
+    int8_t rtr=0;
 };
 
 // A single CANListenParam
 struct CANListenParam {
-    int16_t listen_id;
+    int32_t listen_id;
     int16_t (*handler)(CANPacket*);
     MATCH_TYPE mt;
 };
@@ -77,15 +78,17 @@ void setSensorID(CANPacket* p, uint8_t sensorId);
 //used to run a task one Time
 
 // Returns true if id == mask
-bool exact(int id, int mask);
+bool exact(int32_t id, int mask);
 // Returns true if id matches the bits of mask
 bool similar(int id, int mask);
 // Returns true if the functionCode of id ==mask
 bool exactFunction(int id, int mask);
 
-static bool (*matcher[3])(int, int) = {exact, similar, exactFunction};
+static bool (*matcher[3])(int32_t, int32_t) = {exact, similar, exactFunction};
 
 // Write size bytes to the packet, accounting
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
+
+int16_t setRTR(struct CANPacket * p);
 #endif
