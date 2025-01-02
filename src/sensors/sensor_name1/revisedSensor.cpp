@@ -1,55 +1,35 @@
-#include "../common/pecan.hpp"
-#include "Arduino.h"
+#include <Arduino.h>
 #include "CAN.h"
-#include "../arduino/arduinoSched.hpp"
-#include "sensorHelper.hpp"
+#include "../../pecan/pecan.h"                  //used for CAN
+#include "../../arduinoSched/arduinoSched.hpp"  //used for scheduling
+#include "../common/sensorHelper.hpp"           //used for compliance with vitals and sending data
+#include "myDefines.hpp"          //containts #define statements specific to this node like myId.
+
 
 PCANListenParamsCollection plpc;    //use for adding Can listen parameters (may not be necessary)   
 PScheduler ts;                      //use for scheduling tasks (may not be necessary)
                                     //^ data collection and vitals compliance tasks are already scheduled.
                                     //if no special behavior, all you need to fill in the the collectData<NAME>() function(s)
-
-
-//universal globals
-const int vitalsID=0b0000010;
-const int sendPing=0b0011;
-const int sendPong=0b0100;
-const int transmitData=0b0111;
-
-//node globals
-const int name1Id=6;
-int8_t name1dataArray[8];
-int8_t name1VitalsFlags=0;
-
-
-
-int16_t name1RespondToHeartBeat(CANPacket *recvPack){
-        CANPacket responsePacket;
-        packet.id =combinedID(sendPong,name1Id);   
-        setRTR(&packet)
-        name1VitalsFlags=0;
-        long milliAmps=1111;
-        long milliVolts=1111;
-        int8_t milliVoltsArr[3]={0};
-        int8_t milliAmpsArr[3]={0};
-        
-        milliAmps=constrain(milliAmps,-8388606L,8388606L);
-        milliVolts=constrain(milliVolts,-8388606L,8388606L);
-        
-        memcpy(milliVoltsArr,&milliVolts,3);
-        memcpy(milliAmpsArr,&milliAmps,3);
-        if(milliAmps<0){    //indicate if number is negative
-            bitWrite(milliAmpsArr[2],7,1);
-        }
-        if(milliVolts<0){
-            bitWrite(milliVoltsArr[2],7,1);
-        }
-        writeData(&packet,milliVoltsArr,3);
-        writeData(&packet,milliAmpsArr,3);
-        Serial.println("N1RHB");
-        sendPacket(&packet);
-    return 1;
-}
+    int32_t d1=1;
+    int32_t collectData1(){
+        Serial.println("collecting 1");
+        return d1;
+    }
+    int32_t d2=0;
+    int32_t collectData2(){
+        Serial.println("collecting 2");
+        return d2++;
+    }
+    int32_t d3=0;
+    int32_t collectData3(){
+        Serial.println("collecting 3");
+        return d3--;
+    }
+    int32_t d4=5;
+    int32_t collectData4(){
+        Serial.println("collecting 4");
+        return d4;
+    }
 
 
 void setup() {
@@ -59,20 +39,11 @@ void setup() {
         Serial.println("Starting CAN failed!");
         while (1);
     }
-    randomSeed(100);
     // CAN.loopback(); i think this be frickin things up sometime idrk
 
     vitalsInit(&plpc, &ts);
-    //name1
-    CANListenParam name1babyDuck;
-    name1babyDuck.handler=respondToHB;
-    name1babyDuck.listen_id =combinedID(sendPing,vitalsID);
-    name1babyDuck.mt=MATCH_EXACT;
-    
-    if (addParam(&plpc,name1babyDuck)!= SUCCESS){    //plpc declared above setup()
-        Serial.println("plpc no room");
-        while(1);
-    }
+
+    /*
     PTask name1Data1234;  
     name1Data1234.function=name1ProcessData1234;
     name1Data1234.interval=10000;
@@ -108,7 +79,7 @@ void setup() {
     PTask name3Data1;  
     name3Data1.function=name3ProcessData1;
     name3Data1.interval=10015;
-    ts.scheduleTask(&name3Data1);
+    ts.scheduleTask(&name3Data1);*/
 }
 
 void loop() {

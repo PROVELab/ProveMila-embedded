@@ -1,6 +1,6 @@
 #ifndef ARDUINO_SPEC_H
 #define ARDUINO_SPEC_H
-#include "../common/pecan.hpp"
+#include "../pecan/pecan.h"
 
 
 struct PTask {
