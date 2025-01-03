@@ -28,7 +28,10 @@
         "string": "cpp",
         "string_view": "cpp",
         "span": "cpp",
-        "esp_system.h": "c"
+        "esp_system.h": "c",
+        "timers.h": "c",
+        "pecan.h": "c",
+        "vitalsstaticdec.h": "c"
     },
     
     "idf.flashType": "UART"

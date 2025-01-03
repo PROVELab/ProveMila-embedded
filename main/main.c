@@ -6,11 +6,13 @@
 #include "driver/twai.h"
 #include "freertos/semphr.h"
 #include <string.h>
+#include "esp_timer.h"
 
 #include "mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
-#include "pecan.h"    //helper code for CAN stuff
+#include "pecan/pecan.h"    //helper code for CAN stuff
 #include "programConstants.h"
-#include "vitalsHelper.h"
+#include "vitalsHelper/vitalsHelper.h"
+#include "vitalsHelper/vitalsStaticDec.h"
 
 //tracing functionality to give warning for free or alloc.
 #include "esp_heap_caps.h"
@@ -44,17 +46,7 @@ StackType_t checkStatus_Stack[ STACK_SIZE ]; //buffer that the task will use as 
 StaticTask_t alert_Buffer;
 StackType_t alert_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
 
-//stuff for Vitals future use, currently only used to track recent information about a node
-struct vitalsData{        
-    int16_t flags;      //different status of info currently only init indicator, and HB indicator
-    int16_t dataCollectionTracker; //keeps a flag for each piece of data a node is supposed to send, checking that data is being sent (for the most part) as often as it should.
-    int16_t milliSeconds;
-    int8_t data[8][10];   //sending what data actually holds //storing node data here currently not necessary for vitals, but likely will be in future depending on what alogirithm is used to decide node reliability (if it needs to be able to see previous data?) could make this 2d to store data further back asw
-    int8_t dataLocation;    //stores most recent data location.
-};
 //Making nodes of vitals data struct
-struct vitalsData nodes[5]={{0}};
-
 void startBus(){  //should only be called on start up and AFTER Bus has finished recovery
     int err=twai_start();
     if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
@@ -159,6 +151,29 @@ void twai_monitor_alerts(void * pvParameters) {
         vTaskDelay(500/portTICK_PERIOD_MS);
     }
 }
+    void printAllData(){    //not for final use. for testing only
+        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+
+            for(int i=0;i<numberOfNodes;i++){   //each node
+                printf("printData: node (vitalsId): %d, numFrams: %d\n",i, (nodes[i]).numFrames);
+                for (int8_t j=0;j<nodes[i].numFrames;j++){  //each frame
+                    printf("frameInfo: id: %d  numData: %d\n",j, ((nodes[i]).CANFrames[j]).numData);
+                    if((nodes[i]).CANFrames ==NULL){
+                        printf("error printg, framesptr not initialized, terminating\n");
+                        return;
+                    }
+                    for(int8_t k=0;k<(((nodes[i]).CANFrames)[j]).numData;k++){ //each data
+                        printf("node: %d. frame: %d. datanum: %d data: ",i,j,k);
+                        for(int l=0;l<pointsPerData;l++){
+                            printf("%ld ",nodes[i].CANFrames[j].data[k][l]);
+                        }
+                        printf("\n");
+                    }
+                }
+            }
+            xSemaphoreGive(*printfMutex); // Release the mutex.
+        }else { printf("cant print, in deadlock!\n"); }
+    }
     //
     void sendHB( void * pvParameters )    {
         //configASSERT( ( uint32_t ) pvParameters == 1UL );   //we can pass parameters to this task! although, this isn't really needed for this code, and likely wont ever be used since all tasks are static
@@ -172,7 +187,7 @@ void twai_monitor_alerts(void * pvParameters) {
             writeData(&message,&DE,1);
             writeData(&message,&AD,1);
             writeData(&message,FACE,2);
-            message.id=combinedID(HBPing,vitalsID);
+            message.id=combinedID(HBPing,vitalsID); //HBPing, vitalsID
             if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
                     printf("currSize: %d",message.dataSize);
                     xSemaphoreGive(*printfMutex); // Release the mutex.
@@ -186,15 +201,50 @@ void twai_monitor_alerts(void * pvParameters) {
             }else{
                 mutexPrint("sent HB\n!");
             }
-
+            printAllData();
             vTaskDelay(1000/portTICK_PERIOD_MS);
         }
     }
 
-    int16_t moniterData(struct CANPacket* message){ //example handler for a CANListenParam, stores the most recent data sent by a node
-        uint32_t index = IDTovitalsIndex(message->id);
-        struct vitalsData node=nodes[index];
-        memcpy((node.data)[0],message->data,8);
+    int16_t moniterData(struct CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
+        mutexPrint("recievingData\n");
+        int16_t nodeId=IDTovitalsIndex(message->id);
+        if(nodeId>numberOfNodes){
+            mutexPrint("recieved data from invalid nodeId, ignoring\n");
+            return 1;
+        }
+        struct vitalsNode* node = &(nodes[nodeId]); //the node which sent the message
+
+        uint32_t CanFrameNumber=getDataFrameId(message->id); //the Can frame index is stored in extension
+        if(CanFrameNumber>node->numFrames){
+            mutexPrint("invalid dataFrame. Ignoring data\n");
+            node->flags |= invalidDataFrameFlag;
+            return 1;
+        }
+        //parse each data from frame
+        struct CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
+        int8_t bitIndex=0;    //which bit of CANFrame we are currently reading from (as we iterate through the data)
+        for(int i=0;i<(*frame).numData;i++){
+            struct dataPoint* dataInfo=& (((*frame).dataInfo)[i]);
+            uint32_t temp=0;
+            copyDataToValue(&temp,message->data,bitIndex,dataInfo->bitLength);
+            int32_t recvdata = ((int32_t)temp) + dataInfo->min;
+            frame->data[i][frame->dataLocation]= recvdata;
+            //increment bitIndex
+            bitIndex+=dataInfo->bitLength;
+        }
+        //increment dataLocation, mark that we have recorded the data:
+        frame->dataLocation++;
+        if(frame->dataLocation==10){frame->dataLocation=0;}
+        frame->consecutiveMisses=0;
+        frame->dataExistence=1;
+        return 0;
+    }
+    int16_t recieveHeartbeat(struct CANPacket* message){    //mark the HB for given node as recieved, recording time to respond
+        mutexPrint("recieved Pong\n");
+        int16_t nodeId=IDTovitalsIndex(message->id);
+        nodes[nodeId].flags |= HBFlag;
+        nodes[nodeId].milliSeconds =esp_timer_get_time();
         return 0;
     }
     void recieveMSG(){   //prints information about and contents of every recieved message
@@ -204,9 +254,18 @@ void twai_monitor_alerts(void * pvParameters) {
 
         //declare parameters here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to 'mt', 'handler' is called.
         struct CANListenParam processBeat;
+        processBeat.handler=recieveHeartbeat;
+        processBeat.listen_id =combinedID(sendPong,vitalsID);   //setting vitals ID doesnt matter, just checking function
+        processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
+        if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
+            mutexPrint("plpc no room");
+            while(1);
+        }
+
+        struct CANListenParam processData;
         processBeat.handler=moniterData;
-        processBeat.listen_id =combinedID(sendPong,vitalsID);
-        processBeat.mt=MATCH_EXACT; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
+        processBeat.listen_id =combinedID(transmitDataCode,vitalsID);   //setting vitals ID doesnt matter, just checking function
+        processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
         if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
             mutexPrint("plpc no room");
             while(1);

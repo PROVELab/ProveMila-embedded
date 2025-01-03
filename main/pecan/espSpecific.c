@@ -1,4 +1,5 @@
 #include <stdint.h>
+
 #include "mutex_declarations.h"
 #include "freertos/FreeRTOS.h"  
 #include "freertos/task.h"
@@ -7,60 +8,6 @@
 #include "driver/twai.h"
 #include <string.h> // memcpy
 #include "pecan.h"
-
-uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
-    return (fn_id << 7) + node_id;
-}
-
-void setSensorID(struct CANPacket * p, uint8_t sensorId){
-    p->data[0] = sensorId;
-}
-
-int16_t addParam(struct PCANListenParamsCollection * plpc, struct CANListenParam clp){
-    if (plpc->size + 1 > MAX_PCAN_PARAMS){
-        return NOSPACE;
-    } else {
-        plpc->arr[plpc->size] = clp;
-        plpc->size++;
-        return SUCCESS;
-    }
-}
-
-int16_t writeData(struct CANPacket * p, int8_t * dataPoint, int16_t size){
-    
-    int16_t current_size = p->dataSize;
-    int16_t i = 0;
-    if (i + size > MAX_SIZE_PACKET_DATA){
-        return NOSPACE;
-    }
-    for (; current_size + i < current_size + size; i++){
-        // DataSize can be interpreted as both
-        // Size, and Index
-        // Casting to 16-bit because compiler not happy
-        p->data[(int16_t)p->dataSize] = dataPoint[i];
-        p->dataSize++;
-
-        // This check should've been working above
-        // But just in case, we'll do it in the loop as well
-        if (i > MAX_SIZE_PACKET_DATA){
-            return NOSPACE;
-        }
-    }
-    return SUCCESS;
-}
-
-bool exact(uint32_t id, uint32_t mask) {  // entire id must match mask
-    return id == mask;
-}
-//note: ID sent over CAN is 11 bit long, with first 7 bitsbeing the identifier of sending node, and last 4 bits being the function code
-bool matchID(uint32_t id, uint32_t mask){ //check if the 7 bits of node ID must match mask
-    return ( (id & 0b1111111) & mask) == id;
-}
-
-bool matchFunction(uint32_t id,uint32_t mask){    //mask should be 4 bit function code
-    return ((id>>7)&0b1111) == ((mask>>7)&0b1111);//only compares the functionCodes
-}
-
 
 //Simplified Can functionality Functions: feel free to never use these, and just use them as sample code for ESP-CAN library:
 int16_t defaultPacketRecv(struct CANPacket* p){
@@ -75,7 +22,7 @@ int16_t defaultPacketRecv(struct CANPacket* p){
     return 0;
 }
 
-
+bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
 int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollection *plpc) {
     //Serial.println(plpc->arr[0].listen_id);
@@ -86,15 +33,23 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
     struct CANListenParam clp;
     twai_message_t twaiMSG;
     if (twai_receive(&twaiMSG, pdMS_TO_TICKS(0)) == ESP_OK) {   //check for message without blocking (0 ms blocking)
-        if (twaiMSG.extd) {//matcher functions only set to support 11 bit IDs
-            return 1;
-        } 
-
+        
         //construct CANPacket
-        recv_pack->id =twaiMSG.identifier;
-        recv_pack->dataSize=twaiMSG.data_length_code;
-        memcpy(recv_pack->data, twaiMSG.data,recv_pack->dataSize);
-        //
+        if (twaiMSG.extd) {
+            recv_pack->id =twaiMSG.identifier & 0xFFFFFFF;   //view first 28 bits of id
+        } else{
+            recv_pack->id =twaiMSG.identifier & 0b1111111111;    //view first 11 bits of id
+        }
+        memset(recv_pack->data, 0, 8);  //re-initialize data to all 0.
+        if(twaiMSG.rtr){    //for rtr packets, no need to look at data or data-size
+            recv_pack->rtr=1;
+            recv_pack->dataSize=0;
+            memset(recv_pack->data, 0,8);
+        }else{  //not an rtr packet, copy the data_length and size
+            recv_pack->rtr=0;
+            recv_pack->dataSize=twaiMSG.data_length_code;
+            memcpy(recv_pack->data, twaiMSG.data,recv_pack->dataSize);
+        }
 
         // Then match the packet id with our params; if none
         // match, use default handler
@@ -114,8 +69,9 @@ int16_t sendPacket(struct CANPacket *p) {
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
+    //(p->id)>0b11111111111
  twai_message_t message = {  //This is the struct used to create and send a CAN message. Generally speaking, only the last 3 fields should ever change.
-        .extd= 0,              // Standard vs extended format
+        .extd= (p->id)>0b11111111111,              // Standard vs extended format. makes message extended if
         .rtr = 0,               // Data vs RTR frame.  We should avoid sending RTR frames since the other CAN libraries don't explicitly support it (just send a data message with no data instead)
         .ss = 0,                // Whether the message is single shot (i.e., does not repeat on error)
         .self = 0,              // Whether the message is a self reception request (loopback)
@@ -126,4 +82,3 @@ int16_t sendPacket(struct CANPacket *p) {
     memcpy(message.data, p->data, p->dataSize);
     return twai_transmit(&message, pdMS_TO_TICKS(10000));
 }
-
