@@ -34,7 +34,7 @@ void sendFrame(int8_t frameNum){
     int8_t frameNumData=myframes[frameNum].frameNumData;
     int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
     int8_t currBit=0;
-    int8_t tempData[8]={0};
+    uint8_t tempData[8]={0};
     for(int i=0;i<frameNumData;i++){//iterate over each data. Colect data from dataCollectors, and store compressed version into tempdata.
         int32_t data= mydataCollectors[collectorFuncIndex + i]();  //collects the data point
         dataPoint info=myframes[frameNum].dataInfo[i];

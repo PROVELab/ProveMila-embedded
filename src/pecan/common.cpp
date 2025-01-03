@@ -70,7 +70,7 @@ bool exact(uint32_t id, uint32_t mask) {  // does not check extended bits of Id
 uint32_t formatValue(int32_t value, int32_t min, int32_t max){
     return (uint32_t) (squeeze(value,min, max) - min);
 }
-int16_t copyValueToData(uint32_t* value, int8_t* target, uint8_t startBit, int8_t numBits) { //copies the first numBits of value into target starting at startBit of target
+int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit, int8_t numBits) { //copies the first numBits of value into target starting at startBit of target
     if (numBits <= 0 || startBit < 0 || startBit + numBits > 64) return 1;  // this doesnt work in this case
 
     // Treat target and source as 64-bit integers
@@ -91,6 +91,7 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t
     uint64_t extractedBits = (*target64 & mask) >> startBit;  // Extract and shift the relevant bits
 
     *target = (int32_t)extractedBits;  // Update the value with the extracted bits
+    return 0;
 }
 
 //note: ID sent over CAN is 11 bit long, with first 7 bitsbeing the identifier of sending node, and last 4 bits being the function code
