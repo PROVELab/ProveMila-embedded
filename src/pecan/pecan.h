@@ -27,15 +27,16 @@ enum MATCH_TYPE {
 };
 
 // A CANPacket: takes in 11-bit id, 8 bytes of data
-struct CANPacket {
-    uint32_t id;
+struct CANPacket {  //make sure to initialize using {{0}}
     uint8_t data[MAX_SIZE_PACKET_DATA];
+    uint32_t id;
     uint8_t dataSize;
     int8_t rtr;
+    int8_t extendedID;  //whether or not the packet is extended. 
 };
 // A single CANListenParam
 struct CANListenParam {
-    int16_t listen_id;
+    uint32_t listen_id;
     int16_t (*handler)(struct CANPacket*);
     enum MATCH_TYPE mt;
 };
@@ -59,6 +60,7 @@ int16_t addParam(struct PCANListenParamsCollection* plpc, struct CANListenParam 
 void setSensorID(struct CANPacket* p, uint8_t sensorId);
 
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id);
+uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id, uint32_t extension);//also combines an extended ID
 
 inline uint32_t getNodeId(uint32_t id){ //take the first seven bits of Can Id to isolate nodeId
     return id & 0b1111111;
@@ -79,15 +81,28 @@ bool exact(uint32_t id, uint32_t mask);
 bool matchID(uint32_t id, uint32_t mask);
 // Returns true if the functionCode of id ==mask
 bool matchFunction(uint32_t id, uint32_t mask);
+//bool (*matcher[3])(uint32_t, uint32_t);
+//static bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};
 
 // Write size bytes to the packet, accounting
 // For Max Length
 int16_t writeData(struct CANPacket* p, int8_t* dataPoint, int16_t size);
 
+
+//void bitcpy(uint32_t* src, int8_t)
 //makes a packet an RTR packet
 int16_t setRTR(struct CANPacket * p);
+//makes a packet an extended packet
+int16_t setExtended(struct CANPacket * p);
 
+//the below functions are used in base implementation of vitals and sensors, and may be needed elsewhere:
+int32_t squeeze(int32_t value, int32_t min, int32_t max);   //identical to arduino constrain macro, other mcs dont have it :(
 
+uint32_t formatValue(int32_t value, int32_t min, int32_t max);  //returns value in sensors standard format for CAN data. (forces data in bounds, and makes it signed)
+
+int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit, int8_t numBits); //copies the first numBits of value into target, starting from target's startBit'th bit. target must be 8 bytes.
+
+int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t numBits);  //inverse of above function
 //
 //platform specific:
 //
@@ -111,5 +126,7 @@ int16_t waitPackets(struct CANPacket* recv_pack,struct PCANListenParamsCollectio
 
 /// Sends a CANPacket p
 int16_t sendPacket(struct CANPacket* p);
+
+
 
 #endif

@@ -17,8 +17,8 @@
 int32_t (*mydataCollectors[numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
 
 int16_t respondToHB(CANPacket *recvPack){
-        CANPacket responsePacket;
-        responsePacket.id =combinedID(sendPong,myId);   
+        CANPacket responsePacket={{0}};
+        responsePacket.id =combinedID(sendPong,myId);       //sendPong, myId
         setRTR(&responsePacket);
         Serial.println("N1RHB");
         if(sendPacket(&responsePacket)){
@@ -32,12 +32,26 @@ void sendFrame(int8_t frameNum){
     }
     Serial.print("sending frame NO.: "); Serial.println(frameNum);
     int8_t frameNumData=myframes[frameNum].frameNumData;
-     int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
-
-    for(int i=0;i<frameNumData;i++){//iterate over each data
-        int32_t dataPoint= mydataCollectors[collectorFuncIndex + i]();
-        Serial.print("dataPoint"); Serial.print(i); Serial.print(": "); Serial.println(dataPoint);
+    int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
+    int8_t currBit=0;
+    int8_t tempData[8]={0};
+    for(int i=0;i<frameNumData;i++){//iterate over each data. Colect data from dataCollectors, and store compressed version into tempdata.
+        int32_t data= mydataCollectors[collectorFuncIndex + i]();  //collects the data point
+        dataPoint info=myframes[frameNum].dataInfo[i];
+        uint32_t unsignedConstrained= formatValue(data,info.min, info.max);   //constraining and subtracting min forces this value to be positive
+        copyValueToData(&unsignedConstrained, tempData,currBit,info.bitLength);
+        currBit+=info.bitLength;
     }
+
+    //send the packet
+    CANPacket dataPacket={{0}}; 
+    dataPacket.extendedID=1;
+    dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
+    writeData(&dataPacket,tempData,(7+currBit)/8);
+    if(sendPacket(&dataPacket)){
+        Serial.println("error sending\n");
+    }
+    //
 }
 
 PTask sendFrameTasks [numFrames];
@@ -75,6 +89,8 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts){
     for(int i=0;i<numFrames;i++){
         sendFrameTasks[i].function=sendFrameHandlers[i];
         sendFrameTasks[i].interval=myframes[i].frequency;
+        sendFrameTasks[i].delay=0;
+        Serial.println("scheduling");
         ts->scheduleTask(&(sendFrameTasks[i]));
     }
     //HB response

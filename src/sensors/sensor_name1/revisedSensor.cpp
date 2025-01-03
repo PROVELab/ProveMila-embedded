@@ -6,7 +6,7 @@
 #include "myDefines.hpp"          //containts #define statements specific to this node like myId.
 
 
-PCANListenParamsCollection plpc;    //use for adding Can listen parameters (may not be necessary)   
+PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };    //use for adding Can listen parameters (may not be necessary)   
 PScheduler ts;                      //use for scheduling tasks (may not be necessary)
                                     //^ data collection and vitals compliance tasks are already scheduled.
                                     //if no special behavior, all you need to fill in the the collectData<NAME>() function(s)
@@ -83,9 +83,9 @@ void setup() {
 }
 
 void loop() {
-    delay(1000);
-    Serial.println("loop start");
-    ts.mainloop((PCANListenParamsCollection*) &plpc);
+    //delay(1000);
+    Serial.println("op start");
+    ts.mainloop( &plpc);
     //everything should be written as a task in the setup part. the ps.mainloop call never ends
     //u have up to 85.5% Ram that can be used, possibly less depending on future stuff added. for an idea of how class to current RAM u are at. just a hello World is 67%, so 76% means using about half of available space
 }

@@ -12,7 +12,7 @@ int16_t defaultPacketRecv(struct CANPacket *packet) {  //this is only to be used
     Serial.println((char*) packet->data);
     return 1;
 }
-static bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};    //used for waitPackets
+bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
 int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollection *plpc) {
     //Serial.println(plpc->arr[0].listen_id);
@@ -25,10 +25,10 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
 
     int8_t packetsize;
     struct CANListenParam clp;
-    int32_t id;
-    //Serial.print("packetSize: ");
     //Serial.println(CAN.parsePacket());
     if ((packetsize = CAN.parsePacket())) {
+        Serial.println("recieving Packet: ");
+        delay(100);
         recv_pack->id = CAN.packetId();
         recv_pack->dataSize = packetsize;
         recv_pack->rtr= CAN.packetRtr();
@@ -39,6 +39,8 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
         }
         // Then match the packet id with our params; if none
         // match, use default handler
+        Serial.println("trying match");
+        delay(100);
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
             if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
