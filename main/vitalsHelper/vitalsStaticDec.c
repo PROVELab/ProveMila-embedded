@@ -19,9 +19,9 @@ int32_t n0f0Data[3][10]={R10(1),R10(2), R10(3)};
 int32_t n0f1Data[1][10]={R10(4)};
 
 
-struct CANFrame n0f0[2]={
-    {3,n0f0DPs, 0, n0f0Data,0,0}, 
-    {1, n0f1DPs, 0, n0f1Data, 0, 0}
+struct CANFrame n0[2]={
+    {0,0, 3, 0,n0f0DPs, 0, n0f0Data,1000,0}, //1000 ms response time
+    {0,1, 1, 0, n0f1DPs, 0, n0f1Data, 1000, 0}
 };
 
 //node 1: name
@@ -30,13 +30,13 @@ struct dataPoint n1f0DPs [1]={
 }; 
 int32_t n1f0Data[1][10]={R10(5)};
 
-struct CANFrame n1f1[1]={
-    {1,n1f0DPs, 0, n1f0Data,0,0}, 
+struct CANFrame n1[1]={
+    {1, 2, 1, 0,n1f0DPs, 0, n1f0Data,1000,0}, 
 };
 //
 
 // struct vitalsData *nodes;
 struct vitalsNode nodes [2]={
-{0,0,2, n0f0},
-{0,0,1,n1f1}
+{0,0,2, n0},
+{0,0,1,n1}
 };

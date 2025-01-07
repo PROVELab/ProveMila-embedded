@@ -4,6 +4,9 @@
 #define HBFlag 0b1
 #define InitFlag 0b01
 #define invalidDataFrameFlag 0b001
+#define dataResetTimeout 0b1  //unable to restart timer for this data
+#define dataStartTimeout 0b01 //unable to start timer for this data. Could only become true during start up. if this is true, we need to fix/reupload something.
+#define totalNumFrames 3
 
 
 //#define numExcludedIDs 1    //if =0, below line ommitted
