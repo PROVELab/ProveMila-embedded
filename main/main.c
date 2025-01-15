@@ -154,62 +154,38 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         vTaskDelay(500/portTICK_PERIOD_MS);
     }
 }
-    void printAllData(){    //not for final use. for testing only
-        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
 
-            for(int i=0;i<numberOfNodes;i++){   //each node
-                printf("printData: node (vitalsId): %d, numFrams: %d\n",i, (nodes[i]).numFrames);
-                for (int8_t j=0;j<nodes[i].numFrames;j++){  //each frame
-                    printf("frameInfo: id: %d  numData: %d\n",j, ((nodes[i]).CANFrames[j]).numData);
-                    if((nodes[i]).CANFrames ==NULL){
-                        printf("error printg, framesptr not initialized, terminating\n");
-                        return;
-                    }
-                    for(int8_t k=0;k<(((nodes[i]).CANFrames)[j]).numData;k++){ //each data
-                        printf("node: %d. frame: %d. datanum: %d data: ",i,j,k);
-                        for(int l=0;l<pointsPerData;l++){
-                            printf("%ld ",nodes[i].CANFrames[j].data[k][l]);
-                        }
-                        printf("\n");
-                    }
-                }
-            }
-            xSemaphoreGive(*printfMutex); // Release the mutex.
-        }else { printf("cant print, in deadlock!\n"); }
-    }
-    //
-    void checkHB(void * pvParameters){
-        for(;;){
-            vTaskDelay(250/portTICK_PERIOD_MS); //give nodes 250ms to respond
-            mutexPrint("\n\nchecking HB\n\n\n");
 
-            vTaskSuspend(NULL);
-        }
 
-    }
-    void sendHB( void * pvParameters )    {
-            //creates the task that process HB responses 
-            TaskHandle_t processHBResp = xTaskCreateStaticPinnedToCore(  //checksHB responses
-                    checkHB,       /* Function that implements the task. */
-                    "checkHeartBeatResponses",          /* Text name for the task. */
-                    STACK_SIZE,      /* Number of indexes in the xStack array. */
-                    ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-                    tskIDLE_PRIORITY,/* Priority at which the task is created. */
-                    checkHB_Stack,          /* Array to use as the task's stack. */
-                    &checkHB_Buffer,   /* Variable to hold the task's data structure. */
-                    tskNO_AFFINITY);  //assigns printHello to core 0
+
+    void recieveMSG(){   //prints information about and contents of every recieved message
+        struct CANPacket message; //will store any recieved message
+        //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
+        struct PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
         
+        for(;;){
+            waitPackets(&message, &plpc);
+            taskYIELD();    //task runs constantly since no delay, but on lowest priority, so effectively runs in the background
+        }
+    }
+
+    void sendMCUMSG( void * pvParameters )    {
+
         for( ;; ) {
             //sampple code that writes DEADFACE as data for vital's HB
             struct CANPacket message={{0}};
-            int8_t DE=0xDE;
-            int8_t AD=0xAD;
-            int8_t FACE[2]={0xFA,0xCE};
+            int8_t Command=0x40;
+            int8_t Obj_one=0x18;
+            int8_t Obj_two=0x10;
+            int8_t sub_index=0x01;
+            int8_t zero[4]={0};
+            writeData(&message,&Command,1);
+            writeData(&message,&Obj_one,1);
+            writeData(&message,&Obj_two,1);
+            writeData(&message,&sub_index,1);
+            writeData(&message,zero,4);
 
-            writeData(&message,&DE,1);
-            writeData(&message,&AD,1);
-            writeData(&message,FACE,2);
-            message.id=combinedID(HBPing,vitalsID); //HBPing, vitalsID
+            message.id=0x600+1; //HBPing, vitalsID
             if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
                     xSemaphoreGive(*printfMutex); // Release the mutex.
                 }else { printf("cant print, in deadlock!\n"); }
@@ -222,139 +198,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             }else{
                 mutexPrint("\n\nsent HB\n\n!");
             }
-            printAllData();
-            vTaskResume(processHBResp); //run task to process HB responses
-            vTaskDelay(1000/portTICK_PERIOD_MS);
-        }
-    }
-    
-    void vTimerCallback(TimerHandle_t xTimer){   //called when data is not correctly recieved. Triggers extrapolation, and extrapolation warning, sent directly to telem
-        struct CANFrame* missingFrame = ( struct CANFrame* ) pvTimerGetTimerID( xTimer );
-        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-            printf("missing Data frame number: %d from node %d. \n", missingFrame->frameID, missingFrame->nodeID);
-            xSemaphoreGive(*printfMutex); // Release the mutex.
-        }else { printf("cant print, in deadlock!\n"); }
-    }
-    int16_t initializeTimers(){ //initializes timeOuts for Data collection, as soon as this runs, we need data from every node to be sending their data to prevent them getting flagged, or Bus off if critical
-        int32_t numInits=0;
-        mutexPrint("initializing Timers\n");
-        for(int i=0;i<numberOfNodes;i++){
-            for(int j=0;j<nodes[i].numFrames;j++){
-                missingDataTimers[numInits]= xTimerCreateStatic
-                  ( /* Just a text name, not used by the RTOS kernel. */
-                    "Timer",
-                    /* The timer period in ticks, must be greater than 0. */
-                    pdMS_TO_TICKS(nodes[i].CANFrames[j].dataTimeout),
-                    /* The timers will auto-reload themselves when they expire. */
-                    pdTRUE,
-                    /* The ID is used to store a count of the number of times
-                       the timer has expired, which is initialised to 0. */
-                    ( void * ) &(nodes[i].CANFrames[j]),    //"ID" for this function, which we use to store the corresponding Can Frame for this timer
-                    /* Each timer calls the same callback when it expires. */
-                    vTimerCallback,
-                    /* Pass in the address of a StaticTimer_t variable, which
-                       will hold the data associated with the timer being
-                       created. */
-                    &( xTimerBuffers[numInits] )
-                  );
-                  if(missingDataTimers[numInits]==NULL){
-                    mutexPrint("Error creating timer\n");
-                  }
-                numInits++;
-            }
-        }
-        //start the timers:
-        for(int i=0;i<numInits;i++){
-            if(xTimerStart(missingDataTimers[i],pdMS_TO_TICKS(1000))==pdFAIL){    //no time crunch yet, but if this isnt starting we want to be notified, instead of it to running forever
-            mutexPrint("warning, unable to start a timer");
-            while(1);
-            } 
-        }
-        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-        printf("numer of inits: %ld\n",numInits); // Call the non-reentrant function safely.
-        xSemaphoreGive(*printfMutex); // Release the mutex.
-    }else { printf("cant print, in deadlock!\n"); }
-        return 0;
-    }
-    int16_t moniterData(struct CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
-        mutexPrint("recievingData\n");
-        int16_t nodeId=IDTovitalsIndex(message->id);
-        if(nodeId>numberOfNodes){
-            mutexPrint("recieved data from invalid nodeId, ignoring\n");
-            return 1;
-        }
-
-        struct vitalsNode* node = &(nodes[nodeId]); //the node which sent the message
-
-        uint32_t CanFrameNumber=getDataFrameId(message->id);    //the Can frame index is stored in extension
-        if(CanFrameNumber>node->numFrames){
-            mutexPrint("invalid dataFrame. Ignoring data\n");
-            node->flags |= invalidDataFrameFlag;
-            return 1;
-        }
-        struct CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
-        //mark this data as collected.
-        if(xTimerReset(missingDataTimers[frame->frameID],pdMS_TO_TICKS(1))==pdFAIL){    //wait up to 1ms to reset timer
-            mutexPrint("warning, unable to reset timer");
-            node->flags |= dataResetTimeout;    //we will notify of a dataResetTimeout timeout in next HB, and excuse this node from timeout until then. This really should never happen
-        } else{
-            if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                printf("timer Reset for node: %d, frame: %ld\n",nodeId, CanFrameNumber); // Call the non-reentrant function safely.
-                xSemaphoreGive(*printfMutex); // Release the mutex.
-            }else { printf("cant print, in deadlock!\n"); }
-            node->flags &= (~dataResetTimeout); //indicate we succesfully reset the Timeout on our last attempt
-        }
-
-        //parse each data from frame
-        int8_t bitIndex=0;    //which bit of CANFrame we are currently reading from (as we iterate through the data)
-        for(int i=0;i<(*frame).numData;i++){
-            struct dataPoint* dataInfo=& (((*frame).dataInfo)[i]);
-            uint32_t temp=0;
-            copyDataToValue(&temp,message->data,bitIndex,dataInfo->bitLength);
-            int32_t recvdata = ((int32_t)temp) + dataInfo->min;
-            frame->data[i][frame->dataLocation]= recvdata;
-            //increment bitIndex
-            bitIndex+=dataInfo->bitLength;
-        }
-        //increment dataLocation, mark that we have recorded the data:
-        frame->dataLocation++;
-        if(frame->dataLocation==10){frame->dataLocation=0;}
-        frame->consecutiveMisses=0;
-        return 0;
-    }
-    int16_t recieveHeartbeat(struct CANPacket* message){    //mark the HB for given node as recieved, recording time to respond
-        mutexPrint("recieved Pong\n");
-        int16_t nodeId=IDTovitalsIndex(message->id);
-        nodes[nodeId].flags |= HBFlag;
-        nodes[nodeId].milliSeconds =esp_timer_get_time();
-        return 0;
-    }
-    void recieveMSG(){   //prints information about and contents of every recieved message
-        struct CANPacket message; //will store any recieved message
-        //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
-        struct PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
-        //declare parameters here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to 'mt', 'handler' is called.
-        struct CANListenParam processBeat;
-        processBeat.handler=recieveHeartbeat;
-        processBeat.listen_id =combinedID(sendPong,vitalsID);   //setting vitals ID doesnt matter, just checking function
-        processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
-        if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
-            mutexPrint("plpc no room");
-            while(1);
-        }
-        initializeTimers(); //initialize timers needed to moniter data
-        struct CANListenParam processData;
-        processBeat.handler=moniterData;
-        processBeat.listen_id =combinedID(transmitDataCode,vitalsID);   //setting vitals ID doesnt matter, just checking function
-        processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
-        if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
-            mutexPrint("plpc no room");
-            while(1);
-        }
-        //this task will the call the appropriate ListenParams function when a CAN message is recieved
-        for(;;){
-            waitPackets(&message, &plpc);
-            taskYIELD();    //task runs constantly since no delay, but on lowest priority, so effectively runs in the background
+            vTaskDelay(pdMS_TO_TICKS(1000));
         }
     }
 void app_main(){    
@@ -390,11 +234,11 @@ if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
 }
 
     TaskHandle_t sendHandler = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
-                     sendHB,       /* Function that implements the task. */
+                     sendMCUMSG,       /* Function that implements the task. */
                      "HeartBeatSend",          /* Text name for the task. */
                      STACK_SIZE,      /* Number of indexes in the xStack array. */
                      ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-                     3,/* Priority at which the task is created. */
+                     tskIDLE_PRIORITY,/* Priority at which the task is created. */
                      sendHB_Stack,          /* Array to use as the task's stack. */
                      &sendHB_Buffer,   /* Variable to hold the task's data structure. */
                      tskNO_AFFINITY);  //assigns printHello to core 0
