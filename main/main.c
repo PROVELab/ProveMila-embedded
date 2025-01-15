@@ -47,6 +47,8 @@ StaticTask_t alert_Buffer;
 StackType_t alert_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
 StaticTask_t checkHB_Buffer;
 StackType_t checkHB_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
+StaticTask_t doNothing_Buffer;
+StackType_t doNothing_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
 
 TimerHandle_t missingDataTimers [ totalNumFrames ];  //one of these timers going off trigers callback function for missing CAN Data Frane
 StaticTimer_t xTimerBuffers[ totalNumFrames ];      //array for the buffers of these timers
@@ -277,6 +279,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         return 0;
     }
     int16_t moniterData(struct CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
+        
         mutexPrint("recievingData\n");
         int16_t nodeId=IDTovitalsIndex(message->id);
         if(nodeId>numberOfNodes){
@@ -357,6 +360,12 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             taskYIELD();    //task runs constantly since no delay, but on lowest priority, so effectively runs in the background
         }
     }
+    void doNothingLoop(){
+        for(;;){
+            vTaskDelay(pdTICKS_TO_MS(1));
+            //taskYIELD();
+        }
+    }
 void app_main(){    
     //Initialize configuration structures using macro initializers
     //a hasty testing of each pin found each numbered PIN un the board (0-35) worked for TWAI for each number that appears on the board, except for pin 34, and 35, which I don't beleive are actually GPIO pins, since the datasheet says the MCU has only 34 pins, so having a pin 35 wouldnt make much sense.
@@ -409,28 +418,37 @@ if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
                       recieveMSG_Stack,          /* Array to use as the task's stack. */
                       &recieveMSG_Buffer,   /* Variable to hold the task's data structure. */
                       tskNO_AFFINITY);  //assigns printHello to core 0
+    TaskHandle_t doNothing = xTaskCreateStaticPinnedToCore(  //recieves CAN Messages 
+                      doNothingLoop,       /* Function that implements the task. */
+                      "msgRecieve",          /* Text name for the task. */
+                      STACK_SIZE,      /* Number of indexes in the xStack array. */
+                      ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
+                      4,/* Priority at which the task is created. */
+                      doNothing_Stack,          /* Array to use as the task's stack. */
+                      &doNothing_Buffer,   /* Variable to hold the task's data structure. */
+                      tskNO_AFFINITY);  //assigns printHello to core 0
 
     
 
-    // TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
-    //                   check_bus_status,       /* Function that implements the task. */
-    //                   "checkCan",          /* Text name for the task. */
-    //                   STACK_SIZE,      /* Number of indexes in the xStack array. */
-    //                   ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-    //                   1,/* Priority at which the task is created. */
-    //                   checkStatus_Stack,          /* Array to use as the task's stack. */
-    //                   &checkStatus_Buffer,   /* Variable to hold the task's data structure. */
-    //                   tskNO_AFFINITY);  //assigns printHello to core 0
+    TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
+                      check_bus_status,       /* Function that implements the task. */
+                      "checkCan",          /* Text name for the task. */
+                      STACK_SIZE,      /* Number of indexes in the xStack array. */
+                      ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
+                      1,/* Priority at which the task is created. */
+                      checkStatus_Stack,          /* Array to use as the task's stack. */
+                      &checkStatus_Buffer,   /* Variable to hold the task's data structure. */
+                      tskNO_AFFINITY);  //assigns printHello to core 0
 
-    // TaskHandle_t checkAlerts = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
-    //                   twai_monitor_alerts,       /* Function that implements the task. */
-    //                   "checkalrt",          /* Text name for the task. */
-    //                   STACK_SIZE,      /* Number of indexes in the xStack array. */
-    //                   ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-    //                   2,/* Priority at which the task is created. */
-    //                   alert_Stack,          /* Array to use as the task's stack. */
-    //                   &alert_Buffer,   /* Variable to hold the task's data structure. */
-    //                   tskNO_AFFINITY);  //assigns printHello to core 0
+    TaskHandle_t checkAlerts = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
+                      twai_monitor_alerts,       /* Function that implements the task. */
+                      "checkalrt",          /* Text name for the task. */
+                      STACK_SIZE,      /* Number of indexes in the xStack array. */
+                      ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
+                      2,/* Priority at which the task is created. */
+                      alert_Stack,          /* Array to use as the task's stack. */
+                      &alert_Buffer,   /* Variable to hold the task's data structure. */
+                      tskNO_AFFINITY);  //assigns printHello to core 0
     
     //vTaskStartScheduler();      /do not write vTaskStartScheduler anywhere if using IDF FreeRTOS, the scheduler begins running on initialization, we cant toggle it, and program crashes if you attempt to.
 }

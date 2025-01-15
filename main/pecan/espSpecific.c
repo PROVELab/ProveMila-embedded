@@ -80,5 +80,5 @@ int16_t sendPacket(struct CANPacket *p) {
         .data_length_code = p->dataSize,
     };
     memcpy(message.data, p->data, p->dataSize);
-    return twai_transmit(&message, pdMS_TO_TICKS(10000));
+    return twai_transmit(&message, pdMS_TO_TICKS(0));
 }
