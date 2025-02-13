@@ -1,12 +1,18 @@
-# Do this for a single-line comment
-/* Do this for a multi-line comment */
-# Generate for PC (particularly GCC, not MBED Compiler)
-=PC,True
-=Pad,0
-=POLY,{0xed2f; 0xe92f; 0x8fdb; 0x968b; 0x9eb2}
-=startingSensorId, 6
-#                                         interval range    warning  critical  \n
-TP1_2 : Tire Pressure Sensor 1 : pressure1 . 100 . 20, 80 . 40, 60 . 30, 70 :  tireHeat . 500 . -500, 1000 . 0, 400 . -100, 500 : pressure2 . 100 . 22, 78 . 41, 59 
-TP2_2 : Tire Pressure Sensor 2 : pressure1 . 100 . 20, 80 . 40, 60 . 30, 70 : pressure2 . 100 . 22, 78 . 41, 59 : tireHeat . 500 . -500, 1000 . 0, 400 . -100, 500 
-TEMP1_1 : Temperature Sensor 1 : temp1 . 100 . -500, 1000 . 0, 400 . -100, 500 : temp2 . 100 . -500, 1000 . 0 ,400 . -100, 500 
-S1_1 : Speed Sensor 1 : mph . 100 . 0 ,300
+# Node definitions
+global: vitalsID=0b0000010
+global: sendPing=0b0011
+global: sendPong=0b0100
+global: transmitData=0b0111
+
+node: id=6, name=genericNodeName
+CANFrame: frequency=500, dataTimeout=1000
+temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
+temperature2: bitLength=30, min=-536870912, max=536870911, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
+temperature3: bitLength=20, min=-524288, max=524288, minWarning=-100000, maxWarning=100000, minCritical=0, maxCritical=0, startingValue=3
+
+CANFrame: frequency=100, dataTimeout=600
+airPressure: bitLength=4, min=-1, max=12, minWarning=1, maxWarning=10, minCritical=0, maxCritical=0, startingValue=4
+
+node: id=8, name=sampleName
+CANFrame: frequency=400, dataTimeout=1000
+rizzMeter: bitLength=8, min=-10, max=200, minWarning=0, maxWarning=110, minCritical=-10, maxCritical=110, startingValue=5

@@ -1,11 +1,9 @@
 #include "sensorHelper.hpp"
 #include "../../pecan/pecan.h"
 #include "../../arduinoSched/arduinoSched.hpp"
-// #define STRINGIZE_(a) #a
-// #define STRINGIZE(a) STRINGIZE_(a)
 
-// #include STRINGIZE(../NODE_CONFIG)  //concatinates "../" to return to sensor directory, with path given build flags NODE_CONFIG
-
+// #include NODE_CONFIG
+// #pragma message NODE_CONFIG
 
 #include "Arduino.h"
 #include "CAN.h"
@@ -47,7 +45,7 @@ void sendFrame(int8_t frameNum){
     CANPacket dataPacket={{0}}; 
     dataPacket.extendedID=1;
     dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
-    writeData(&dataPacket,tempData,(7+currBit)/8);
+    writeData(&dataPacket,(int8_t*) tempData,(7+currBit)/8);
     if(sendPacket(&dataPacket)){
         Serial.println("error sending\n");
     }
@@ -78,7 +76,19 @@ struct GenerateFunctions<1> {
     }
 };
 //
-
+void helloWorld(){  //a simple function that sends hello via CAN from id 69
+    CANPacket sendHello={0};
+    int8_t data[5]={'h','e','l','l','0'};
+    writeData(&sendHello, data, 5);
+    sendHello.id=69;
+    sendPacket(&sendHello);
+}
+void printPacketInfo(CANPacket* packet){
+    Serial.print("Printing packet info");
+    Serial.print(packet->id);
+    Serial.print(",  data ");
+    Serial.println((char*) packet->data);
+}
 
 //int8_t dataIndices[numData]={0};    //initialized to 0, 1, 2, 3,... in vitalsInit, used to store sendFrame Indices
 int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts){
@@ -93,22 +103,13 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts){
         Serial.println("scheduling");
         ts->scheduleTask(&(sendFrameTasks[i]));
     }
-    //HB response
+
+    
     CANListenParam babyDuck;
     babyDuck.handler=respondToHB;
     babyDuck.listen_id =combinedID(sendPing,vitalsID);
     babyDuck.mt=MATCH_EXACT;
-    //
-    // //static_for<0,numFrames>()();
-    // //sendFrameSpecific<1>;
-    // for(int8_t i=0;i<numFrames;i++){
-    //     //dataIndices[i]=i;
-    //     //frameSendTasks[i].function= sendFrameSpecific<i>();
-    // }
-    // frame1.function=sendFrame0;
-    // frame1.interval=100; //TODO: constant, should be attached to frame.
-    // (*ts).scheduleTask(&frame1);
-    
+ 
     if (addParam(plpc,babyDuck)!= SUCCESS){    //plpc declared above setup()
         Serial.println("plpc no room");
         while(1);

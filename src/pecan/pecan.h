@@ -1,5 +1,9 @@
 #ifndef PECAN_H
 #define PECAN_H
+#ifdef __cplusplus
+extern "C" {  // Ensures C linkage for all functions. This is needed since arduino and common files are cpp, while esp Specific files are c, and pecan.h has function declarations for both. This will compile all functions with C linkage 
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -127,6 +131,8 @@ int16_t waitPackets(struct CANPacket* recv_pack,struct PCANListenParamsCollectio
 /// Sends a CANPacket p
 int16_t sendPacket(struct CANPacket* p);
 
-
+#ifdef __cplusplus
+}  // End extern "C"
+#endif
 
 #endif
