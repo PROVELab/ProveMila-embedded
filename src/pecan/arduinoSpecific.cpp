@@ -40,7 +40,6 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
         // Then match the packet id with our params; if none
         // match, use default handler
         Serial.println("trying match");
-        delay(100);
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
             if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
