@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Assert clang-format is installed
 if ! command -v clang-format &> /dev/null; then
     echo "clang-format could not be found in your PATH"
@@ -5,8 +7,13 @@ if ! command -v clang-format &> /dev/null; then
     exit 1
 fi
 
-# Check all h/hpp/c/cpp files in the project, with -Werror and --dry-run
-find src/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format -i -Werror --dry-run
-find include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format -i -Werror --dry-run
+# Find files
+files=$(find src/ include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp")
 
-echo "Checked all files in the project"
+# Check formatting (without modifying files)
+if ! echo "$files" | xargs clang-format --dry-run -Werror; then
+    echo "Formatting issues detected! Please run clang-format to fix them."
+    exit 1  # Ensures GitHub Actions fails on error
+fi
+
+echo "All files are properly formatted."
