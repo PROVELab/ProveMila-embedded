@@ -1,0 +1,17 @@
+// example IDL file
+
+namespace MyGame;
+
+attribute "priority";
+
+struct Vec3 {
+  x:float;
+  y:float;
+  z:float;
+}
+
+// Monster rahh!
+table Monster {
+  pos:Vec3;
+  vel:short;
+}
