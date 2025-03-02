@@ -12,7 +12,7 @@ files=$(find src/ include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name 
 
 # Check formatting (without modifying files)
 if ! echo "$files" | xargs clang-format --dry-run -Werror; then
-    echo "Formatting issues detected! Please run clang-format to fix them."
+    echo "Formatting issues detected! Please run ./format.sh to fix them."
     exit 1  # Ensures GitHub Actions fails on error
 fi
 
