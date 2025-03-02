@@ -1,0 +1,7 @@
+
+# Ignore the bin directory
+bin/
+
+# Ignore the flatbuffers directory, though
+# it should be deleted after the build
+flatbuffers/
