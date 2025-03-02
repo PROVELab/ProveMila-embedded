@@ -1,9 +1,6 @@
 #include <mbed.h>
 
-int main()
-{
-    while(1)
-    {
-
+int main() {
+    while (1) {
     }
 }
