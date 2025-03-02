@@ -12,3 +12,20 @@ To format all c/cpp files in the repo (src and include), run:
 ./format.sh
 ```
 This will not affect lib (since it's external libraries)
+
+### Git Pre-Commit Hook
+A pre-commit hook is available to automatically check and apply formatting before each commit. To install the hook, run:
+```
+./install-hooks.sh
+```
+
+This will:
+1. Format your C/C++ code automatically before each commit
+2. Re-stage the formatted files so changes aren't lost
+3. Allow commits to proceed with a warning if clang-format isn't installed
+
+#### Installing clang-format
+The formatting tools require clang-format to be installed on your system:
+- **macOS**: `brew install clang-format`
+- **Ubuntu/Debian**: `sudo apt-get install clang-format`
+- **Windows with Chocolatey**: `choco install llvm`
