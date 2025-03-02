@@ -3,3 +3,10 @@ Mila is an electric sports car with the goal of going 1000 miles on a single cha
 
 ## Project Structure
 The `src` folder contains the source code for all the embedded components of the system. Inside the `src` folder, there are folders for each node of the system and a `common` folder for shared code and drivers. See the READMEs within each folder for further information about each node.
+
+## Formatting
+To format all c/cpp files in the repo (src and include), run:
+```
+./format.sh
+```
+This will not affect lib (since it's external libraries)
