@@ -15,14 +15,16 @@
 #define ANSI_COLOR_GREEN   "\033[32m"
 #define ANSI_COLOR_YELLOW  "\033[33m"
 #define ANSI_COLOR_ORANGE  "\033[38;5;208m"
+#define ANSI_COLOR_RESET "\033[0m"
 
 //Platform-Specific Serial Handling
 #if defined(ESP32)
     #define LOG_PRINT(...) Serial.printf(__VA_ARGS__)  //use printf on ESP32
 #else
-    #define LOG_PRINT(format, ...) do { \ 
-        Serial.print(format); \
-        Serial.println(__VA_ARGS__); \
+    #define LOG_PRINT(format, ...) do { \
+      char logBuffer[128]; \
+      snprintf(logBuffer, sizeof(logBuffer), format, ##__VA_ARGS__); \
+      Serial.println(logBuffer); \
     } while (0)
 #endif
 
@@ -66,13 +68,5 @@
     #define warn(...) do {} while (0)
     #define error(...) do {} while (0)
 #endif
-
-//Initialize logger
-inline void initLogger(long baudRate = 115200) {
-  Serial.begin(baudRate);
-  while (!Serial && !Serial.available()) {
-    delay(10);  //wait for serial connection
-  }
-}
 
 #endif // LOGGER_H
