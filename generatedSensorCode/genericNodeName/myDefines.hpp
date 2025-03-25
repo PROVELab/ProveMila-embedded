@@ -8,9 +8,9 @@
 #define numData 4
 
 int32_t collect_temperature1();
-int32_t collect_temperature1();
-int32_t collect_temperature1();
-int32_t collect_temperature1();
+int32_t collect_temperature2();
+int32_t collect_temperature3();
+int32_t collect_airPressure();
 
 #define dataCollectorsList collect_temperature1, collect_temperature2, collect_temperature3, collect_airPressure
 

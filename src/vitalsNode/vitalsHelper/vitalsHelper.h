@@ -1,5 +1,6 @@
 #ifndef vitalsHelp
 #define vitalsHelp
+#include "programConstants.h"
 
 //fixed vitals Constants
 #define HBFlag 0b1
@@ -7,9 +8,6 @@
 #define invalidDataFrameFlag 0b001
 #define dataResetTimeout 0b1  //unable to restart timer for this data
 #define missingCanFrame 0b01
-//generated vitals Constants (taken from sensors.def)
-#define totalNumFrames 3
-
 
 //#define numExcludedIDs 1    //if =0, below line ommitted
 //int excludedIDs[numExcludedIDs] ={80}   //ex would exclude 80

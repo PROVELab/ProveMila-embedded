@@ -43,5 +43,20 @@ void setup() {
 }
 
 void loop() {
+    // while(1){
+    //     CANPacket sendHello={0};
+    //     int8_t data[5]={'h','e','l','l','o'};
+    //     writeData(&sendHello, data, 5);
+    //     sendHello.id=69;
+    //     int ret;
+    //     if(ret=sendPacket(&sendHello)){
+    //         Serial.println("error sending");
+    //         Serial.println(ret);
+    //     }else{
+    //         Serial.println("sent");
+    //     }
+        
+    //     delay(500);
+    // }
     ts.mainloop( &plpc);
 }

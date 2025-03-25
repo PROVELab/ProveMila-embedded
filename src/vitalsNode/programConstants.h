@@ -6,9 +6,6 @@
 #define HBPong 4    //func code to indicate a nodes response to HB
 #define transmitDataCode 7 //0b0111 is reserved to indicate a message is a data transfer
 
-#define maxFrameCount 4
 #define pointsPerData 10
-
-
 
 #endif

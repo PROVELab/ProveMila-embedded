@@ -1,0 +1,7 @@
+# ninja log v5
+16	10916	0	/home/torrey/Documents/ProveMila-embedded/build/CMakeFiles/menuconfig	ea2857aa5fbc6351
+16	10916	0	CMakeFiles/menuconfig	ea2857aa5fbc6351
+33	4244	1739495580825548186	build.ninja	b760ffeb82198133
+51	3519	1739495580825548186	build.ninja	b760ffeb82198133
+33	48	0	CMakeFiles/clean.additional	a16c0306c56fa3cc
+48	896	0	clean	a31eedcededa8236

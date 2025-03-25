@@ -316,12 +316,12 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             uint32_t temp=0;
             copyDataToValue(&temp,message->data,bitIndex,dataInfo->bitLength);
             int32_t recvdata = ((int32_t)temp) + dataInfo->min;
-            frame->data[i][frame->dataLocation]= recvdata;
+            frame->data[i][frame->dataLocation]= recvdata;  //update the data
             //increment bitIndex
             bitIndex+=dataInfo->bitLength;
         }
         //increment dataLocation, mark that we have recorded the data:
-        frame->dataLocation++;
+        frame->dataLocation++;  //increment the dataIndex
         if(frame->dataLocation==10){frame->dataLocation=0;}
         frame->consecutiveMisses=0;
         return 0;

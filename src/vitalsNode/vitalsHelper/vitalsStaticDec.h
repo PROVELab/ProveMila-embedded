@@ -8,5 +8,5 @@
 
 // Declare the nodes array as extern so it can be accessed from other files
 //extern struct vitalsData *nodes;   //used by vitals for looking up parsing info, and tracking data for every node. defined in vitalsStaticDec.c
-extern struct vitalsNode nodes[2];
+extern struct vitalsNode nodes[numberOfNodes];
 #endif // VITALS_DATA_H

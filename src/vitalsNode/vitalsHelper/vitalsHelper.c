@@ -1,8 +1,8 @@
-#define startingOffset 6
+#include "programConstants.h"
 #include "../../pecan/pecan.h"
 #include <stdint.h>
 
-#define HBFlag 0b1  //bit one stores if HB has been sent
+#include "vitalsHelper.h"
 
 uint32_t IDTovitalsIndex(uint32_t nodeID){
     uint32_t baseID= getNodeId(nodeID)-startingOffset;
