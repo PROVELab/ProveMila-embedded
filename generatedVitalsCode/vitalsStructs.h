@@ -9,7 +9,6 @@
 
 struct dataPoint {
     int8_t bitLength;
-    int8_t isCritical;
     int32_t minCritical;
     int32_t maxCritical;
     int32_t min;
@@ -22,8 +21,9 @@ struct dataPoint {
 struct CANFrame {
     int8_t nodeID;
     int8_t frameID;
-    int8_t frameNumData;
+    int8_t numData;
     struct dataPoint *dataInfo; /* Replaced list with dataPoint pointer */
+    int8_t isCritical;
     int8_t flags;
     int8_t dataLocation;
     int8_t consecutiveMisses;

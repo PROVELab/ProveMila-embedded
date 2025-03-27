@@ -6,8 +6,8 @@
 
 
 #include "../../pecan/pecan.h"
-#include "../sensor_name1/myDefines.hpp"
-
+// #include "../sensor_name1/myDefines.hpp"
+#include STRINGIZE(../NODE_CONFIG)  //includes node Constants
 #include "../../arduinoSched/arduinoSched.hpp"
 #include <stdint.h>
 //universal globals. Used by every sensor
@@ -26,10 +26,10 @@ struct dataPoint{   //could define similar
     int32_t data;   //the actual data stored here
 };
 struct CANFrame{    //identified by a 2 bit identifier 0-3 in function code
-    int8_t frameNumData; //number of data pieces in this frame
+    int8_t numData; //number of data pieces in this frame
+    int32_t frequency;  //how often should this CANFrame be sent (in ms)
     int8_t startingDataIndex;  //what is the starting index of data in this frame? (needed for calling appropriate collecter function)
     struct dataPoint *dataInfo; 
-    int32_t frequency;  //how often should this CANFrame be sent (in ms)
 };
 int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts);
 

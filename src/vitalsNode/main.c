@@ -17,10 +17,10 @@
 //tracing functionality to give warning for free or alloc.
 #include "esp_heap_caps.h"
 
-const int vitalsID=0b0000010;
-const int sendPing=0b0011;
-const int sendPong=0b0100;
-const int transmitData=0b0111;
+// const int vitalsID=0b0000010;
+// const int sendPing=0b0011;
+// const int sendPong=0b0100;
+// const int transmitData=0b0111;
 
 int init=0;//indicates that mutexes have been initialized, so we may print a warning for allocations and frees
 void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps){  //is called every time memory is allocated, feature enabled in menuconfig
@@ -121,7 +121,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         if (alerts & TWAI_ALERT_TX_FAILED) {
             mutexPrint("TWAI Alert: TX FAILED\n");
                 twai_status_info_t status_info;
-                esp_err_t err = twai_get_status_info(&status_info);  // Correct function and argument
+                esp_err_t err = twai_get_status_info(&status_info);
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
             printf("Alert: The Transmission failed.");
             xSemaphoreGive(*printfMutex); // Release the mutex.
@@ -203,7 +203,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         
         for( ;; ) {
             //sampple code that writes DEADFACE as data for vital's HB
-            struct CANPacket message={{0}};
+            struct CANPacket message={0};
             int8_t DE=0xDE;
             int8_t AD=0xAD;
             int8_t FACE[2]={0xFA,0xCE};
@@ -296,8 +296,15 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             node->flags |= invalidDataFrameFlag;
             return 1;
         }
+        char str[15]; // Enough to store "-128" and null terminator
+        sprintf(str, "%ld, %d", CanFrameNumber, nodeId);
+        mutexPrint(str);
         struct CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
         //mark this data as collected.
+        sprintf(str, "%d", frame->frameID);
+        mutexPrint(str);
+        mutexPrint("markingFrame\n");
+
         if(xTimerReset(missingDataTimers[frame->frameID],pdMS_TO_TICKS(1))==pdFAIL){    //wait up to 1ms to reset timer
             mutexPrint("warning, unable to reset timer");
             node->flags |= dataResetTimeout;    //we will notify of a dataResetTimeout timeout in next HB, and excuse this node from timeout until then. This really should never happen
@@ -308,6 +315,8 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             }else { printf("cant print, in deadlock!\n"); }
             node->flags &= (~dataResetTimeout); //indicate we succesfully reset the Timeout on our last attempt
         }
+        mutexPrint("timersSet\n");
+
 
         //parse each data from frame
         int8_t bitIndex=0;    //which bit of CANFrame we are currently reading from (as we iterate through the data)
@@ -316,7 +325,10 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             uint32_t temp=0;
             copyDataToValue(&temp,message->data,bitIndex,dataInfo->bitLength);
             int32_t recvdata = ((int32_t)temp) + dataInfo->min;
+
             frame->data[i][frame->dataLocation]= recvdata;  //update the data
+            sprintf(str, "recD: %ld", recvdata);
+            mutexPrint(str);
             //increment bitIndex
             bitIndex+=dataInfo->bitLength;
         }
@@ -340,7 +352,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         //declare parameters here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to 'mt', 'handler' is called.
         struct CANListenParam processBeat;
         processBeat.handler=recieveHeartbeat;
-        processBeat.listen_id =combinedID(sendPong,vitalsID);   //setting vitals ID doesnt matter, just checking function
+        processBeat.listen_id =combinedID(HBPong,vitalsID);   //setting vitals ID doesnt matter, just checking function
         processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
         if (addParam(&plpc,processBeat)!= SUCCESS){ //adds the parameter
             mutexPrint("plpc no room");
@@ -349,7 +361,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         initializeTimers(); //initialize timers needed to moniter data
         struct CANListenParam processData;
         processData.handler=moniterData;
-        processData.listen_id =combinedID(transmitDataCode,vitalsID);   //setting vitals ID doesnt matter, just checking function
+        processData.listen_id =combinedID(transmitData,vitalsID);   //setting vitals ID doesnt matter, just checking function
         processData.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
         if (addParam(&plpc,processData)!= SUCCESS){ //adds the parameter
             mutexPrint("plpc no room");

@@ -10,8 +10,8 @@ extern "C" {  // Ensures C linkage for all functions. This is needed since ardui
 //pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
-#define MAX_TASK_COUNT 10
-#define MAX_PCAN_PARAMS 20
+#define MAX_TASK_COUNT 5
+#define MAX_PCAN_PARAMS 6
 //
 
 // Various PCAN Error Code return values
@@ -31,7 +31,7 @@ enum MATCH_TYPE {
 };
 
 // A CANPacket: takes in 11-bit id, 8 bytes of data
-struct CANPacket {  //make sure to initialize using {{0}}
+struct CANPacket {  //make sure to initialize using {0}
     uint8_t data[MAX_SIZE_PACKET_DATA];
     uint32_t id;
     uint8_t dataSize;

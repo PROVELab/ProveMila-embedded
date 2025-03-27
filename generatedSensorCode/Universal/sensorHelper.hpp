@@ -10,10 +10,11 @@
 #include <stdint.h>
 
 //universal globals. Used by every sensor
+#define startingOffset 6
 #define pointsPerData 10
 #define vitalsID 0b0000010
-#define sendPing 0b0011
-#define sendPong 0b0100
+#define HBPing 0b0011
+#define HBPong 0b0100
 #define transmitData 0b0111
 extern struct CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder
 
@@ -26,7 +27,7 @@ struct dataPoint{
 };
 
 struct CANFrame{    //identified by a 2 bit identifier 0-3 in function code
-    int8_t frameNumData;
+    int8_t numData;
     int32_t frequency;
     int8_t startingDataIndex;  //what is the starting index of data in this frame? (needed for calling appropriate collector function)
     struct dataPoint *dataInfo;

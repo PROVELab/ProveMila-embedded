@@ -10,6 +10,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
     # universalPath = os.path.join(generated_code_dir, "Universal")
     # os.makedirs(universalPath, exist_ok=True)
 
+    numMissingIDs=0 #will be used for programConstants.h, Value determined when generating staticDec.c
+    #make the vitalsStaticDec.c file
     file_path = os.path.join(generated_code_dir, 'vitalsStaticDec.c')
     print("generating\n")
     with open(file_path, 'w') as f:
@@ -26,8 +28,9 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
         for nodeIndex, node in enumerate(vitalsNodes):
             f.write(f"// Node {nodeIndex}: {nodeNames[nodeIndex]}\n")
 
+            #dataPoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
-                num_data_points = ACCESS(frame, "frameNumData")["value"]
+                num_data_points = ACCESS(frame, "numData")["value"]
                 f.write(f"struct dataPoint n{nodeIndex}f{frameIndex}DPs [{num_data_points}]={{\n")
                 for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                     fields = [f".{field['name']}={ACCESS(dataPoint, field['name'])['value']}"
@@ -35,25 +38,44 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
                     f.write("    {" + ", ".join(fields) + "},\n")
                 f.write("};\n\n")
 
+            #arrays of datapoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
-                num_data_points = ACCESS(frame, "frameNumData")["value"]
+                num_data_points = ACCESS(frame, "numData")["value"]
                 f.write(f"int32_t n{nodeIndex}f{frameIndex}Data[{num_data_points}][10]={{")
                 f.write(",".join(f"R10({ACCESS(dataPoint, 'startingValue')['value']})" for dataPoint in ACCESS(frame, "dataInfo")["value"] if any(field["node"] in {"both", "vitals"} for field in dataPoint_fields))) 
                 f.write("};\n\n")
 
+            #CANFrames
             f.write(f"struct CANFrame n{nodeIndex}[{ACCESS(node, 'numFrames')['value']}]={{\n")
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 frame_fields = [f".{field['name']}={ACCESS(frame, field['name'])['value']}"
                                 for field in CANFrame_fields if field["node"] in {"both", "vitals"}]
-                f.write(f"    {{{', '.join(frame_fields)}, .dataInfo=n{nodeIndex}f{frameIndex}Data}},\n")
+                f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex}Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
             f.write("};\n\n")
 
+        #vitalsNode nodes
         f.write("// struct vitalsData *nodes;\n")
         f.write(f"struct vitalsNode nodes [{len(vitalsNodes)}]={{\n")
-        for i in range(len(vitalsNodes)):
-            f.write(f"    {{.nodeIndex={i}, .frameIndex=0, .numFrames={ACCESS(vitalsNodes[i], 'numFrames')['value']}, .frames=n{i}}},\n")
+        for nodeIndex, node in enumerate(vitalsNodes):
+            NODE_fields = [f".{field['name']}={ACCESS(node, field['name'])['value']}"
+                            for field in vitalsNode_fields if field["name"] not in {"CANFrames"}] #exclude frames from auto generation
+            f.write(f"    {{{', '.join(NODE_fields)}, .CANFrames=n{nodeIndex}}},\n")
         f.write("};\n")
 
+        f.write("int16_t missingIDs[]={")
+        i=nodeIds[0]
+        index=0
+        first=1
+        while(i<nodeIds[len(nodeIds)-1]):
+            if(i!=nodeIds[index]):
+                if(first) :
+                    first=0
+                    f.write(f"{i}")
+                else:
+                    f.write(f", {i}")
+                numMissingIDs+=1
+            i+=1
+        f.write("};\n")
         f.close()
 
         #make the vitalsStruct.h file:
@@ -116,11 +138,15 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
         f.write("//generated Constants\n")
         f.write(f"#define numberOfNodes {nodeCount}\n")
         f.write(f"#define totalNumFrames {frameCount}\n")
+        f.write(f"#define numMissingIDs {numMissingIDs}\n")
         f.write("\n//Explicilty defined in sensors.def constants\n")
         # Iterate over the globalDefines array and write them as #define statements
         for define in globalDefines:
-            f.write(f"#define {define.name} {define.value}\n")
-        
+            value = define.value
+            if isinstance(value, str) and value.startswith("0b"):  # Check if it's a binary string
+                value = str(int(value, 2))  # Convert binary to decimal
+            f.write(f"#define {define.name} {value}\n")
+            
         # Closing the header guard
         f.write("\n#endif\n")
         f.close()

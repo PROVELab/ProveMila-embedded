@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "vitalsFree",
-    "project_version":    "6cc23c9-dirty",
+    "project_version":    "1358f84-dirty",
     "project_path":       "/home/torrey/Documents/ProveMila-embedded",
     "idf_path":           "/home/torrey/esp/esp-idf",
     "build_dir":          "/home/torrey/Documents/ProveMila-embedded/build",

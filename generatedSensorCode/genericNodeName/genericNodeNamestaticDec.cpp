@@ -3,17 +3,17 @@
 
 //creates CANFrame array from this node. It stores data to be sent, and info for how to send
 
-struct dataPoint f0DataPoints [2]={
+struct dataPoint f0DataPoints [3]={
     {.bitLength=7, .min=-10, .max=117},
-    {.bitLength=30, .min=-536870912, .max=536870911},
-    {.bitLength=20, .min=-524288, .max=524288},
+    {.bitLength=32, .min=-2000000000, .max=2000000000},
+    {.bitLength=20, .min=-524288, .max=524287},
 };
 
-struct dataPoint f1DataPoints [2]={
-    {.bitLength=4, .min=-1, .max=12},
+struct dataPoint f1DataPoints [1]={
+    {.bitLength=32, .min=-2147483648, .max=2147483647},
 };
 
 struct CANFrame myframes[numFrames] = {
-    {.frameNumData = 3, .frequency = 500, .startingDataIndex=0, .dataInfo=f0DataPoints},
-    {.frameNumData = 1, .frequency = 100, .startingDataIndex=3, .dataInfo=f1DataPoints},
+    {.numData = 3, .frequency = 500, .startingDataIndex=0, .dataInfo=f0DataPoints},
+    {.numData = 1, .frequency = 100, .startingDataIndex=3, .dataInfo=f1DataPoints},
 };

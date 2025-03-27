@@ -38,7 +38,7 @@ if __name__ == "__main__":
     print("node Names:", nodeNames)
     print("data Names:", dataNames)
     
-    pretty_print_vitals(vitalsNodes)
+    # pretty_print_vitals(vitalsNodes)
     
     # Generate sensor files
     createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_dir, globalDefines)

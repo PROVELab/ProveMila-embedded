@@ -2,18 +2,18 @@
 global: startingOffset=6
 global: pointsPerData=10
 global: vitalsID=0b0000010
-global: sendPing=0b0011
-global: sendPong=0b0100
+global: HBPing=0b0011
+global: HBPong=0b0100
 global: transmitData=0b0111
 
 node: id=6, name=genericNodeName
 CANFrame: frequency=500, dataTimeout=1000
 temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
-temperature2: bitLength=30, min=-536870912, max=536870911, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
-temperature3: bitLength=20, min=-524288, max=524288, minWarning=-100000, maxWarning=100000, minCritical=0, maxCritical=0, startingValue=3
+temperature2: bitLength=32, min=-2000000000, max=2000000000, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
+temperature3: bitLength=20, min=-524288, max=524287, minWarning=-100000, maxWarning=100000, startingValue=3
 
 CANFrame: frequency=100, dataTimeout=600
-airPressure: bitLength=4, min=-1, max=12, minWarning=1, maxWarning=10, minCritical=0, maxCritical=0, startingValue=4
+airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=1, maxWarning=10, startingValue=4
 
 node: id=8, name=sampleName
 CANFrame: frequency=400, dataTimeout=1000

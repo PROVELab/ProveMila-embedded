@@ -1,14 +1,18 @@
-#include "programConstants.h"
+#include "../programConstants.h"
 #include "../../pecan/pecan.h"
 #include <stdint.h>
-
+#include "vitalsStaticDec.h"
 #include "vitalsHelper.h"
 
 uint32_t IDTovitalsIndex(uint32_t nodeID){
-    uint32_t baseID= getNodeId(nodeID)-startingOffset;
+    uint32_t baseID= getNodeId(nodeID);
     //loop over excluded
-
-    return baseID;
+    int16_t foundMisses=0;
+    for(int i=0;missingIDs[i]<baseID && foundMisses<numMissingIDs;i++){
+        baseID--;
+        foundMisses++;
+    }
+    return baseID - startingOffset;
 } //returns which index of vitalsArray a node corresponds to
 
 int32_t isolateBits(uint8_t* value, int8_t startingIndex, int8_t numBits){

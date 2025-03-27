@@ -1,42 +1,44 @@
 #include <stdio.h>
-#include<stdint.h>
+#include <stdint.h>
 //#include "programConstants.h"
 #include "vitalsStaticDec.h"
 #include "vitalsStructs.h"
-#define R10(x) {x,x,x,x,x,x,x,x,x,x}
-    //note:ranges are -2^29 and 2^29 -1 to fit max amount into 2^30 range
 
-//node 0: name
+#define R10(x) {x,x,x,x,x,x,x,x,x,x}
+// Node 0: genericNodeName
 struct dataPoint n0f0DPs [3]={
-    {7, -10,117, 0,100, 1,-5, 110}, 
-    {30, -536870912, 536870911, -100000000, 100000000, 1, -300000000, -300000000},
-    {20, -524288, 524287, -100000, 100000, 0, 0, 0}
-}; 
-struct dataPoint n0f1DPs [1]={
-    {4, -1,12, 1,10, 0, 0, 0}
+    {.bitLength=7, .isCritical=1, .minCritical=-5, .maxCritical=110, .min=-10, .max=117, .minWarning=0, .maxWarning=100, .startingValue=1},
+    {.bitLength=32, .isCritical=1, .minCritical=-300000000, .maxCritical=300000000, .min=-2000000000, .max=2000000000, .minWarning=-100000000, .maxWarning=100000000, .startingValue=2},
+    {.bitLength=20, .isCritical=1, .minCritical=0, .maxCritical=0, .min=-524288, .max=524288, .minWarning=-100000, .maxWarning=100000, .startingValue=3},
 };
-int32_t n0f0Data[3][10]={R10(1),R10(2), R10(3)};
+
+struct dataPoint n0f1DPs [1]={
+    {.bitLength=32, .isCritical=1, .minCritical=0, .maxCritical=0, .min=-2147483648, .max=2147483647, .minWarning=1, .maxWarning=10, .startingValue=4},
+};
+
+int32_t n0f0Data[3][10]={R10(1),R10(2),R10(3)};
+
 int32_t n0f1Data[1][10]={R10(4)};
 
-
 struct CANFrame n0[2]={
-    {0,0, 3, 0,n0f0DPs, 0, n0f0Data,1000,0}, //1000 ms response time
-    {0,1, 1, 0, n0f1DPs, 0, n0f1Data, 600, 0}
+    {.nodeID=6, .frameID=0, .numData=3, .flags=0, .dataLocation=0, .consecutiveMisses=0, .dataTimeout=1000, .data=n0f0Data , .dataInfo=n0f0DPs},
+    {.nodeID=6, .frameID=1, .numData=1, .flags=0, .dataLocation=0, .consecutiveMisses=0, .dataTimeout=600, .data=n0f1Data , .dataInfo=n0f1DPs},
 };
 
-//node 1: name
+// Node 1: sampleName
 struct dataPoint n1f0DPs [1]={
-    {8, -10,200, 0,110, 1,-10, 110}
-}; 
-int32_t n1f0Data[1][10]={R10(5)};
+    {.bitLength=8, .isCritical=1, .minCritical=-10, .maxCritical=110, .min=-10, .max=200, .minWarning=0, .maxWarning=110, .startingValue=9},
+};
+
+int32_t n1f0Data[1][10]={R10(9)};
 
 struct CANFrame n1[1]={
-    {1, 2, 1, 0,n1f0DPs, 0, n1f0Data,1000,0}, 
+    {.nodeID=8, .frameID=2, .numData=1, .flags=0, .dataLocation=0, .consecutiveMisses=0, .dataTimeout=1000, .data=n1f0Data , .dataInfo=n1f0DPs},
 };
-//
 
 // struct vitalsData *nodes;
 struct vitalsNode nodes [2]={
-{0,0,2, n0},
-{0,0,1,n1}
+    {.flags=0, .milliSeconds=0, .numFrames=2, .CANFrames=n0},
+    {.flags=0, .milliSeconds=0, .numFrames=1, .CANFrames=n1},
 };
+int16_t missingIDs[]={7};

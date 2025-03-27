@@ -12,7 +12,7 @@
  This variable is needed to format and send CAN Data. While with the defualt implementation this variable is onlyneeded in this file,
  it is possible that sensor-specific code will want to access it in the future, which is why its defined externally*/
 //int32_t (**dataCollectors)();
-int32_t (*mydataCollectors[numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
+int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
 
 int16_t respondToHB(CANPacket *recvPack){
         CANPacket responsePacket={{0}};
@@ -29,7 +29,7 @@ void sendFrame(int8_t frameNum){
         Serial.println("attempted to send out of bounds frame. not sending!");
     }
     Serial.print("sending frame NO.: "); Serial.println(frameNum);
-    int8_t frameNumData=myframes[frameNum].frameNumData;
+    int8_t frameNumData=myframes[frameNum].numData;
     int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
     int8_t currBit=0;
     uint8_t tempData[8]={0};
@@ -46,8 +46,10 @@ void sendFrame(int8_t frameNum){
     dataPacket.extendedID=1;
     dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
     writeData(&dataPacket,(int8_t*) tempData,(7+currBit)/8);
-    if(sendPacket(&dataPacket)){
+    int temp=0;
+    if(temp=sendPacket(&dataPacket)){
         Serial.println("error sending\n");
+        Serial.println(temp);
     }
     //
 }

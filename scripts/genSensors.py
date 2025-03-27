@@ -66,7 +66,7 @@ def createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_di
             f.write('#include "../common/sensorHelper.hpp"\n#include<stdint.h>\n')
             f.write("#define myId " + str(nodeIds[nodeIndex]))
             f.write("\n#define numFrames " + str(ACCESS(node, "numFrames")["value"]))
-            f.write("\n#define numData " + str(numData[nodeIndex]) + "\n\n")
+            f.write("\n#define node_numData " + str(numData[nodeIndex]) + "\n\n")
             localDataIndex = dataIndex
             for i in range(numData[nodeIndex]):
                 f.write("int32_t collect_" + dataNames[dataIndex] + "();\n")
@@ -84,7 +84,7 @@ def createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_di
                     "#include \"../../arduinoSched/arduinoSched.hpp\"  //used for scheduling\n"
                     "#include \"../common/sensorHelper.hpp\"           //used for compliance with vitals and sending data\n"
                     "#include \"myDefines.hpp\"          //contains #define statements specific to this node like myId.\n\n")
-            f.write("PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };\n"
+            f.write("PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};\n"
                     "PScheduler ts;\n"
                     "//if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data\n")
             localDataIndex = dataIndex - numData[nodeIndex]  # reset localDataIndex for this node
@@ -112,8 +112,8 @@ def createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_di
             f.write('#include "myDefines.hpp"\n#include "../common/sensorHelper.hpp"\n\n'
                     '//creates CANFrame array from this node. It stores data to be sent, and info for how to send\n\n')
             for frame in ACCESS(node, "CANFrames")["value"]:
-                num_frames = ACCESS(node, "numFrames")["value"]
-                f.write(f"struct dataPoint f{frameNum}DataPoints [{num_frames}]={{\n")
+                num_Data = ACCESS(frame, "numData")["value"]
+                f.write(f"struct dataPoint f{frameNum}DataPoints [{num_Data}]={{\n")
                 frameNum += 1
                 for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                     fields = []
@@ -136,7 +136,7 @@ def createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_di
                         f.write(f".{field['name']} = {ACCESS(frame, field['name'])['value']}")
                         first = False
                 f.write(f", .startingDataIndex={startingDataIndex}")
-                startingDataIndex += ACCESS(frame, "frameNumData")["value"]
+                startingDataIndex += ACCESS(frame, "numData")["value"]
                 f.write(f", .dataInfo=f{frame_index}DataPoints")
                 f.write("},\n")
                 frame_index += 1
