@@ -24,6 +24,11 @@ int16_t respondToHB(CANPacket *recvPack){
         }
     return 1;
 }
+
+// #ifdef SENSOR_ESP_BUILD
+
+// #else
+
 void sendFrame(int8_t frameNum){
     if (frameNum<0 || frameNum>numFrames){
         Serial.println("attempted to send out of bounds frame. not sending!");
@@ -77,20 +82,7 @@ struct GenerateFunctions<1> {
         sendFrameHandlers[0] = &func<0>;  // Base case: assign func<0>()
     }
 };
-//
-void helloWorld(){  //a simple function that sends hello via CAN from id 69
-    CANPacket sendHello={0};
-    int8_t data[5]={'h','e','l','l','0'};
-    writeData(&sendHello, data, 5);
-    sendHello.id=69;
-    sendPacket(&sendHello);
-}
-void printPacketInfo(CANPacket* packet){
-    Serial.print("Printing packet info");
-    Serial.print(packet->id);
-    Serial.print(",  data ");
-    Serial.println((char*) packet->data);
-}
+
 
 //int8_t dataIndices[numData]={0};    //initialized to 0, 1, 2, 3,... in vitalsInit, used to store sendFrame Indices
 int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts){

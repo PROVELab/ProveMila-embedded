@@ -33,4 +33,5 @@ struct CANFrame{    //identified by a 2 bit identifier 0-3 in function code
 };
 int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts);
 
+
 #endif

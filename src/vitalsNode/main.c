@@ -70,7 +70,7 @@ void startBus(){  //should only be called on start up and AFTER Bus has finished
 void check_bus_status(void * pvParameters){ //should send all this to telem
     for(;;){
         twai_status_info_t status_info;
-        esp_err_t err = twai_get_status_info(&status_info);  // Correct function and argument
+        esp_err_t err = twai_get_status_info(&status_info); 
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
             printf("status error code: %d\n",err);
             printf("TWAI Status Information:\n");
@@ -383,6 +383,7 @@ void app_main(void){
     //Initialize configuration structures using macro initializers
     //a hasty testing of each pin found each numbered PIN un the board (0-35) worked for TWAI for each number that appears on the board, except for pin 34, and 35, which I don't beleive are actually GPIO pins, since the datasheet says the MCU has only 34 pins, so having a pin 35 wouldnt make much sense.
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_33, GPIO_NUM_32, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL for standard behavior  
+    // twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_33, GPIO_NUM_32, TWAI_MODE_LISTEN_ONLY); //TWAI_MODE_NORMAL for standard behavior  
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
