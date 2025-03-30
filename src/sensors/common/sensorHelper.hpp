@@ -1,10 +1,11 @@
 #ifndef SENSOR_HELP
 #define SENSOR_HELP
+#include "../../vitalsNode/programConstants.h"
+
 #ifdef __cplusplus
 extern "C" {  // Ensures C linkage for all functions. This is needed since arduino and common files are cpp, while esp Specific files are c, and pecan.h has function declarations for both. This will compile all functions with C linkage 
 #endif
 
-#include "../../vitalsNode/programConstants.h"
  #define STRINGIZE_(a) #a
 #define STRINGIZE(a) STRINGIZE_(a)
 
@@ -35,12 +36,13 @@ typedef struct {    //identified by a 2 bit identifier 0-3 in function code
     dataPoint *dataInfo; 
 } CANFrame;
 
-extern CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder
 
 int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts);  //for arduino, this should be a PScheduler*. Otherwise, just pass Null
+extern CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder
 
 #ifdef __cplusplus
 }  // End extern "C"
 #endif
+
 
 #endif

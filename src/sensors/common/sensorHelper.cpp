@@ -1,3 +1,4 @@
+#include "../../vitalsNode/programConstants.h"
 #include "sensorHelper.hpp"
 #include "../../pecan/pecan.h"
 

@@ -12,7 +12,7 @@ global: initFlag=0b00000000
 global: canRecoveryFlag=0b00000001
 #
 #node Definitions
-node: id=6, name=genericNodeName, board=arduino
+node: id=6, name=genericNodeName, board=esp
 CANFrame: frequency=500, dataTimeout=1000
 temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
 temperature2: bitLength=32, min=-2000000000, max=2000000000, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2

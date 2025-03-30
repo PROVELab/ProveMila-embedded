@@ -78,8 +78,17 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             f.write("\n#define dataCollectorsList ")
             f.write(', '.join("collect_" + name for name in dataNames[localDataIndex - numData[nodeIndex]: localDataIndex]))
             f.write("\n\n#endif")
-        
-        file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
+        file_path
+        if(boardTypes[nodeIndex]=="arduino"):
+            file_path = os.path.join(sub_dir_path, 'main.cpp')
+            # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
+        elif(boardTypes[nodeIndex]=="esp"):
+            file_path = os.path.join(sub_dir_path, 'main.c')
+            # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.c')
+
+        else:
+            print(f"Warning: For {nodeNames[nodeIndex]} (node {nodeIds[nodeIndex]}): Please Specify an appropraite board (esp, arduino, ...?)")
+            while(1): pass
         with open(file_path, 'w') as f:
             if(boardTypes[nodeIndex]=="arduino"):    #create main.cpp for arduino sensors
                 f.write("#include <Arduino.h>\n"
@@ -198,13 +207,11 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                     "\t\ttskNO_AFFINITY);  //assigns printHello to core 0\n"
                     "}\n")
                 f.close()
-            else:
-                print(f"Warning: For {nodeNames[nodeIndex]} (node {nodeIds[nodeIndex]}): Please Specify an appropraite board (esp, arduino, ...?)")
-                while(1): pass
         
 
         
-        file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + 'staticDec.cpp')
+        file_path = os.path.join(sub_dir_path, 'staticDec.cpp')
+        # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + 'staticDec.cpp')
         with open(file_path, 'w') as f:
             frameNum = 0
             f.write('#include "myDefines.hpp"\n#include "../common/sensorHelper.hpp"\n\n'
