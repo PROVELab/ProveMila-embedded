@@ -6,6 +6,7 @@ extern "C" {  // Ensures C linkage for all functions. This is needed since ardui
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "../vitalsNode/programConstants.h"
 
 //pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
@@ -31,37 +32,37 @@ enum MATCH_TYPE {
 };
 
 // A CANPacket: takes in 11-bit id, 8 bytes of data
-struct CANPacket {  //make sure to initialize using {0}
+typedef struct {  //make sure to initialize using {0}
     uint8_t data[MAX_SIZE_PACKET_DATA];
     uint32_t id;
     uint8_t dataSize;
     int8_t rtr;
     int8_t extendedID;  //whether or not the packet is extended. 
-};
+} CANPacket;
 // A single CANListenParam
-struct CANListenParam {
+typedef struct {
     uint32_t listen_id;
-    int16_t (*handler)(struct CANPacket*);
+    int16_t (*handler)(CANPacket*);
     enum MATCH_TYPE mt;
-};
+} CANListenParam;
 
 
 // A collection containing an array of params to listen for
 // and the default handler if none of the params match with
 // a given packet
-struct PCANListenParamsCollection {
-    struct CANListenParam arr[MAX_PCAN_PARAMS];
-    int16_t (*defaultHandler)(struct CANPacket* p);
+typedef struct {
+    CANListenParam arr[MAX_PCAN_PARAMS];
+    int16_t (*defaultHandler)(CANPacket* p);
     int16_t size;
-};
+} PCANListenParamsCollection;
 
 //common implementations:
 
 /// Adds a CANListenParam to the collection
-int16_t addParam(struct PCANListenParamsCollection* plpc, struct CANListenParam clp);
+int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp);
 
 // Only in use with sensor stuff
-void setSensorID(struct CANPacket* p, uint8_t sensorId);
+void setSensorID(CANPacket* p, uint8_t sensorId);
 
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id);
 uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id, uint32_t extension);//also combines an extended ID
@@ -76,7 +77,7 @@ inline uint32_t getIdExtension(uint32_t id){  //take bits 7-10 for functionId
     return (id>>11) & 0b111111111111111111; //18 bit extension
 }
 inline uint32_t getDataFrameId(uint32_t id){
-    return getIdExtension(id) & 0b11;   //the Can Frame index is stored in first two bits of extension
+    return getIdExtension(id) & (maxDataFrameCnt-1);   //the Can Frame index is stored in first two bits of extension
 }
 
 // Returns true if id == mask
@@ -90,14 +91,14 @@ bool matchFunction(uint32_t id, uint32_t mask);
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int16_t writeData(struct CANPacket* p, int8_t* dataPoint, int16_t size);
+int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
 
 //void bitcpy(uint32_t* src, int8_t)
 //makes a packet an RTR packet
-int16_t setRTR(struct CANPacket * p);
+int16_t setRTR(CANPacket * p);
 //makes a packet an extended packet
-int16_t setExtended(struct CANPacket * p);
+int16_t setExtended(CANPacket * p);
 
 //the below functions are used in base implementation of vitals and sensors, and may be needed elsewhere:
 int32_t squeeze(int32_t value, int32_t min, int32_t max);   //identical to arduino constrain macro, other mcs dont have it :(
@@ -114,7 +115,7 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t
 
 // The default handler for a packet who
 // we couldn't match with other params
-int16_t defaultPacketRecv(struct CANPacket* p); //only platform specific because it prints things. In final implementation, we won't need this to print, so could be merged
+int16_t defaultPacketRecv(CANPacket* p); //only platform specific because it prints things. In final implementation, we won't need this to print, so could be merged
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in
@@ -126,10 +127,10 @@ int16_t defaultPacketRecv(struct CANPacket* p); //only platform specific because
 ///                  handler functions
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
 
-int16_t waitPackets(struct CANPacket* recv_pack,struct PCANListenParamsCollection* plpc);
+int16_t waitPackets(CANPacket* recv_pack,PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
-int16_t sendPacket(struct CANPacket* p);
+int16_t sendPacket(CANPacket* p);
 
 #ifdef __cplusplus
 }  // End extern "C"

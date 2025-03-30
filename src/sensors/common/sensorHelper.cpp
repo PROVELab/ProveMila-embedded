@@ -1,12 +1,90 @@
 #include "sensorHelper.hpp"
 #include "../../pecan/pecan.h"
-#include "../../arduinoSched/arduinoSched.hpp"
 
+#ifdef SENSOR_ESP_BUILD
+#include "freertos/FreeRTOS.h"  
+#include "freertos/task.h"
+#include "esp_system.h"
+#include "driver/gpio.h"
+#include "driver/twai.h"
+#include "freertos/semphr.h"
+#include <string.h>
+#include "esp_timer.h"
+#include "../../vitalsNode/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
+
+//Declare Timers for data collection and sending
+TimerHandle_t dataCollection_Timers [ numFrames ];  //one of these timers going off trigers callback function for missing CAN Data Frane
+StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these timers
+//
+
+#elif defined(SENSOR_ARDUINO_BUILD)
+#include "../../arduinoSched/arduinoSched.hpp"
+#include "Arduino.h"
+#include "CAN.h"
+#endif
+
+
+#ifdef SENSOR_ESP_BUILD
+    #define flexiblePrint(str) mutexPrint(str)
+#elif defined(SENSOR_ARDUINO_BUILD)
+    #define flexiblePrint(str) Serial.print(str)
+#else
+    #error "Unknown build environment"
+#endif
+
+
+#ifdef SENSOR_ESP_BUILD
+void check_bus_status(void * pvParameters){ //function to be used as a task for handling Bus recovery
+    for(;;){
+        twai_status_info_t status_info;
+        esp_err_t err = twai_get_status_info(&status_info); 
+            if(status_info.state==TWAI_STATE_BUS_OFF){
+                flexiblePrint("initiating recovery\n");
+                int recover;
+                if ((recover=twai_initiate_recovery())!=ESP_OK){
+                    flexiblePrint("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
+                    esp_restart();
+                }
+                xSemaphoreGive(*printfMutex); // Release the mutex.
+            } else if (status_info.state==TWAI_STATE_STOPPED){  //Presumably we have finished recovery
+                flexiblePrint("Recovery attempt Complete\n\n\n");
+                int err=twai_start();
+                if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
+                    if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                        printf("Failed to start or restart driver with code: %d. Rebooting\n",err);
+                        xSemaphoreGive(*printfMutex); // Release the mutex.
+                    }else { printf("cant print, in deadlock!\n"); }
+                    esp_restart();
+                } else{
+                    mutexPrint("Driver Started\n\n");
+                    //send update indicating Bus restarted
+                    CANPacket statusUpdatePacket;
+                    memset(&statusUpdatePacket, 0, sizeof(CANPacket));
+                    statusUpdatePacket.id =combinedID(statusUpdate,myId);  
+                    uint8_t flag=canRecoveryFlag;
+                    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
+                    int temp=0;
+                    if((temp=sendPacket(&statusUpdatePacket))){
+                        char buffer[30];
+                        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
+                        flexiblePrint(buffer);  
+                    }
+                }
+            }
+
+        if(status_info.state==TWAI_STATE_BUS_OFF){  //check constantly if recovery is complete and we are ready to restart CAN in the event of Bus off
+            flexiblePrint("NOTICE: Bus Off\n");
+            vTaskDelay(10/portTICK_PERIOD_MS);
+        }else{
+            vTaskDelay(1000/portTICK_PERIOD_MS);
+        }
+    }
+}
+#endif
 // #include NODE_CONFIG
 // #pragma message NODE_CONFIG
 
-#include "Arduino.h"
-#include "CAN.h"
+
 #include<stdint.h>
 /*Note: myframes is an extern variable declared in sensorHelper.hpp, and defined in <nodeName>/sensorStaticDec.cpp.
  This variable is needed to format and send CAN Data. While with the defualt implementation this variable is onlyneeded in this file,
@@ -15,12 +93,15 @@
 int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
 
 int16_t respondToHB(CANPacket *recvPack){
-        CANPacket responsePacket={{0}};
-        responsePacket.id =combinedID(sendPong,myId);       //sendPong, myId
+        CANPacket responsePacket;
+        memset(&responsePacket, 0, sizeof(CANPacket));
+        // CANPacket responsePacket={0};
+        responsePacket.id =combinedID(HBPong,myId);       //sendPong, myId
         setRTR(&responsePacket);
-        Serial.println("N1RHB");
+        
+        flexiblePrint("N1RHB\n");
         if(sendPacket(&responsePacket)){
-            Serial.println("error sending\n");
+            flexiblePrint("error sending\n");
         }
     return 1;
 }
@@ -28,12 +109,20 @@ int16_t respondToHB(CANPacket *recvPack){
 // #ifdef SENSOR_ESP_BUILD
 
 // #else
-
+#ifdef SENSOR_ESP_BUILD
+int8_t dataIndices[numFrames]={0};    //initialized to 0, 1, 2, 3,... in vitalsInit, used to store sendFrame Indices
+void sendFrame(TimerHandle_t xTimer){
+    int8_t frameNum = *((int8_t*) (pvTimerGetTimerID( xTimer )));
+#elif defined(SENSOR_ARDUINO_BUILD)
 void sendFrame(int8_t frameNum){
+#endif
     if (frameNum<0 || frameNum>numFrames){
-        Serial.println("attempted to send out of bounds frame. not sending!");
+        flexiblePrint("attempted to send out of bounds frame. not sending!\n");
     }
-    Serial.print("sending frame NO.: "); Serial.println(frameNum);
+    char buffer[50];  // Make sure the buffer is large enough to hold the string representation of the number
+    sprintf(buffer, "sending frame NO.: %d\n", frameNum);  // Convert the int8_t to a string
+    flexiblePrint(buffer);  // Now you can print it with flexiblePrint
+
     int8_t frameNumData=myframes[frameNum].numData;
     int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
     int8_t currBit=0;
@@ -47,65 +136,99 @@ void sendFrame(int8_t frameNum){
     }
 
     //send the packet
-    CANPacket dataPacket={{0}}; 
+    CANPacket dataPacket;
+    memset(&dataPacket, 0, sizeof(CANPacket));
     dataPacket.extendedID=1;
     dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
     writeData(&dataPacket,(int8_t*) tempData,(7+currBit)/8);
     int temp=0;
-    if(temp=sendPacket(&dataPacket)){
-        Serial.println("error sending\n");
-        Serial.println(temp);
+    if((temp=sendPacket(&dataPacket))){
+        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
+        flexiblePrint(buffer);  
     }
     //
 }
-
-PTask sendFrameTasks [numFrames];
-void (*sendFrameHandlers[numFrames])(void); //each of these functions collects data for, and sends a CAN frame
-
-template <int N>
-void func() {
-    sendFrame(N);
-}
-
-// Recursively defines func<1> func<2>, ... func<numFrames>, and sets the handler[i]=func<i>, ei, initializes callbacks for sendFrame tasks for any arbitrary value of numFrames.
-template <int N>
-struct GenerateFunctions {
-    static void generate(void (*sendFrameHandlers[])(void)) {
-        sendFrameHandlers[N - 1] = &func<N - 1>;   // Assign func<N-1> to the array
-        GenerateFunctions<N - 1>::generate(sendFrameHandlers); // Recurse
+#ifdef SENSOR_ARDUINO_BUILD  //On arduino task library, task functions cant have parameters, using templates to define a distinct function for collecting each frame
+    PTask sendFrameTasks [numFrames];
+    void (*sendFrameHandlers[numFrames])(void); //each of these functions collects data for, and sends a CAN frame
+    template <int N>
+    void func() {
+        sendFrame(N);
     }
-};
-// Base template specialization (for N == 0)
-template <>
-struct GenerateFunctions<1> {
-    static void generate(void (*sendFrameHandlers[])(void)) {
-        sendFrameHandlers[0] = &func<0>;  // Base case: assign func<0>()
+
+    // Recursively defines func<1> func<2>, ... func<numFrames>, and sets the handler[i]=func<i>, ei, initializes callbacks for sendFrame tasks for any arbitrary value of numFrames.
+    template <int N>
+    struct GenerateFunctions {
+        static void generate(void (*sendFrameHandlers[])(void)) {
+            sendFrameHandlers[N - 1] = &func<N - 1>;   // Assign func<N-1> to the array
+            GenerateFunctions<N - 1>::generate(sendFrameHandlers); // Recurse
+        }
+    };
+    // Base template  (for N = 0)
+    template <>
+    struct GenerateFunctions<1> {
+        static void generate(void (*sendFrameHandlers[])(void)) {
+            sendFrameHandlers[0] = &func<0>;  // Base case: assign func<0>()
+        }
+    };
+#endif
+
+
+
+
+int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler will be NULL if not arduino
+    flexiblePrint("initializing\n");
+
+#ifdef SENSOR_ESP_BUILD
+    for(int i=0;i<numFrames;i++){   //create timers for sendingData
+        dataIndices[i]=i;   //initialize indices for frames.
+        dataCollection_Timers[i]= xTimerCreateStatic
+        (   "Timer",                                    // Just a text name, not used by the RTOS kernel. 
+            pdMS_TO_TICKS(myframes[i].frequency),       //The timer period in ticks, must be greater than 0.              
+            pdTRUE,                                     // The timers will auto-reload themselves when they expire. 
+            (void *) &(dataIndices[i]),                    //"ID" for this function, which we use to store the corresponding Can Frame for this timer
+            sendFrame,                                  /* callBack functoin, sends corresponding frame */
+            &( xTimerBuffers[i] )                       //Pass in the address of a StaticTimer_t variable, which will hold the data associated with the timer being created.
+        );
     }
-};
+    //start the timers:
+    for(int i=0;i<numFrames;i++){
+        if(xTimerStart(dataCollection_Timers[i],pdMS_TO_TICKS(1000))==pdFAIL){    //no time crunch yet, but if this isnt starting we want to be notified, instead of it to running forever
+        mutexPrint("warning, unable to start a timer");
+        while(1);
+        } 
+    }
 
-
-//int8_t dataIndices[numData]={0};    //initialized to 0, 1, 2, 3,... in vitalsInit, used to store sendFrame Indices
-int8_t vitalsInit(PCANListenParamsCollection* plpc, PScheduler* ts){
-    Serial.println("initializing\n");
-    // defines handlers array
+#elif defined(SENSOR_ARDUINO_BUILD)
+    PScheduler* sched=(PScheduler*)ts;
     GenerateFunctions<numFrames>::generate(sendFrameHandlers);
     //schedules dataCollection + frame Sends:
     for(int i=0;i<numFrames;i++){
         sendFrameTasks[i].function=sendFrameHandlers[i];
         sendFrameTasks[i].interval=myframes[i].frequency;
         sendFrameTasks[i].delay=0;
-        Serial.println("scheduling");
-        ts->scheduleTask(&(sendFrameTasks[i]));
+        flexiblePrint("scheduling");
+        sched->scheduleTask(&(sendFrameTasks[i]));
     }
-
-    
+#endif  
+    CANPacket statusUpdatePacket;
+    memset(&statusUpdatePacket, 0, sizeof(CANPacket));
+    statusUpdatePacket.id =combinedID(statusUpdate,myId);  
+    uint8_t flag=initFlag;
+    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
+    int temp=0;
+    if((temp=sendPacket(&statusUpdatePacket))){
+        char buffer[30];
+        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
+        flexiblePrint(buffer);  
+    }
     CANListenParam babyDuck;
     babyDuck.handler=respondToHB;
-    babyDuck.listen_id =combinedID(sendPing,vitalsID);
+    babyDuck.listen_id =combinedID(HBPing,vitalsID);
     babyDuck.mt=MATCH_EXACT;
  
     if (addParam(plpc,babyDuck)!= SUCCESS){    //plpc declared above setup()
-        Serial.println("plpc no room");
+        flexiblePrint("plpc no room");
         while(1);
     }
     return 0;

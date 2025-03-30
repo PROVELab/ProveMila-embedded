@@ -3,17 +3,38 @@
 
 #FILE(GLOB_RECURSE app_sources ${CMAKE_SOURCE_DIR}/src/*.*)
 #set(EXTRA_COMPONENT_DIRS ${CMAKE_SOURCE_DIR}/vitalsNode)
-if("VITALS_BUILD" IN_LIST PLATFORMIO_BUILD_FLAGS)       #VITALS_BUILD
+# if("VITALS_ESP_BUILD" IN_LIST PLATFORMIO_BUILD_FLAGS)       #VITALS_BUILD
+
+if(CMAKE_VITALS_ESP_BUILD)
+    # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
+
     set(SRC_FILES 
-        "vitalsHelper/vitalsStaticDec.c"
-        "vitalsHelper/vitalsHelper.c"
-        "pecan/common.c"
+        "vitalsNode/vitalsHelper/vitalsStaticDec.c"
+        "vitalsNode/vitalsHelper/vitalsHelper.c"
+        "pecan/common.cpp"
         "pecan/espSpecific.c"
-        "main.c"
-        "mutex_declarations.c"
+        "vitalsNode/main.c"
+        "vitalsNode/mutex_declarations.c"
     )
-else("SENSOR_BUILD" IN_LIST PLATFORMIO_BUILD_FLAGS)   #SENSOR_BUILD. It is further expectected to have SENSORSPECIFIC be defined
-    set(SRC_FILES main/env2_main.c)
+    message(STATUS "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
+
+# elseif("SENSOR_BUILD" IN_LIST PLATFORMIO_BUILD_FLAGS)  # SENSOR_BUILD
+else()  #CMAKE_SENSOR_ESP_BUILD
+    set(SRC_FILES
+        "sensors/genericNodeNameESP/genericNodeNamestaticDec.cpp"
+        "sensors/genericNodeNameESP/genericNodeNameESP_main.c"
+        # "sensors/genericNodeNameESP/my"
+
+
+        # "sensors/genericNodeNameESP/"
+        "sensors/common/sensorHelper.cpp"
+        "pecan/common.cpp"
+        "pecan/espSpecific.c"
+        "vitalsNode/mutex_declarations.c"
+    )
+
+    # Handle subtraction (exclude specific files like espSpecific.c)
+    # list(REMOVE_ITEM SRC_FILTER_LIST "pecan/arduinoSpecific.c")
 endif()
 idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
 

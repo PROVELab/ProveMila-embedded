@@ -54,6 +54,7 @@ TimerHandle_t missingDataTimers [ totalNumFrames ];  //one of these timers going
 StaticTimer_t xTimerBuffers[ totalNumFrames ];      //array for the buffers of these timers
 //Making nodes of vitals data struct
 void startBus(){  //should only be called on start up and AFTER Bus has finished recovery
+    mutexPrint("Attempting StartBus\n\n\n");
     int err=twai_start();
     if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
@@ -82,80 +83,90 @@ void check_bus_status(void * pvParameters){ //should send all this to telem
                     printf("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
                     esp_restart();
                 }
-                printf("Recovery attempt Complete code: %d\n\n\n\n\n\n\n",recover);
+                xSemaphoreGive(*printfMutex); // Release the mutex.
+            } else if (status_info.state==TWAI_STATE_STOPPED){  //Presumably we have finished recovery
+                printf("Recovery attempt Complete\n\n\n");
+                xSemaphoreGive(*printfMutex); // Release the mutex.
+                startBus();
+            }else{
+                printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
+                printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
+                printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
+                printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
+                printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
+                printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
+                printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
+                printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
+                printf("Bus Error Count: %lu\n", status_info.bus_error_count);
+                xSemaphoreGive(*printfMutex); // Release the mutex.
             }
-            printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
-            printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
-            printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
-            printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
-            printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
-            printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
-            printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
-            printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
-            printf("Bus Error Count: %lu\n", status_info.bus_error_count);
-            xSemaphoreGive(*printfMutex); // Release the mutex.
+
         }else { printf("cant print, in deadlock!\n"); }
 
-        vTaskDelay(1000/portTICK_PERIOD_MS);
+        if(status_info.state==TWAI_STATE_BUS_OFF){  //check constantly if recovery is complete and we are ready to restart CAN in the event of Bus off
+            mutexPrint("NOTICE: Bus Off\n");
+            vTaskDelay(10/portTICK_PERIOD_MS);
+        }else{
+            vTaskDelay(1000/portTICK_PERIOD_MS);
+        }
     }
 }
 
 
 // Function to check and print TWAI alerts
-void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem with HB
-    uint32_t alerts;
+// void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem with HB
+//     uint32_t alerts;
 
-    while (1) {
-        mutexPrint("monitering\n\n");
-        //check if an alerta has been raised
-        int err = twai_read_alerts(&alerts, pdMS_TO_TICKS(0));  //do not block waiting for alert
-        if(err!=0){
-            //mutexPrint("error reading alert/no alert to be had");
-        }
-        if (alerts & TWAI_ALERT_TX_IDLE) {
-            mutexPrint("TWAI Alert: TX Idle\n");
-        }
-        if (alerts & TWAI_ALERT_TX_SUCCESS) {
-            mutexPrint("TWAI Alert: TX Success\n");
-        }
-        if (alerts & TWAI_ALERT_TX_FAILED) {
-            mutexPrint("TWAI Alert: TX FAILED\n");
-                twai_status_info_t status_info;
-                esp_err_t err = twai_get_status_info(&status_info);
-        if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-            printf("Alert: The Transmission failed.");
-            xSemaphoreGive(*printfMutex); // Release the mutex.
-                }else { printf("cant print, in deadlock!\n"); }
-        }
-        if (alerts & TWAI_ALERT_RX_DATA) {
-            mutexPrint("TWAI Alert: RX Data Available\n");
-        }
-        if (alerts & TWAI_ALERT_BELOW_ERR_WARN) {
-            mutexPrint("TWAI Alert: Error counter below warning\n");
-        }
-        if (alerts & TWAI_ALERT_ERR_ACTIVE) {
-            mutexPrint("TWAI Alert: Error Active\n");
-        }
-        if (alerts & TWAI_ALERT_BUS_OFF) {
-            mutexPrint("TWAI Alert: Bus Off\n");
-        }
-        if (alerts & TWAI_ALERT_ABOVE_ERR_WARN) {
-            mutexPrint("TWAI Alert: Above Error Warning Limit\n");
-        }
-        if (alerts & TWAI_ALERT_BUS_RECOVERED) {
-            mutexPrint("TWAI Alert: Bus Recovered, \n\nrestarting Bus\n\n\n\n");
-            startBus();
-        }
-        if (alerts & TWAI_ALERT_ARB_LOST) {
-            mutexPrint("TWAI Alert: Arbitration Lost\n");
-        }
-        if (alerts & TWAI_ALERT_BUS_ERROR) {
-            mutexPrint("TWAI Alert: Bus Error\n");
-        }
-
-        vTaskDelay(500/portTICK_PERIOD_MS);
-    }
-}
+//     while (1) {
+//         mutexPrint("monitering\n\n");
+//         //check if an alerta has been raised
+//         int err = twai_read_alerts(&alerts, pdMS_TO_TICKS(0));  //do not block waiting for alert
+//         if(err!=0){
+//             //mutexPrint("error reading alert/no alert to be had");
+//         }
+//         if (alerts & TWAI_ALERT_TX_IDLE) {
+//             mutexPrint("TWAI Alert: TX Idle\n");
+//         }
+//         if (alerts & TWAI_ALERT_TX_SUCCESS) {
+//             mutexPrint("TWAI Alert: TX Success\n");
+//         }
+//         if (alerts & TWAI_ALERT_TX_FAILED) {
+//             mutexPrint("TWAI Alert: TX FAILED\n");
+//                 twai_status_info_t status_info;
+//                 esp_err_t err = twai_get_status_info(&status_info);
+//         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+//             printf("Alert: The Transmission failed.");
+//             xSemaphoreGive(*printfMutex); // Release the mutex.
+//                 }else { printf("cant print, in deadlock!\n"); }
+//         }
+//         if (alerts & TWAI_ALERT_RX_DATA) {
+//             mutexPrint("TWAI Alert: RX Data Available\n");
+//         }
+//         if (alerts & TWAI_ALERT_BELOW_ERR_WARN) {
+//             mutexPrint("TWAI Alert: Error counter below warning\n");
+//         }
+//         if (alerts & TWAI_ALERT_ERR_ACTIVE) {
+//             mutexPrint("TWAI Alert: Error Active\n");
+//         }
+//         if (alerts & TWAI_ALERT_BUS_OFF) {
+//             mutexPrint("TWAI Alert: Bus Off\n");
+//         }
+//         if (alerts & TWAI_ALERT_ABOVE_ERR_WARN) {
+//             mutexPrint("TWAI Alert: Above Error Warning Limit\n");
+//         }
+//         if (alerts & TWAI_ALERT_BUS_RECOVERED) {
+//             mutexPrint("TWAI Alert: Bus Recovered, \n\nrestarting Bus\n\n\n\n");
+//             startBus();
+//         }
+//         if (alerts & TWAI_ALERT_ARB_LOST) {
+//             mutexPrint("TWAI Alert: Arbitration Lost\n");
+//         }
+//         if (alerts & TWAI_ALERT_BUS_ERROR) {
+//             mutexPrint("TWAI Alert: Bus Error\n");
+//         }
+//         vTaskDelay(500/portTICK_PERIOD_MS);
+//     }
+// }
     void printAllData(){    //not for final use. for testing only
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
 
@@ -203,7 +214,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         
         for( ;; ) {
             //sampple code that writes DEADFACE as data for vital's HB
-            struct CANPacket message={0};
+            CANPacket message={0};
             int8_t DE=0xDE;
             int8_t AD=0xAD;
             int8_t FACE[2]={0xFA,0xCE};
@@ -231,7 +242,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
     }
     
     void vTimerCallback(TimerHandle_t xTimer){   //called when data is not correctly recieved. Triggers extrapolation, and extrapolation warning, sent directly to telem
-        struct CANFrame* missingFrame = ( struct CANFrame* ) pvTimerGetTimerID( xTimer );
+        CANFrame* missingFrame = ( CANFrame* ) pvTimerGetTimerID( xTimer );
         if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
             printf("missing Data frame number: %d from node %d. \n", missingFrame->frameID, missingFrame->nodeID);
             xSemaphoreGive(*printfMutex); // Release the mutex.
@@ -279,7 +290,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
     }else { printf("cant print, in deadlock!\n"); }
         return 0;
     }
-    int16_t moniterData(struct CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
+    int16_t moniterData(CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
         
         mutexPrint("recievingData\n");
         int16_t nodeId=IDTovitalsIndex(message->id);
@@ -288,7 +299,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             return 1;
         }
 
-        struct vitalsNode* node = &(nodes[nodeId]); //the node which sent the message
+        vitalsNode* node = &(nodes[nodeId]); //the node which sent the message
 
         uint32_t CanFrameNumber=getDataFrameId(message->id);    //the Can frame index is stored in extension
         if(CanFrameNumber>node->numFrames){
@@ -299,7 +310,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         char str[15]; // Enough to store "-128" and null terminator
         sprintf(str, "%ld, %d", CanFrameNumber, nodeId);
         mutexPrint(str);
-        struct CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
+        CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
         //mark this data as collected.
         sprintf(str, "%d", frame->frameID);
         mutexPrint(str);
@@ -321,7 +332,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         //parse each data from frame
         int8_t bitIndex=0;    //which bit of CANFrame we are currently reading from (as we iterate through the data)
         for(int i=0;i<(*frame).numData;i++){
-            struct dataPoint* dataInfo=& (((*frame).dataInfo)[i]);
+            dataPoint* dataInfo=& (((*frame).dataInfo)[i]);
             uint32_t temp=0;
             copyDataToValue(&temp,message->data,bitIndex,dataInfo->bitLength);
             int32_t recvdata = ((int32_t)temp) + dataInfo->min;
@@ -338,7 +349,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         frame->consecutiveMisses=0;
         return 0;
     }
-    int16_t recieveHeartbeat(struct CANPacket* message){    //mark the HB for given node as recieved, recording time to respond
+    int16_t recieveHeartbeat(CANPacket* message){    //mark the HB for given node as recieved, recording time to respond
         mutexPrint("recieved Pong\n");
         int16_t nodeId=IDTovitalsIndex(message->id);
         nodes[nodeId].flags |= HBFlag;
@@ -346,11 +357,11 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
         return 0;
     }
     void recieveMSG(){   //prints information about and contents of every recieved message
-        struct CANPacket message; //will store any recieved message
+        CANPacket message; //will store any recieved message
         //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
-        struct PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
+        PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
         //declare parameters here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to 'mt', 'handler' is called.
-        struct CANListenParam processBeat;
+        CANListenParam processBeat;
         processBeat.handler=recieveHeartbeat;
         processBeat.listen_id =combinedID(HBPong,vitalsID);   //setting vitals ID doesnt matter, just checking function
         processBeat.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
@@ -359,7 +370,7 @@ void twai_monitor_alerts(void * pvParameters) { //should send all this to Telem 
             while(1);
         }
         initializeTimers(); //initialize timers needed to moniter data
-        struct CANListenParam processData;
+        CANListenParam processData;
         processData.handler=moniterData;
         processData.listen_id =combinedID(transmitData,vitalsID);   //setting vitals ID doesnt matter, just checking function
         processData.mt=MATCH_FUNCTION; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
@@ -454,15 +465,15 @@ if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
                       &checkStatus_Buffer,   /* Variable to hold the task's data structure. */
                       tskNO_AFFINITY);  //assigns printHello to core 0
 
-    TaskHandle_t checkAlerts = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
-                      twai_monitor_alerts,       /* Function that implements the task. */
-                      "checkalrt",          /* Text name for the task. */
-                      STACK_SIZE,      /* Number of indexes in the xStack array. */
-                      ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-                      2,/* Priority at which the task is created. */
-                      alert_Stack,          /* Array to use as the task's stack. */
-                      &alert_Buffer,   /* Variable to hold the task's data structure. */
-                      tskNO_AFFINITY);  //assigns printHello to core 0
+    // TaskHandle_t checkAlerts = xTaskCreateStaticPinnedToCore(  //schedules the task to run the printHello function, assigned to core 0
+    //                   twai_monitor_alerts,       /* Function that implements the task. */
+    //                   "checkalrt",          /* Text name for the task. */
+    //                   STACK_SIZE,      /* Number of indexes in the xStack array. */
+    //                   ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
+    //                   2,/* Priority at which the task is created. */
+    //                   alert_Stack,          /* Array to use as the task's stack. */
+    //                   &alert_Buffer,   /* Variable to hold the task's data structure. */
+    //                   tskNO_AFFINITY);  //assigns printHello to core 0
     
     //vTaskStartScheduler();      /do not write vTaskStartScheduler anywhere if using IDF FreeRTOS, the scheduler begins running on initialization, we cant toggle it, and program crashes if you attempt to.
 }

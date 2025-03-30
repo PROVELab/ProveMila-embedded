@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <string.h> // memcpy
 #include "pecan.h"
-
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
     return (fn_id << 7) + node_id;
 }
@@ -10,11 +9,11 @@ uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id,uint32_t extension)
 }
 
 
-void setSensorID(struct CANPacket * p, uint8_t sensorId){
+void setSensorID(CANPacket * p, uint8_t sensorId){
     p->data[0] = sensorId;
 }
 
-int16_t addParam(struct PCANListenParamsCollection * plpc, struct CANListenParam clp){
+int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
     if (plpc->size + 1 > MAX_PCAN_PARAMS){
         return NOSPACE;
     } else {
@@ -23,19 +22,19 @@ int16_t addParam(struct PCANListenParamsCollection * plpc, struct CANListenParam
         return SUCCESS;
     }
 }
-int16_t setRTR(struct CANPacket * p){   //makes the given packet an RTR packet
+int16_t setRTR(CANPacket * p){   //makes the given packet an RTR packet
     if(p->dataSize !=0){
         return 1;   //this packet has data written to it, it cant also be an rtr packet 
     }
     p->rtr=1;
     return 0;
 }
-int16_t setExtended(struct CANPacket * p){  //makes the given packet an extended ID packet (so can send 29 bits of id, instead of just first 11)
+int16_t setExtended(CANPacket * p){  //makes the given packet an extended ID packet (so can send 29 bits of id, instead of just first 11)
     p->extendedID=1;
     return 0;
 }
 //int16_t setExtended(struct CANPacket *p)
-int16_t writeData(struct CANPacket * p, int8_t * dataPoint, int16_t size){
+int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
     if(p->rtr){
         return -4;  //this is an rtr packet, can not write data
     }

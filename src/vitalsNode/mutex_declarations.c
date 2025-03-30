@@ -26,7 +26,7 @@ void mutexInit(void){   //initializes all mutexes in mutxes array in a loop
 
 }
 //likely shouldnt be printing anything in final design, using this for code brevity throughout developemnt
-void mutexPrint(char* str){
+void mutexPrint(const char* str){
     if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
         printf("%s\n",str); // Call the non-reentrant function safely.
         xSemaphoreGive(*printfMutex); // Release the mutex.

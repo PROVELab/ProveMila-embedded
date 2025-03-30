@@ -170,6 +170,7 @@ def parse_config(file_path):
     # Parallel arrays for each node.
     vitalsNodes = []  # stores info for vitals and sensor nodes
     nodeNames = []    # stores the names of each node
+    boardTypes = []
     dataNames = []    # stores the names of each piece of data (organized per node)
     numData = []      # stores number of datapoints each node has
     node_ids = []
@@ -188,11 +189,11 @@ def parse_config(file_path):
             node_info = {k.strip(): v.strip() for k, v in (item.split("=") for item in node_details)}
             node_id = int(node_info["id"])
             node_name = node_info["name"]
-
+            board_type= node_info["board"]
             # Initialize vitalsNode
             vitalsNodes.append(deepcopy(vitalsNode_fields))
             nodeNames.append(node_name)
-
+            boardTypes.append(board_type)
             if startingNodeID is None:
                 startingNodeID = node_id
             node_ids.append(node_id)
@@ -248,4 +249,4 @@ def parse_config(file_path):
     all_ids = range(min(node_ids), max(node_ids) + 1)
     missingIDs = [node_id for node_id in all_ids if node_id not in node_ids]
 
-    return vitalsNodes, nodeNames, dataNames, numData, node_ids, startingNodeID, missingIDs, nodeCount, frameCount
+    return vitalsNodes, nodeNames, boardTypes, dataNames, numData, node_ids, startingNodeID, missingIDs, nodeCount, frameCount

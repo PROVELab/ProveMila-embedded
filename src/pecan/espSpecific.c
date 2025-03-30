@@ -10,7 +10,7 @@
 #include "pecan.h"
 
 //Simplified Can functionality Functions: feel free to never use these, and just use them as sample code for ESP-CAN library:
-int16_t defaultPacketRecv(struct CANPacket* p){
+int16_t defaultPacketRecv(CANPacket* p){
     if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
         printf("Default handler: id %ld\n with data:", p->id);
         for(int i=0;i<p->dataSize;i++){
@@ -24,13 +24,13 @@ int16_t defaultPacketRecv(struct CANPacket* p){
 
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
-int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollection *plpc) {
+int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     //Serial.println(plpc->arr[0].listen_id);
     if (recv_pack == NULL) { //if no empyt packet provided, exit early
         return 1;
     }
 
-    struct CANListenParam clp;
+    CANListenParam clp;
     twai_message_t twaiMSG;
     if (twai_receive(&twaiMSG, pdMS_TO_TICKS(0)) == ESP_OK) {   //check for message without blocking (0 ms blocking)
         
@@ -65,7 +65,7 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(struct CANPacket *p) {
+int16_t sendPacket(CANPacket *p) {
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }

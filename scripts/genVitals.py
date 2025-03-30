@@ -31,12 +31,12 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
             #dataPoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 num_data_points = ACCESS(frame, "numData")["value"]
-                f.write(f"struct dataPoint n{nodeIndex}f{frameIndex}DPs [{num_data_points}]={{\n")
+                f.write(f"typedef struct n{nodeIndex}f{frameIndex}DPs [{num_data_points}]={{\n")
                 for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                     fields = [f".{field['name']}={ACCESS(dataPoint, field['name'])['value']}"
                               for field in dataPoint_fields if field["node"] in {"both", "vitals"}]
                     f.write("    {" + ", ".join(fields) + "},\n")
-                f.write("};\n\n")
+                f.write("} dataPoint;\n\n")
 
             #arrays of datapoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
@@ -46,21 +46,21 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
                 f.write("};\n\n")
 
             #CANFrames
-            f.write(f"struct CANFrame n{nodeIndex}[{ACCESS(node, 'numFrames')['value']}]={{\n")
+            f.write(f"typedef struct n{nodeIndex}[{ACCESS(node, 'numFrames')['value']}]={{\n")
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 frame_fields = [f".{field['name']}={ACCESS(frame, field['name'])['value']}"
                                 for field in CANFrame_fields if field["node"] in {"both", "vitals"}]
                 f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex}Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
-            f.write("};\n\n")
+            f.write("} CANFrame;\n\n")
 
         #vitalsNode nodes
-        f.write("// struct vitalsData *nodes;\n")
-        f.write(f"struct vitalsNode nodes [{len(vitalsNodes)}]={{\n")
+        f.write("// vitalsData *nodes;\n")
+        f.write(f"typedef struct nodes [{len(vitalsNodes)}]={{\n")
         for nodeIndex, node in enumerate(vitalsNodes):
             NODE_fields = [f".{field['name']}={ACCESS(node, field['name'])['value']}"
                             for field in vitalsNode_fields if field["name"] not in {"CANFrames"}] #exclude frames from auto generation
             f.write(f"    {{{', '.join(NODE_fields)}, .CANFrames=n{nodeIndex}}},\n")
-        f.write("};\n")
+        f.write("} vitalsNode;\n")
 
         f.write("int16_t missingIDs[]={")
         i=nodeIds[0]
@@ -90,38 +90,38 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
         f.write("#define R10(x) {x,x,x,x,x,x,x,x,x,x}\n\n")
 
         # DataPoint struct definition
-        f.write("struct dataPoint {\n")
+        f.write("typedef struct {\n")
         for field in dataPoint_fields:
             f.write(f"    {field['type']} {field['name']};\n")
-        f.write("};\n\n")
+        f.write("} dataPoint;\n\n")
 
         # CANFrame struct definition
-        f.write("struct CANFrame {\n")
+        f.write("typedef struct {\n")
         for field in CANFrame_fields:
             if field['name'] == "dataInfo":
                 # Replace 'list' with the correct type
-                f.write("    struct dataPoint *dataInfo; /* Replaced list with dataPoint pointer */\n")
+                f.write("    dataPoint *dataInfo; /* Replaced list with dataPoint pointer */\n")
             elif field['name'] == "CANFrames":
                 # Replace 'list' with the correct type
-                f.write("    struct CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
+                f.write("    CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
             else:
                 # For other fields, write them as usual
                 f.write(f"    {field['type']} {field['name']};\n")
         
         # Manually insert the custom 'data' field
         f.write("    int32_t (*data)[10]; /* Custom field for data, initialized to [data points per data =10] [numData for this frame] */\n")
-        f.write("};\n\n")
+        f.write("} CANFrame;\n\n")
 
         # VitalsNode struct definition
-        f.write("struct vitalsNode {\n")
+        f.write("typedef struct {\n")
         for field in vitalsNode_fields:
             if field['name'] == "CANFrames":
                 # Replace 'list' with the correct type
-                f.write("    struct CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
+                f.write("    CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
             else:
                 # For other fields, write them as usual
                 f.write(f"    {field['type']} {field['name']};\n")
-        f.write("};\n\n")
+        f.write("} vitalsNode;\n\n")
 
         # End of header guards
         f.write("#endif\n")
@@ -139,6 +139,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
         f.write(f"#define numberOfNodes {nodeCount}\n")
         f.write(f"#define totalNumFrames {frameCount}\n")
         f.write(f"#define numMissingIDs {numMissingIDs}\n")
+        minId=min(nodeIds)
+        f.write(f"#define startingOffset {minId}\n")
         f.write("\n//Explicilty defined in sensors.def constants\n")
         # Iterate over the globalDefines array and write them as #define statements
         for define in globalDefines:

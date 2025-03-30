@@ -5,7 +5,7 @@
 
 #include <Arduino.h>
 
-int16_t defaultPacketRecv(struct CANPacket *packet) {  //this is only to be used by vitals for current
+int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vitals for current
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
     Serial.print(",  data ");
@@ -14,17 +14,17 @@ int16_t defaultPacketRecv(struct CANPacket *packet) {  //this is only to be used
 }
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
-int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollection *plpc) {
+int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     //Serial.println(plpc->arr[0].listen_id);
     if (recv_pack == NULL) {
-        struct CANPacket p;
+        CANPacket p;
         recv_pack = &p;
         // We can only use this for handler
         // Because stack
     }
 
     int8_t packetsize;
-    struct CANListenParam clp;
+    CANListenParam clp;
     //Serial.println(CAN.parsePacket());
     if ((packetsize = CAN.parsePacket())) {
         Serial.println("recieving Packet: ");
@@ -52,7 +52,7 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(struct CANPacket *p) {  //note: if your id is longer than 11 bits it made into
+int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }

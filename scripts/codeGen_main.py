@@ -29,7 +29,7 @@ if __name__ == "__main__":
     file_path = os.path.join(script_dir, 'sensors.def')
     
     # Parse configuration file
-    (vitalsNodes, nodeNames, dataNames, numData, nodeIds,
+    (vitalsNodes, nodeNames, boardTypes, dataNames, numData, nodeIds,
      startingNodeID, missingIDs, nodeCount, frameCount) = parse_config(file_path)
 
     print("Starting Node ID:", startingNodeID)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # pretty_print_vitals(vitalsNodes)
     
     # Generate sensor files
-    createSensors(vitalsNodes, nodeNames, nodeIds, dataNames, numData, script_dir, globalDefines)
+    createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, script_dir, globalDefines)
     createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCount, numData, script_dir, globalDefines)
 
 

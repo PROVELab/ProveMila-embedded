@@ -1,12 +1,18 @@
 # Node definitions
-global: startingOffset=6
+global: maxDataFrameCnt=8   #should be a power of 2
+global: maxDataInFrame=10
 global: pointsPerData=10
 global: vitalsID=0b0000010
 global: HBPing=0b0011
 global: HBPong=0b0100
 global: transmitData=0b0111
-
-node: id=6, name=genericNodeName
+global: statusUpdate=0b1111
+#flags for status Updates
+global: initFlag=0b00000000
+global: canRecoveryFlag=0b00000001
+#
+#node Definitions
+node: id=6, name=genericNodeName, board=arduino
 CANFrame: frequency=500, dataTimeout=1000
 temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
 temperature2: bitLength=32, min=-2000000000, max=2000000000, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
@@ -15,6 +21,6 @@ temperature3: bitLength=20, min=-524288, max=524287, minWarning=-100000, maxWarn
 CANFrame: frequency=100, dataTimeout=600
 airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=1, maxWarning=10, startingValue=4
 
-node: id=8, name=sampleName
+node: id=8, name=sampleName, board=arduino
 CANFrame: frequency=400, dataTimeout=1000
 rizzMeter: bitLength=8, min=-10, max=200, minWarning=0, maxWarning=110, minCritical=-10, maxCritical=110, startingValue=9
