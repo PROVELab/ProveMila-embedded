@@ -3,7 +3,7 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass
 import math
-
+#values must fit in int32_t
 INT_MIN = -2147483648
 INT_MAX = 2147483647
 
@@ -16,10 +16,9 @@ def ACCESS(fields, name):
 # required means this field must be provided by the user.
 # optional means this field will take on the value already in value, unless otherwise specified.
 
-# A copy of each of these arrays will be made for every node
+# A copy of each of these will be made for every dataPoint
 dataPoint_fields = [                                                    
     {"name": "bitLength",       "type": "int8_t",  "expectation": "required", "value": 0, "node": "both", "isSet": False},    # bitLength is manually computed, no need to specify
-    # {"name": "isCritical",      "type": "int8_t",  "expectation": "dontSpecify", "value": 0,  "node": "vitals"},  # isCritical is set based on if minCritical and maxCritical are assigned
     {"name": "minCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
     {"name": "maxCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
     {"name": "min",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": "both", "isSet": False},
@@ -29,7 +28,7 @@ dataPoint_fields = [
     {"name": "startingValue",   "type": "int32_t", "expectation": "required",    "value": 0,  "node": "vitals", "isSet": False}
 ]
 
-# Code hard generates for data* [10] in CANFrame
+# A copy of each of these will be made for every CANFrame
 CANFrame_fields = [  
     {"name": "nodeID",          "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": "vitals", "isSet": False},    # set based on which node this frame belongs to
     {"name": "frameID",         "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": "vitals", "isSet": False},    # explicitly computed by program
@@ -42,7 +41,7 @@ CANFrame_fields = [
     {"name": "dataTimeout",     "type": "int32_t","expectation": "required",    "value": 0, "node": "vitals", "isSet": False},     # Must be specified
     {"name": "frequency",       "type": "int32_t","expectation": "required",    "value": 0, "node": "sensor", "isSet": False}
 ]
-
+#A copy of each of these will be made for every sensor node
 vitalsNode_fields = [   # fields only for vitals; each processed manually
     {"name": "flags",       "type": "int8_t", "expectation": "dontSpecify", "value": 0, "isSet": False},
     {"name": "milliSeconds","type": "int16_t", "expectation": "dontSpecify", "value": 0, "isSet": False},
@@ -73,7 +72,6 @@ def validate_datapoint(dp, dataName, node_id):
     maxCritical   = int(ACCESS(dp, "maxCritical")["value"])
     maxCriticalSet= bool(ACCESS(dp, "maxCritical")["isSet"])
     starting_val  = int(ACCESS(dp, "startingValue")["value"])   
-    # is_critical   = bool(ACCESS(dp, "isCritical")["value"])
     # Check overall range is valid.
     if not (min_value < max_value):
         print(f"Error: For {dataName} (node {node_id}): Overall range invalid: min ({min_value}) must be less than max ({max_value}).")
@@ -91,6 +89,22 @@ def validate_datapoint(dp, dataName, node_id):
     if (max_value>INT_MAX):
         print(f"Warning: For {dataName} (node {node_id}): maxValue more than INT_MAX.")
         while(1): pass
+
+    #set ranges so that they will be ignored if they were not set.
+    #note: with current system, warning/critical ranges will be triggered on exclusive comparisons.
+    if not minWarningSet:
+         minWarning=(int)(ACCESS(dp, "min")["value"])
+         ACCESS(dp, "minWarning")["value"]= minWarning
+    if not maxWarningSet:
+         maxWarning=(int)(ACCESS(dp, "max")["value"])
+         ACCESS(dp, "maxWarning")["value"]= maxWarning
+    if not minCriticalSet:
+         minCritical=(int)(ACCESS(dp, "min")["value"])
+         ACCESS(dp, "minCritical")["value"]= minCritical
+    if not maxCriticalSet:
+         maxCritical=(int)(ACCESS(dp, "max")["value"])
+         ACCESS(dp, "maxCritical")["value"]= maxCritical
+
     # Check range ordering.
     if(minWarningSet and minWarning<min_value or (maxWarningSet and maxWarning>max_value)):
         print(f"Warning: For {dataName} (node {node_id}): warningRange outside of given range")
@@ -102,41 +116,13 @@ def validate_datapoint(dp, dataName, node_id):
         print(f"Warning: For {dataName} (node {node_id}): warningRange outside of critical range")
         while(1): pass
 
-    #set ranges so that they will be ignored if they were not set.
-    #note: with current system, warning/critical ranges will be triggered on exclusive comparisons.
-    if not minWarningSet:
-         ACCESS(dp, "minWarning")["value"]= ACCESS(dp, "min")["value"]
-    if not maxWarningSet:
-         ACCESS(dp, "maxWarning")["value"]= ACCESS(dp, "max")["value"]
-    if not minCriticalSet:
-         ACCESS(dp, "minCritical")["value"]= ACCESS(dp, "min")["value"]
-    if not maxCriticalSet:
-         ACCESS(dp, "maxCritical")["value"]= ACCESS(dp, "max")["value"]
+
     #check startingVal
     if(starting_val<minWarning or starting_val>maxWarning):
         print(f"Warning: For {dataName} (node {node_id}): startingVal outside of acceptable range")
         while(1): pass
-    
-    # if is_critical:
-    #     min_critical = ACCESS(dp, "minCritical")["value"]
-    #     max_critical = ACCESS(dp, "maxCritical")["value"]
-    #     if not (min_value <= min_critical <= min_warning <= starting_val <= max_warning <= max_critical <= max_value):
-    #         print(f"Error: For {dataName} (node {node_id}): With critical enabled, expected ordering is:")
-    #         print(f"       min ({min_value}) ≤ minCritical ({min_critical}) ≤ minWarning ({min_warning}) ≤")
-    #         print(f"       startingValue ({starting_val}) ≤ maxWarning ({max_warning}) ≤ maxCritical ({max_critical}) ≤ max ({max_value}).")
-    #         while(1): pass
-    # else:   #dont check critical Ranges if not Critical (these would be unset)
-    #     if not (min_value <= min_warning <= starting_val <= max_warning <= max_value):
-    #         print(f"Error: For {dataName} (node {node_id}): Expected ordering for non-critical is:")
-    #         print(f"       min ({min_value}) ≤ minWarning ({min_warning}) ≤ startingValue ({starting_val}) ≤ maxWarning ({max_warning}) ≤ max ({max_value}).")
-    #         while(1): pass
 
-
-# Helper function to handle critical fields.
-def handleCriticals(name, fields):
-    if name == "minCritical" or name == "maxCritical":
-        ACCESS(fields, "isCritical")["value"] = 1
-
+#update the data in a given set of fields based on what was read from a line
 def updateEntries(parsedFields, fields):
     for name, value in parsedFields.items():
         found = False
@@ -161,9 +147,8 @@ def updateEntries(parsedFields, fields):
 
 # --- parse_config function moved here ---
 def parse_config(file_path):
-    # Local variables formerly global
+    # Variables storing info as we go about our parsing
     startingNodeID = None
-    missingIDs = []
     nodeCount = 0
     frameCount = 0
 
@@ -174,6 +159,7 @@ def parse_config(file_path):
     dataNames = []    # stores the names of each piece of data (organized per node)
     numData = []      # stores number of datapoints each node has
     node_ids = []
+    missingIDs = []     #not parallel. 
 
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -191,7 +177,7 @@ def parse_config(file_path):
             node_name = node_info["name"]
             board_type= node_info["board"]
             # Initialize vitalsNode
-            vitalsNodes.append(deepcopy(vitalsNode_fields))
+            vitalsNodes.append(deepcopy(vitalsNode_fields)) #create a copy of array of structs at top of file, and modify values as we parse
             nodeNames.append(node_name)
             boardTypes.append(board_type)
             if startingNodeID is None:
@@ -206,7 +192,7 @@ def parse_config(file_path):
             nodeFrames = ACCESS(vitalsNodes[nodeCount - 1], "numFrames")
             nodeFrames["value"] += 1
             numFrames=nodeFrames["value"]
-            # if (numFrames := nodeFrames["value"]) > 4:
+            # if (numFrames := nodeFrames["value"]) > 4:    #
             #     print("Warning: more than 4 frames for node " + nodeNames[nodeCount - 1])
             #     while(1): pass
 
@@ -223,7 +209,7 @@ def parse_config(file_path):
             updateEntries(frame_info, frame)
 
         elif "global" in line:
-            # example: global: vitalsID=0b000010, will make: #define vitalsID 0b000010
+            # example: global: vitalsID=0b000010, will make: #define vitalsID 2
             split = line.strip().split(":")[1].strip().split("=")
             newGlobal = globalDefine(split[0], split[1])
             globalDefines.append(newGlobal)
@@ -234,7 +220,6 @@ def parse_config(file_path):
             dataArr = ACCESS(frame, "dataInfo")["value"]
             dataArr.append(deepcopy(dataPoint_fields))
             dataPoint = dataArr[-1]
-            print("here")
             dataNames.append(line.split(":")[0].strip())
             numData[-1] += 1
 

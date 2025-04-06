@@ -25,8 +25,7 @@ int16_t defaultPacketRecv(CANPacket* p){
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
 int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
-    //Serial.println(plpc->arr[0].listen_id);
-    if (recv_pack == NULL) { //if no empyt packet provided, exit early
+    if (recv_pack == NULL) { //if no empyt packet provided, exit early. 
         return 1;
     }
 
@@ -69,16 +68,20 @@ int16_t sendPacket(CANPacket *p) {
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
-    //(p->id)>0b11111111111
  twai_message_t message = {  //This is the struct used to create and send a CAN message. Generally speaking, only the last 3 fields should ever change.
         .extd= (p->id)>0b11111111111,              // Standard vs extended format. makes message extended if
-        .rtr = 0,               // Data vs RTR frame.  We should avoid sending RTR frames since the other CAN libraries don't explicitly support it (just send a data message with no data instead)
+        .rtr = p->rtr,               // Data vs RTR frame. 
         .ss = 0,                // Whether the message is single shot (i.e., does not repeat on error)
         .self = 0,              // Whether the message is a self reception request (loopback)
         .dlc_non_comp = 0,      // DLC is less than 8  I beleive, for our purposes, this should always be 0, we want to be compliant with 8 byte data frames, and not confuse arduino guys
         .identifier=p->id,  //id of vitals Heart Beat Ping
         .data_length_code = p->dataSize,
     };
-    memcpy(message.data, p->data, p->dataSize);
-    return twai_transmit(&message, pdMS_TO_TICKS(0));
+    memcpy(message.data, p->data, p->dataSize); //copy data into msg
+    esp_err_t err;
+    while((err=twai_transmit(&message, pdMS_TO_TICKS(30))) ==(ESP_FAIL)); //Continue trying to send indefinately in the event that we are waiting for another message to transfer (from another thread). 
+    //Otherwise give a timeout of 30ms for queue to open up. If the error is something else, we are not in a state to transmit (which we should handle when checking Bus State).
+    //The only other code is for invalid arguments, in which case we will never be able to transmit anyway (although this should fr never happen)
+    
+    return err;
 }

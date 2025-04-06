@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h> // memcpy
 #include "pecan.h"
+#include "../vitalsNode/programConstants.h"
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
     return (fn_id << 7) + node_id;
 }
@@ -70,7 +71,7 @@ uint32_t formatValue(int32_t value, int32_t min, int32_t max){
     return (uint32_t) (squeeze(value,min, max) - min);
 }
 int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit, int8_t numBits) { //copies the first numBits of value into target starting at startBit of target
-    if (numBits <= 0 || startBit < 0 || startBit + numBits > 64) return 1;  // this doesnt work in this case
+    if (numBits <= 0 || startBit < 0 || startBit + numBits > 64) return 1;  //function called in invalid circumstance
 
     // Treat target and source as 64-bit integers
     uint64_t* target64 = (uint64_t*)target;  
@@ -81,7 +82,7 @@ int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit, int8_
 }
 
 //inverse of the above function
-int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t numBits) {
+int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t numBits) { //relies on mc using little endian (since interpretting array of bytes as int)
     if (numBits <= 0 || startBit < 0 || startBit + numBits > 64) return 1; 
 
     // Treat target as a 64-bit integer (for up to 8 bytes)
@@ -92,6 +93,15 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t
     *target = (int32_t)extractedBits;  // Update the value with the extracted bits
     return 0;
 }
+
+int16_t sendStatusUpdate(uint8_t flag, uint32_t Id){
+    CANPacket statusUpdatePacket;
+    memset(&statusUpdatePacket, 0, sizeof(CANPacket));
+    statusUpdatePacket.id =combinedID(statusUpdate,Id);  
+    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
+    return sendPacket(&statusUpdatePacket);
+}
+
 
 //note: ID sent over CAN is 11 bit long, with first 7 bitsbeing the identifier of sending node, and last 4 bits being the function code
 bool matchID(uint32_t id, uint32_t mask){ //check if the 7 bits of node ID must match mask

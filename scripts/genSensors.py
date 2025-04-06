@@ -15,13 +15,12 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         f.write(
             "#ifndef SENSOR_HELP\n"
             "#define SENSOR_HELP\n\n"
-            "#ifdef __cplusplus\nextern \"C\" //Need C linkage since ESP uses C \"C\"\n#endif\n#endif"
-            "#include \"../../vitalsNode/programConstants.h\""
+            "#ifdef __cplusplus\nextern \"C\" { //Need C linkage since ESP uses C \"C\"\n#endif\n"
+            "#include \"../../vitalsNode/programConstants.h\"\n"
             "#define STRINGIZE_(a) #a\n"
             "#define STRINGIZE(a) STRINGIZE_(a)\n"
             '#include STRINGIZE(../NODE_CONFIG)  //includes node Constants\n\n'
             '#include "../../pecan/pecan.h"\n'
-            '#include "../../arduinoSched/arduinoSched.hpp"\n'
             '#include <stdint.h>\n\n'
             "//universal globals. Used by every sensor\n"
         )
@@ -31,26 +30,29 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         #     f.write(" ")
         #     f.write(i.value)
         #     f.write("\n")
-        f.write("extern CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder\n\n"
-                "//shortened versions of vitals structs, containing only stuff the sensors need for sending\n")
-        
+
         # write the dataPoints struct (for sensors):
         f.write("typedef struct{\n")
         for field in dataPoint_fields:
             if field["node"] == "sensor" or field["node"] == "both":
                 f.write("    " + field["type"] + " " + field["name"] + ";\n")
-        # custom fields here
-        f.write("    int32_t data;   //the actual data stored here\n")  
-        f.write("} dataPoints;\n\n")
+
+        f.write("} dataPoint;\n\n")
         # write the CANFrame struct
         f.write("typedef struct{    //identified by a 2 bit identifier 0-3 in function code\n")
         for field in CANFrame_fields:
             if field["node"] == "sensor" or field["node"] == "both":
-                f.write("    " + field["type"] + " " + field["name"] + ";\n")
+                f.write("    " + field["type"] + " " + field["name"] + ";\n")     
         # custom fields here
         f.write("    int8_t startingDataIndex;  //what is the starting index of data in this frame? (needed for calling appropriate collector function)\n")
         f.write("    dataPoint *dataInfo;\n")
         f.write("} CANFrame;\n")
+        #
+
+        f.write("extern CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder\n\n"
+        "//shortened versions of vitals structs, containing only stuff the sensors need for sending\n")
+
+
         f.write("int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts);  //for arduino, this should be a PScheduler*. Otherwise, just pass Null\n")
         f.write("#ifdef __cplusplus\n}  // End extern \"C\"\n#endif\n#endif")
     
@@ -154,7 +156,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 localDataIndex = dataIndex - numData[nodeIndex]  # reset localDataIndex for this node
                 for frame in ACCESS(node, "CANFrames")["value"]:
                     for dataPoint in ACCESS(frame, "dataInfo")["value"]:
-                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n    Serial.println(\"collecting {0}\");\n    return {0};\n}}\n\n".format(
+                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n    mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void recieveMSG(){  //task handles recieving Messages\n"
@@ -246,7 +248,30 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 f.write("},\n")
                 frame_index += 1
             f.write("};\n")
+            f.close()
         nodeIndex += 1
+
+    #Generate platformio.ini environments. Only contains environments for sensor nodes, to be pasted into actual platformio.ini file as an add-on
+    file_path = os.path.join(generated_code_dir,'Generatedplatformio.ini')
+    with open(file_path, 'w') as f:
+        nodeIndex=0
+        f.write("\n")
+        for node in vitalsNodes:
+            if(boardTypes[nodeIndex]=="arduino"):
+                f.write(f"[env:{nodeNames[nodeIndex]}]\n")
+                f.write("extends=arduinoBase\n")
+                f.write(f"build_src_filter = +<sensors/{nodeNames[nodeIndex]}> +<sensors/common> +<pecan> -<pecan/espSpecific.c> +<arduinoSched>\n")
+                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
+
+                # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
+            elif(boardTypes[nodeIndex]=="esp"):
+                f.write(f"[env:{nodeNames[nodeIndex]}]\n")
+                f.write("extends=espBase\n")
+                f.write(f"board_build.cmake_extra_args = -DSENS_DIR={nodeNames[nodeIndex]} -DCMAKE_SENSOR_ESP_BUILD=ON\n")
+                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp -DSENSOR_ESP_BUILD=ON\n\n")
+            nodeIndex+=1
+        f.close()
+
 
 # Note: The ACCESS helper is also defined here to allow local field lookup.
 def ACCESS(fields, name):

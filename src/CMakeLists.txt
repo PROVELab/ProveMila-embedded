@@ -31,12 +31,12 @@ if(CMAKE_VITALS_ESP_BUILD)
     )
     # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
 
-else()  #CMAKE_SENSOR_ESP_BUILD <- Assumed
+elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     # message(SEND_ERROR "Path is set to: ${DECPath}")
 
     set(SRC_FILES
-        "sensors/${DECPATH}/main.c"
-        "sensors/${DECPATH}/staticDec.cpp"
+        "sensors/${SENS_DIR}/main.c"
+        "sensors/${SENS_DIR}/staticDec.cpp"
         
         "sensors/common/sensorHelper.cpp"
         "pecan/common.cpp"
@@ -45,7 +45,20 @@ else()  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     )
     # message(SEND_ERROR "DECPATH: ${DECPATH}")
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
+elseif(CMAKE_MOTOR_CONTROLLER)
+set(SRC_FILES
+    "sensors/${SENS_DIR}/main.c"
+    "sensors/${SENS_DIR}/staticDec.cpp"
 
+    "sensors/common/sensorHelper.cpp"
+    "pecan/common.cpp"
+    "pecan/espSpecific.c"
+    "vitalsNode/mutex_declarations.c"
+)
+else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
+    set(SRC_FILES
+        "${CMAKE_SRC_FILE}"
+    )   
 endif()
 idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
 

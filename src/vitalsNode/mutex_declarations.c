@@ -20,6 +20,7 @@ void mutexInit(void){   //initializes all mutexes in mutxes array in a loop
         (mutexes)[i]= xSemaphoreCreateMutexStatic(&(mutexBuffers[i]));
         if (mutexes[i] == NULL)    {
             printf("Failed to create mutex %d\n",i);
+            while(1);
             return;
         }
     }

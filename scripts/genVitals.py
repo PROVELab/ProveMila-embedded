@@ -1,7 +1,7 @@
 import os
 from parseFile import dataPoint_fields, CANFrame_fields, vitalsNode_fields, globalDefine, ACCESS
 
-def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCount, numData, script_dir, globalDefines):
+def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCount, frameCount, numData, script_dir, globalDefines):
     parent_dir = os.path.dirname(script_dir)     # Get the parent directory of the script
     generated_code_dir = os.path.join(parent_dir, 'generatedVitalsCode')    
     os.makedirs(generated_code_dir, exist_ok=True)      # Create the 'generatedSensorCode' directory (overwrite if it exists)
@@ -31,12 +31,12 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
             #dataPoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 num_data_points = ACCESS(frame, "numData")["value"]
-                f.write(f"typedef struct n{nodeIndex}f{frameIndex}DPs [{num_data_points}]={{\n")
+                f.write(f"dataPoint n{nodeIndex}f{frameIndex}DPs [{num_data_points}]={{\n")
                 for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                     fields = [f".{field['name']}={ACCESS(dataPoint, field['name'])['value']}"
                               for field in dataPoint_fields if field["node"] in {"both", "vitals"}]
                     f.write("    {" + ", ".join(fields) + "},\n")
-                f.write("} dataPoint;\n\n")
+                f.write("};\n\n")
 
             #arrays of datapoint structs
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
@@ -46,34 +46,32 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
                 f.write("};\n\n")
 
             #CANFrames
-            f.write(f"typedef struct n{nodeIndex}[{ACCESS(node, 'numFrames')['value']}]={{\n")
+            f.write(f"CANFrame n{nodeIndex}[{ACCESS(node, 'numFrames')['value']}]={{\n")
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 frame_fields = [f".{field['name']}={ACCESS(frame, field['name'])['value']}"
                                 for field in CANFrame_fields if field["node"] in {"both", "vitals"}]
                 f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex}Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
-            f.write("} CANFrame;\n\n")
+            f.write("};\n\n")
 
         #vitalsNode nodes
         f.write("// vitalsData *nodes;\n")
-        f.write(f"typedef struct nodes [{len(vitalsNodes)}]={{\n")
+        f.write(f"vitalsNode nodes [{len(vitalsNodes)}]={{\n")
         for nodeIndex, node in enumerate(vitalsNodes):
             NODE_fields = [f".{field['name']}={ACCESS(node, field['name'])['value']}"
                             for field in vitalsNode_fields if field["name"] not in {"CANFrames"}] #exclude frames from auto generation
             f.write(f"    {{{', '.join(NODE_fields)}, .CANFrames=n{nodeIndex}}},\n")
-        f.write("} vitalsNode;\n")
+        f.write("};\n")
 
         f.write("int16_t missingIDs[]={")
-        i=nodeIds[0]
-        index=0
+        i=0
         first=1
-        while(i<nodeIds[len(nodeIds)-1]):
-            if(i!=nodeIds[index]):
-                if(first) :
-                    first=0
-                    f.write(f"{i}")
-                else:
-                    f.write(f", {i}")
-                numMissingIDs+=1
+        while(i<len(missingIDs)):            
+            if(first) :
+                first=0
+                f.write(f"{missingIDs[i]}")
+            else:
+                f.write(f", {missingIDs[i]}")
+            numMissingIDs+=1
             i+=1
         f.write("};\n")
         f.close()
@@ -98,11 +96,10 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, dataNames, nodeCount, frameCou
         # CANFrame struct definition
         f.write("typedef struct {\n")
         for field in CANFrame_fields:
+            #explicitly write the "array" fields
             if field['name'] == "dataInfo":
-                # Replace 'list' with the correct type
                 f.write("    dataPoint *dataInfo; /* Replaced list with dataPoint pointer */\n")
             elif field['name'] == "CANFrames":
-                # Replace 'list' with the correct type
                 f.write("    CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
             else:
                 # For other fields, write them as usual

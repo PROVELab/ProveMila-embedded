@@ -32,7 +32,7 @@ enum MATCH_TYPE {
 };
 
 // A CANPacket: takes in 11-bit id, 8 bytes of data
-typedef struct {  //make sure to initialize using {0}
+typedef struct {  //can initialize using {0} for .c (esp). For arduino (cpp) need to use memset.
     uint8_t data[MAX_SIZE_PACKET_DATA];
     uint32_t id;
     uint8_t dataSize;
@@ -77,16 +77,16 @@ inline uint32_t getIdExtension(uint32_t id){  //take bits 7-10 for functionId
     return (id>>11) & 0b111111111111111111; //18 bit extension
 }
 inline uint32_t getDataFrameId(uint32_t id){
-    return getIdExtension(id) & (maxDataFrameCnt-1);   //the Can Frame index is stored in first two bits of extension
+    return getIdExtension(id) & ((0b1<<maxFrameCntBits)-1);   //the Can Frame index is stored in first two bits of extension
 }
 
-// Returns true if id == mask
+// Returns true if id and func code of id match mask
 bool exact(uint32_t id, uint32_t mask);
 // Returns true if id matches the bits of mask
 bool matchID(uint32_t id, uint32_t mask);
-// Returns true if the functionCode of id ==mask
+// Returns true if the functionCode of id matches mask
 bool matchFunction(uint32_t id, uint32_t mask);
-//bool (*matcher[3])(uint32_t, uint32_t);
+//bool (*matcher[3])(uint32_t, uint32_t);   //moved to common.cpp. Making function static was cringe imo.
 //static bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};
 
 // Write size bytes to the packet, accounting
@@ -94,7 +94,6 @@ bool matchFunction(uint32_t id, uint32_t mask);
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
 
-//void bitcpy(uint32_t* src, int8_t)
 //makes a packet an RTR packet
 int16_t setRTR(CANPacket * p);
 //makes a packet an extended packet
@@ -108,14 +107,12 @@ uint32_t formatValue(int32_t value, int32_t min, int32_t max);  //returns value 
 int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit, int8_t numBits); //copies the first numBits of value into target, starting from target's startBit'th bit. target must be 8 bytes.
 
 int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t numBits);  //inverse of above function
-//
-//platform specific:
-//
 
 
 // The default handler for a packet who
 // we couldn't match with other params
 int16_t defaultPacketRecv(CANPacket* p); //only platform specific because it prints things. In final implementation, we won't need this to print, so could be merged
+
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in
@@ -126,11 +123,12 @@ int16_t defaultPacketRecv(CANPacket* p); //only platform specific because it pri
 ///                  of ids to listen for, and their corresponding
 ///                  handler functions
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-
 int16_t waitPackets(CANPacket* recv_pack,PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
 int16_t sendPacket(CANPacket* p);
+//shorthand for sending status update. Atm, indicates node init, and bus recovery
+int16_t sendStatusUpdate(uint8_t flag, uint32_t Id);
 
 #ifdef __cplusplus
 }  // End extern "C"

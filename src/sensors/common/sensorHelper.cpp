@@ -1,6 +1,9 @@
 #include "../../vitalsNode/programConstants.h"
 #include "sensorHelper.hpp"
 #include "../../pecan/pecan.h"
+//recomended for viewing this file, select one env for which SENSOR_ESP_BUILD is defined (like genericNodeNameESP)
+//, and then switch to one with SENSOR_ARDUINO_BUILD defined (like genericNodeName)
+//this file contains lots of code specific to each platform, but enough similar code to make it worth keeping as one file
 
 #ifdef SENSOR_ESP_BUILD
 #include "freertos/FreeRTOS.h"  
@@ -38,7 +41,11 @@ StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these 
 void check_bus_status(void * pvParameters){ //function to be used as a task for handling Bus recovery
     for(;;){
         twai_status_info_t status_info;
-        esp_err_t err = twai_get_status_info(&status_info); 
+        if(twai_get_status_info(&status_info)){
+            vTaskDelay(1000/portTICK_PERIOD_MS); //if unable to get status info, just try again next time
+            continue;
+        }
+
             if(status_info.state==TWAI_STATE_BUS_OFF){
                 flexiblePrint("initiating recovery\n");
                 int recover;
@@ -46,7 +53,8 @@ void check_bus_status(void * pvParameters){ //function to be used as a task for 
                     flexiblePrint("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
                     esp_restart();
                 }
-                xSemaphoreGive(*printfMutex); // Release the mutex.
+                xSemaphoreGive(*printfMutex); 
+
             } else if (status_info.state==TWAI_STATE_STOPPED){  //Presumably we have finished recovery
                 flexiblePrint("Recovery attempt Complete\n\n\n");
                 int err=twai_start();
@@ -59,15 +67,10 @@ void check_bus_status(void * pvParameters){ //function to be used as a task for 
                 } else{
                     mutexPrint("Driver Started\n\n");
                     //send update indicating Bus restarted
-                    CANPacket statusUpdatePacket;
-                    memset(&statusUpdatePacket, 0, sizeof(CANPacket));
-                    statusUpdatePacket.id =combinedID(statusUpdate,myId);  
-                    uint8_t flag=canRecoveryFlag;
-                    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
-                    int temp=0;
-                    if((temp=sendPacket(&statusUpdatePacket))){
-                        char buffer[30];
-                        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
+                    int16_t err;
+                    if((err= sendStatusUpdate(canRecoveryFlag, myId))){
+                        char buffer[50];
+                        sprintf(buffer, "error sending CAN recovery Msg: %d\n", err);  // Convert the int8_t to a string
                         flexiblePrint(buffer);  
                     }
                 }
@@ -87,11 +90,8 @@ void check_bus_status(void * pvParameters){ //function to be used as a task for 
 
 
 #include<stdint.h>
-/*Note: myframes is an extern variable declared in sensorHelper.hpp, and defined in <nodeName>/sensorStaticDec.cpp.
- This variable is needed to format and send CAN Data. While with the defualt implementation this variable is onlyneeded in this file,
- it is possible that sensor-specific code will want to access it in the future, which is why its defined externally*/
-//int32_t (**dataCollectors)();
-int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
+
+ int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
 
 int16_t respondToHB(CANPacket *recvPack){
         CANPacket responsePacket;
@@ -107,9 +107,10 @@ int16_t respondToHB(CANPacket *recvPack){
     return 1;
 }
 
-// #ifdef SENSOR_ESP_BUILD
+/*Note: myframes is an extern variable declared in sensorHelper.hpp, and defined in <nodeName>/sensorStaticDec.cpp.
+ This variable is needed to format and send CAN Data. While with the default implementation this variable is only needed in this file,
+ however it is possible that sensor-specific code will want to access it in the future, which is why its defined externally*/
 
-// #else
 #ifdef SENSOR_ESP_BUILD
 int8_t dataIndices[numFrames]={0};    //initialized to 0, 1, 2, 3,... in vitalsInit, used to store sendFrame Indices
 void sendFrame(TimerHandle_t xTimer){
@@ -120,9 +121,9 @@ void sendFrame(int8_t frameNum){
     if (frameNum<0 || frameNum>numFrames){
         flexiblePrint("attempted to send out of bounds frame. not sending!\n");
     }
-    char buffer[50];  // Make sure the buffer is large enough to hold the string representation of the number
-    sprintf(buffer, "sending frame NO.: %d\n", frameNum);  // Convert the int8_t to a string
-    flexiblePrint(buffer);  // Now you can print it with flexiblePrint
+    char buffer[50];  
+    sprintf(buffer, "sending frame NO.: %d\n", frameNum);  
+    flexiblePrint(buffer);  
 
     int8_t frameNumData=myframes[frameNum].numData;
     int8_t collectorFuncIndex=myframes[frameNum].startingDataIndex;
@@ -212,17 +213,13 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler w
         sched->scheduleTask(&(sendFrameTasks[i]));
     }
 #endif  
-    CANPacket statusUpdatePacket;
-    memset(&statusUpdatePacket, 0, sizeof(CANPacket));
-    statusUpdatePacket.id =combinedID(statusUpdate,myId);  
-    uint8_t flag=initFlag;
-    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
-    int temp=0;
-    if((temp=sendPacket(&statusUpdatePacket))){
-        char buffer[30];
-        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
+    int16_t err;
+    if((err=sendStatusUpdate(initFlag, myId))){
+        char buffer[50];
+        sprintf(buffer, "error sending Init Msg: %d\n", err);  // Convert the int8_t to a string
         flexiblePrint(buffer);  
     }
+
     CANListenParam babyDuck;
     babyDuck.handler=respondToHB;
     babyDuck.listen_id =combinedID(HBPing,vitalsID);

@@ -1,26 +1,53 @@
-# Node definitions
-global: maxDataFrameCnt=8   #should be a power of 2
-global: maxDataInFrame=10
+#Vitals related Constants
+global: maxFrameCntBits=3
+#Then maxFrameCnt is 2^3=8
+global: maxDataInFrameBits=3
+#Then maxDataInFrameCnt is 2^3=8
+global: warningFrameNumBitsOffset=16
+#Currently, 16 bits of flags excluding: + maxFrameCntBits + maxDataInFrameBits = 22, so 3 bytes
+
+
+#General Constants
 global: pointsPerData=10
 global: vitalsID=0b0000010
+
+#function codes
 global: HBPing=0b0011
 global: HBPong=0b0100
 global: transmitData=0b0111
 global: statusUpdate=0b1111
+global: warningCode=0b0000
+global: HBRespUpdate=0b1000
+#
+
 #flags for status Updates
 global: initFlag=0b00000000
 global: canRecoveryFlag=0b00000001
 #
+
 #node Definitions
-node: id=6, name=genericNodeName, board=esp
+node: id=6, name=tempSenseESP, board=esp
 CANFrame: frequency=500, dataTimeout=1000
 temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
 temperature2: bitLength=32, min=-2000000000, max=2000000000, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
 temperature3: bitLength=20, min=-524288, max=524287, minWarning=-100000, maxWarning=100000, startingValue=3
 
 CANFrame: frequency=100, dataTimeout=600
-airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=1, maxWarning=10, startingValue=4
+airPressure: bitLength=32, min=-2147483648, max=2147483647, maxWarning=10, startingValue=-2147483648
 
-node: id=8, name=sampleName, board=arduino
+node: id=8, name=rizzSenseArduino, board=arduino
 CANFrame: frequency=400, dataTimeout=1000
 rizzMeter: bitLength=8, min=-10, max=200, minWarning=0, maxWarning=110, minCritical=-10, maxCritical=110, startingValue=9
+
+node: id=9, name=tempSenseArduino, board=arduino
+CANFrame: frequency=700, dataTimeout=1500
+temperature1: bitLength=7, min=-10, max=117, minWarning=0, maxWarning=100, minCritical=-5, maxCritical=110, startingValue=1
+temperature2: bitLength=32, min=-2000000000, max=2000000000, minWarning=-100000000, maxWarning=100000000, minCritical=-300000000, maxCritical=300000000, startingValue=2
+temperature3: bitLength=20, min=-524288, max=524287, minWarning=-100000, maxWarning=100000, startingValue=3
+
+CANFrame: frequency=400, dataTimeout=1000
+rizzMeter: bitLength=8, min=-10, max=200, minWarning=0, maxWarning=110, minCritical=-10, maxCritical=110, startingValue=9
+
+node: id=10, name=APSensorESP, board=esp
+CANFrame: frequency=700, dataTimeout=1500
+airPressure: bitLength=32, min=-2147483648, max=2147483647, startingValue=2147483647

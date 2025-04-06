@@ -14,24 +14,20 @@ int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vit
 }
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
-int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
-    //Serial.println(plpc->arr[0].listen_id);
-    if (recv_pack == NULL) {
+int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {   
+    if (recv_pack == NULL) {    //final product code cant be calling this with NULL, since packet loses scope
         CANPacket p;
         recv_pack = &p;
-        // We can only use this for handler
-        // Because stack
     }
 
     int8_t packetsize;
     CANListenParam clp;
-    //Serial.println(CAN.parsePacket());
     if ((packetsize = CAN.parsePacket())) {
         Serial.println("recieving Packet: ");
-        delay(100);
         recv_pack->id = CAN.packetId();
         recv_pack->dataSize = packetsize;
         recv_pack->rtr= CAN.packetRtr();
+        memset(recv_pack->data, 0, 8);  //re-initialize data to all 0.
         // Read and temporarily store all the packet data into PCAN
         // packet (on stack memory)
         for (int8_t j = 0; j < recv_pack->dataSize; j++) {
@@ -40,7 +36,6 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
         // Then match the packet id with our params; if none
         // match, use default handler
         Serial.println("trying match");
-        delay(100);
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
             if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
@@ -64,11 +59,8 @@ int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it
     for (int8_t i = 0; i < p->dataSize; i++) {
         CAN.write(p->data[i]);
     }
-    if (CAN.endPacket()) {
-        //Serial.print(CAN.parsePacket());
-        //Serial.println(CAN.packetId());
-    } else {
+    if (!CAN.endPacket()) {
         return GEN_FAILURE;
-    }
+    } 
     return SUCCESS;
 }
