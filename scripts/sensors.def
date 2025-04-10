@@ -24,3 +24,15 @@ airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=1, maxWar
 node: id=8, name=sampleName, board=arduino
 CANFrame: frequency=400, dataTimeout=1000
 rizzMeter: bitLength=8, min=-10, max=200, minWarning=0, maxWarning=110, minCritical=-10, maxCritical=110, startingValue=9
+
+node: id=10, name=humiditySensor, board=arduino
+CANFrame: frequency=4000, dataTimeout= 12000
+Humidity: bitLength=7, min=0, max=100, maxWarning=20, maxCritical=40, startingValue=10
+
+node: id=11, name=currentSensor, board=arduino
+CANFrame: frequency=4000, dataTimeout=12000
+Current: bitLength=16, min=0, max=60000, maxWarning=40000, minWarning=10000, startingValue=15000
+
+COM9 (environment, which tab?, please write down :) ) 
+Change collect data functions 
+Push and pull
