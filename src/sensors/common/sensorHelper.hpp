@@ -12,7 +12,6 @@ extern "C" { //Need C linkage since ESP uses C "C"
 #include "../../pecan/pecan.h"
 #include <stdint.h>
 
-//universal globals. Used by every sensor
 typedef struct{
     int8_t bitLength;
     int32_t min;

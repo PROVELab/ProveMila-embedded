@@ -14,6 +14,7 @@
 #include "freertos/semphr.h"
 #include <string.h>
 #include "esp_timer.h"
+#include "../../pecan/espBusRestart.h"
 #include "../../vitalsNode/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
 
 //Declare Timers for data collection and sending
@@ -38,55 +39,13 @@ StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these 
 
 
 #ifdef SENSOR_ESP_BUILD
-void check_bus_status(void * pvParameters){ //function to be used as a task for handling Bus recovery
-    for(;;){
-        twai_status_info_t status_info;
-        if(twai_get_status_info(&status_info)){
-            vTaskDelay(1000/portTICK_PERIOD_MS); //if unable to get status info, just try again next time
-            continue;
-        }
+int32_t checkBus_myId=myId;    //pass this as a parameter for checkCanHandler
+#define STACK_SIZE 20000    //for deciding stack size
+StaticTask_t checkBus_Buffer;       //task for checkBus status, and restarting when necessary
+StackType_t checkBus_Stack[ STACK_SIZE ]; 
 
-            if(status_info.state==TWAI_STATE_BUS_OFF){
-                flexiblePrint("initiating recovery\n");
-                int recover;
-                if ((recover=twai_initiate_recovery())!=ESP_OK){
-                    flexiblePrint("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
-                    esp_restart();
-                }
-                xSemaphoreGive(*printfMutex); 
-
-            } else if (status_info.state==TWAI_STATE_STOPPED){  //Presumably we have finished recovery
-                flexiblePrint("Recovery attempt Complete\n\n\n");
-                int err=twai_start();
-                if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
-                    if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
-                        printf("Failed to start or restart driver with code: %d. Rebooting\n",err);
-                        xSemaphoreGive(*printfMutex); // Release the mutex.
-                    }else { printf("cant print, in deadlock!\n"); }
-                    esp_restart();
-                } else{
-                    mutexPrint("Driver Started\n\n");
-                    //send update indicating Bus restarted
-                    int16_t err;
-                    if((err= sendStatusUpdate(canRecoveryFlag, myId))){
-                        char buffer[50];
-                        sprintf(buffer, "error sending CAN recovery Msg: %d\n", err);  // Convert the int8_t to a string
-                        flexiblePrint(buffer);  
-                    }
-                }
-            }
-
-        if(status_info.state==TWAI_STATE_BUS_OFF){  //check constantly if recovery is complete and we are ready to restart CAN in the event of Bus off
-            flexiblePrint("NOTICE: Bus Off\n");
-            vTaskDelay(10/portTICK_PERIOD_MS);
-        }else{
-            vTaskDelay(1000/portTICK_PERIOD_MS);
-        }
-    }
-}
 #endif
-// #include NODE_CONFIG
-// #pragma message NODE_CONFIG
+
 
 
 #include<stdint.h>
@@ -177,7 +136,6 @@ void sendFrame(int8_t frameNum){
 
 
 
-
 int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler will be NULL if not arduino
     flexiblePrint("initializing\n");
 
@@ -229,6 +187,17 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler w
         flexiblePrint("plpc no room");
         while(1);
     }
+
+    TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
+        check_bus_status,       /* Function that implements the task. */
+        "checkCan",          /* Text name for the task. */
+        STACK_SIZE,      /* Number of indexes in the xStack array. */
+        ( void * ) &checkBus_myId,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
+        1,/* Priority at which the task is created. */
+        checkBus_Stack,          /* Array to use as the task's stack. */
+        &checkBus_Buffer,   /* Variable to hold the task's data structure. */
+        tskNO_AFFINITY);  //assigns printHello to core 0
+
     return 0;
 }
 

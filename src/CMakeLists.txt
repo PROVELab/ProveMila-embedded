@@ -47,10 +47,7 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
 elseif(CMAKE_MOTOR_CONTROLLER)
 set(SRC_FILES
-    "sensors/${SENS_DIR}/main.c"
-    "sensors/${SENS_DIR}/staticDec.cpp"
-
-    "sensors/common/sensorHelper.cpp"
+    "motorConfig/main.c"
     "pecan/common.cpp"
     "pecan/espSpecific.c"
     "vitalsNode/mutex_declarations.c"

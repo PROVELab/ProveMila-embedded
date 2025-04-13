@@ -85,3 +85,54 @@ int16_t sendPacket(CANPacket *p) {
     
     return err;
 }
+
+//only for ESP, no arduino equivelant. to be scheduled as a task running every ~1s. Handles bus recovery. Sends status updates for changes in bus state asw.
+//no parameters needed
+void check_bus_status(void * pvParameters){     //pass pointer to nodeID
+    int32_t nodeId=* ((int32_t*) pvParameters);
+    for(;;){
+        twai_status_info_t status_info;
+        if(twai_get_status_info(&status_info)){
+            vTaskDelay(1000/portTICK_PERIOD_MS); //if unable to get status info, just try again next time
+            continue;
+        }
+
+            if(status_info.state==TWAI_STATE_BUS_OFF){
+                mutexPrint("initiating recovery\n");
+                int recover;
+                if ((recover=twai_initiate_recovery())!=ESP_OK){
+                    mutexPrint("invalid recovery attempting to reboot. This should never happen\n");    //this should only be called here when Bus is off state, and we never unistall the driver, so error should not be possible
+                    esp_restart();
+                }
+                xSemaphoreGive(*printfMutex); 
+
+            } else if (status_info.state==TWAI_STATE_STOPPED){  //Presumably we have finished recovery
+                mutexPrint("Recovery attempt Complete\n\n\n");
+                int err=twai_start();
+                if(err!=ESP_OK){    //restarts program in the event that we can't start the Bus. This should never happen 
+                    if (xSemaphoreTake(*printfMutex, portMAX_DELAY)) {
+                        printf("Failed to start or restart driver with code: %d. Rebooting\n",err);
+                        xSemaphoreGive(*printfMutex); // Release the mutex.
+                    }else { printf("cant print, in deadlock!\n"); }
+                    esp_restart();
+                } else{
+                    mutexPrint("Driver Started\n\n");
+                    //send update indicating Bus restarted
+                    int16_t err;
+                    if((err= sendStatusUpdate(canRecoveryFlag, nodeId))){
+                        char buffer[50];
+                        sprintf(buffer, "error sending CAN recovery Msg: %d\n", err);  // Convert the int8_t to a string
+                        mutexPrint(buffer);  
+                    }
+                }
+            }
+
+        if(status_info.state==TWAI_STATE_BUS_OFF){  //check constantly if recovery is complete and we are ready to restart CAN in the event of Bus off
+            mutexPrint("NOTICE: Bus Off\n");
+            vTaskDelay(10/portTICK_PERIOD_MS);
+        }else{
+            // mutexPrint("bus Running\n");
+            vTaskDelay(1000/portTICK_PERIOD_MS);
+        }
+    }
+}
