@@ -1,3 +1,13 @@
+#include <Arduino.h>
+#include "CAN.h"
+#include "../../pecan/pecan.h"                  //used for CAN
+#include "../../arduinoSched/arduinoSched.hpp"  //used for scheduling
+#include "../common/sensorHelper.hpp"           //used for compliance with vitals and sending data
+#include "myDefines.hpp"          //contains #define statements specific to this node like myId.
+
+
+PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 32 }; //check size of bit lenght 
+
 # Node definitions
 global: maxDataFrameCnt=8   #should be a power of 2
 global: maxDataInFrame=10
@@ -32,7 +42,3 @@ Humidity: bitLength=7, min=0, max=100, maxWarning=20, maxCritical=40, startingVa
 node: id=11, name=currentSensor, board=arduino
 CANFrame: frequency=4000, dataTimeout=12000
 Current: bitLength=16, min=0, max=60000, maxWarning=40000, minWarning=10000, startingValue=15000
-
-COM9 (environment, which tab?, please write down :) ) 
-Change collect data functions 
-Push and pull

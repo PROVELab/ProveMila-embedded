@@ -1,7 +1,7 @@
 #ifndef sampleName_DATA_H
 #define sampleName_DATA_H
 //defines constants specific to sampleName
-//each sensor file gets one of these .h files#include "../common/sensorHelper.hpp"
+//each sensor file gets one of these .h files
 #include<stdint.h>
 #define myId 8
 #define numFrames 1
