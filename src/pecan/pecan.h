@@ -6,7 +6,7 @@ extern "C" {  // Ensures C linkage for all functions. This is needed since ardui
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../vitalsNode/programConstants.h"
+#include "../include/programConstants.h"
 
 //pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8

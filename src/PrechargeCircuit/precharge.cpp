@@ -32,4 +32,3 @@ void loop() {
     digitalWrite(12,LOW);
   }
 }
-

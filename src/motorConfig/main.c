@@ -9,7 +9,7 @@
 #include "esp_timer.h"
 
 
-#include "../vitalsNode/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
+#include "../espMutexes/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
 #include "../pecan/pecan.h"    //helper code for CAN stuff
 //tracing functionality to give warning for free or alloc.
 #include "esp_heap_caps.h"

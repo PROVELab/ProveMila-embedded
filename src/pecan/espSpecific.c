@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include "../vitalsNode/mutex_declarations.h"
+#include "../espMutexes/mutex_declarations.h"
 #include "freertos/FreeRTOS.h"  
 #include "freertos/task.h"
 #include "esp_system.h"

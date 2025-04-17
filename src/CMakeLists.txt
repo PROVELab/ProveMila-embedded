@@ -41,7 +41,7 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
         "sensors/common/sensorHelper.cpp"
         "pecan/common.cpp"
         "pecan/espSpecific.c"
-        "vitalsNode/mutex_declarations.c"
+        "espMutexes/mutex_declarations.c"
     )
     # message(SEND_ERROR "DECPATH: ${DECPATH}")
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
@@ -50,7 +50,7 @@ set(SRC_FILES
     "motorConfig/main.c"
     "pecan/common.cpp"
     "pecan/espSpecific.c"
-    "vitalsNode/mutex_declarations.c"
+    "espMutexes/mutex_declarations.c"
 )
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
