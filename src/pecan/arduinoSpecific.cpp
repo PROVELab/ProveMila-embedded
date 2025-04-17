@@ -9,7 +9,11 @@ int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vit
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
     Serial.print(",  data ");
-    Serial.println((char*) packet->data);
+    for(int i=0;i<packet->dataSize;i++){
+        Serial.print(*(packet->data));
+        Serial.print(" ");
+    }
+    Serial.println(" ");
     return 1;
 }
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place

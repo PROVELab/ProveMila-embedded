@@ -187,7 +187,7 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler w
         flexiblePrint("plpc no room");
         while(1);
     }
-
+    #ifdef SENSOR_ESP_BUILD
     TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
         check_bus_status,       /* Function that implements the task. */
         "checkCan",          /* Text name for the task. */
@@ -197,6 +197,7 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler w
         checkBus_Stack,          /* Array to use as the task's stack. */
         &checkBus_Buffer,   /* Variable to hold the task's data structure. */
         tskNO_AFFINITY);  //assigns printHello to core 0
+        #endif  
 
     return 0;
 }

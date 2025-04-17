@@ -9,7 +9,7 @@ PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRec
 PScheduler ts;
 //if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
 int32_t collect_rizzMeter(){
-    int32_t rizzMeter = 9;
+    int32_t rizzMeter = 69;
     Serial.println("collecting rizzMeter");
     return rizzMeter;
 }

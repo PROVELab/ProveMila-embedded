@@ -8,7 +8,6 @@
 #include "esp_timer.h"
 
 #include "../../pecan/pecan.h"                  //used for CAN
-// #include "../../pecan/espBusRestart.h"	//included and used in vitalsInit (sensorHelper.cpp)
 #include "../common/sensorHelper.hpp"           //used for compliance with vitals and sending data
 #include "myDefines.hpp"          //contains #define statements specific to this node like myId.
 #include "../../vitalsNode/mutex_declarations.h"

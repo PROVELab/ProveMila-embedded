@@ -35,7 +35,7 @@ StackType_t recieveMSG_Stack[STACK_SIZE]; //buffer that the task will use as its
 
 //if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
 int32_t collect_airPressure(){
-    int32_t airPressure = 2147483647;
+    int32_t airPressure = 0;
     mutexPrint("collecting airPressure\n");
     return airPressure;
 }

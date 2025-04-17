@@ -62,7 +62,7 @@ int16_t startBus(){  //should only be called on start up and AFTER Bus has finis
 }
 
 
-void check_bus_status(void * pvParameters){ //should send all this to telem
+void vitals_check_bus_status(void * pvParameters){ //should send all this to telem
     for(;;){
         twai_status_info_t status_info;
         esp_err_t err;
@@ -465,7 +465,7 @@ void app_main(void){
                       tskNO_AFFINITY);  //assigns printHello to core 0
 
     TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
-                      check_bus_status,       /* Function that implements the task. */
+                      vitals_check_bus_status,       /* Function that implements the task. */
                       "checkCan",          /* Text name for the task. */
                       STACK_SIZE,      /* Number of indexes in the xStack array. */
                       ( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
