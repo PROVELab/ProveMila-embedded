@@ -52,6 +52,13 @@ set(SRC_FILES
     "pecan/espSpecific.c"
     "espMutexes/mutex_declarations.c"
 )
+elseif(CMAKE_IMU_SENSE)
+set(SRC_FILES
+    "IMU_Sample/main.c"
+    "icm20948/icm20948.c"
+    "espMutexes/mutex_declarations.c"
+)
+
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"
