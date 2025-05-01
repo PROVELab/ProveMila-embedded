@@ -18,36 +18,43 @@
 #     message(SEND_ERROR "is not defined")
 # endif()
 
-if(CMAKE_VITALS_ESP_BUILD)
-    # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
-    # set(Path)
+# if(CMAKE_VITALS_ESP_BUILD)
+#     # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
+#     # set(Path)
+#     set(SRC_FILES 
+#         "vitalsNode/vitalsHelper/vitalsStaticDec.c"
+#         "vitalsNode/vitalsHelper/vitalsHelper.c"
+#         "pecan/common.cpp"
+#         "pecan/espSpecific.c"
+#         "vitalsNode/main.c"
+#         "vitalsNode/mutex_declarations.c"
+#     )
+#     # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
+
+# elseif(CMAKE_IMU_BUILD)
     set(SRC_FILES 
-        "vitalsNode/vitalsHelper/vitalsStaticDec.c"
-        "vitalsNode/vitalsHelper/vitalsHelper.c"
-        "pecan/common.cpp"
-        "pecan/espSpecific.c"
-        "vitalsNode/main.c"
-        "vitalsNode/mutex_declarations.c"
+    "IMU/main.c"
+    "IMU/real_main.c"
+    "IMU/mutex_declarations.c"
     )
-    # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
+# else()  #CMAKE_SENSOR_ESP_BUILD <- Assumed
+#     # message(SEND_ERROR "Path is set to: ${DECPath}")
 
-else()  #CMAKE_SENSOR_ESP_BUILD <- Assumed
-    # message(SEND_ERROR "Path is set to: ${DECPath}")
-
-    set(SRC_FILES
-        "sensors/${DECPATH}/main.c"
-        "sensors/${DECPATH}/staticDec.cpp"
+#     set(SRC_FILES
+#         "sensors/${DECPATH}/main.c"
+#         "sensors/${DECPATH}/staticDec.cpp"
         
-        "sensors/common/sensorHelper.cpp"
-        "pecan/common.cpp"
-        "pecan/espSpecific.c"
-        "vitalsNode/mutex_declarations.c"
-    )
-    # message(SEND_ERROR "DECPATH: ${DECPATH}")
-    # message(SEND_ERROR "Source files: ${SRC_FILES}")
+#         "sensors/common/sensorHelper.cpp"
+#         "pecan/common.cpp"
+#         "pecan/espSpecific.c"
+#         "vitalsNode/mutex_declarations.c"
+#     )
+#     # message(SEND_ERROR "DECPATH: ${DECPATH}")
+#     # message(SEND_ERROR "Source files: ${SRC_FILES}")
 
-endif()
+# endif()
 idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
+
 
 # idf_component_register(SRCS "pecan/espSpecific.c" "pecan/common.cpp" "vitalsNode/mutex_declarations.c" "vitalsNode/vitalsHelper/vitalsHelper.c" "vitalsNode/vitalsHelper/vitalsStaticDec.c" "vitalsNode/main.c" 
 #                     INCLUDE_DIRS ".")
