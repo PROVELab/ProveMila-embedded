@@ -14,7 +14,7 @@ Task dTasks[MAX_TASK_COUNT] =
 
 typedef Task ard_event;
 
-PScheduler::PScheduler() {};
+PScheduler::PScheduler() {}
 /**
  * @brief
  *
