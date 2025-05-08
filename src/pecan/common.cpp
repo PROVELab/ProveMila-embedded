@@ -2,6 +2,7 @@
 #include <string.h> // memcpy
 #include "pecan.h"
 #include "../include/programConstants.h"
+
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
     return (fn_id << 7) + node_id;
 }

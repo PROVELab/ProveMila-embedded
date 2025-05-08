@@ -59,6 +59,7 @@ else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
 endif()
 idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
 
+
 # idf_component_register(SRCS "pecan/espSpecific.c" "pecan/common.cpp" "vitalsNode/mutex_declarations.c" "vitalsNode/vitalsHelper/vitalsHelper.c" "vitalsNode/vitalsHelper/vitalsStaticDec.c" "vitalsNode/main.c" 
 #                     INCLUDE_DIRS ".")
                     # "pecan" 
