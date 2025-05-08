@@ -1,25 +1,31 @@
 #include "Arduino.h"
 
-#include "pecan.h"
 #include "CAN.h"
+#include "pecan.h"
 
 #include <Arduino.h>
 
-int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vitals for current
+int16_t defaultPacketRecv(
+    CANPacket *packet) { // this is only to be used by vitals for current
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
     Serial.print(",  data ");
-    for(int i=0;i<packet->dataSize;i++){
+    for (int i = 0; i < packet->dataSize; i++) {
         Serial.print(*(packet->data));
         Serial.print(" ");
     }
     Serial.println(" ");
     return 1;
 }
-bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
+bool (*matcher[3])(uint32_t, uint32_t) = {
+    exact, matchID,
+    matchFunction}; // could alwys be moved back to pecan.h as an extern
+                    // variable if its needed elsewhere? I am not sure why this
+                    // was declared there in the first place
 
-int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {   
-    if (recv_pack == NULL) {    //final product code cant be calling this with NULL, since packet loses scope
+int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
+    if (recv_pack == NULL) { // final product code cant be calling this with
+                             // NULL, since packet loses scope
         CANPacket p;
         recv_pack = &p;
     }
@@ -30,8 +36,8 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
         Serial.println("recieving Packet: ");
         recv_pack->id = CAN.packetId();
         recv_pack->dataSize = packetsize;
-        recv_pack->rtr= CAN.packetRtr();
-        memset(recv_pack->data, 0, 8);  //re-initialize data to all 0.
+        recv_pack->rtr = CAN.packetRtr();
+        memset(recv_pack->data, 0, 8); // re-initialize data to all 0.
         // Read and temporarily store all the packet data into PCAN
         // packet (on stack memory)
         for (int8_t j = 0; j < recv_pack->dataSize; j++) {
@@ -51,13 +57,14 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it made into
+int16_t sendPacket(
+    CANPacket *p) { // note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
-    if(p->id>0b11111111111){
+    if (p->id > 0b11111111111) {
         CAN.beginExtendedPacket(p->id, p->dataSize, p->rtr);
-    }else{
+    } else {
         CAN.beginPacket(p->id, p->dataSize, p->rtr);
     }
     for (int8_t i = 0; i < p->dataSize; i++) {
@@ -65,6 +72,6 @@ int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it
     }
     if (!CAN.endPacket()) {
         return GEN_FAILURE;
-    } 
+    }
     return SUCCESS;
 }

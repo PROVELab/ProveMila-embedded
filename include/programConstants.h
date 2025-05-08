@@ -1,13 +1,13 @@
 #ifndef progConsts
 #define progConsts
 
-//generated Constants
+// generated Constants
 #define numberOfNodes 4
 #define totalNumFrames 6
 #define numMissingIDs 1
 #define startingOffset 6
 
-//Explicilty defined in sensors.def constants
+// Explicilty defined in sensors.def constants
 #define maxFrameCntBits 3
 #define maxDataInFrameBits 3
 #define warningFrameNumBitsOffset 16
