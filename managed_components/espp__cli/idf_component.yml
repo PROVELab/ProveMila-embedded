@@ -1,0 +1,19 @@
+dependencies:
+  espp/logger:
+    version: '>=0.22.0'
+  idf:
+    version: '>=5.0'
+description: Command Line Interface (CLI) component for ESP-IDF
+documentation: https://esp-cpp.github.io/espp/cli.html
+license: MIT
+maintainers:
+- William Emfinger <waemfinger@gmail.com>
+repository: git://github.com/esp-cpp/espp.git
+tags:
+- cpp
+- Component
+- Command-Line
+- CLI
+- Input
+url: https://github.com/esp-cpp/espp/tree/main/components/cli
+version: 0.22.0

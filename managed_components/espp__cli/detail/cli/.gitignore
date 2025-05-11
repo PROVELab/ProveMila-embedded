@@ -1,0 +1,74 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Cmake Files
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+build
+cmake-build-*
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+Debug
+Release
+test/test_suite
+asyncsession
+complete
+filesession
+pluginmanager
+simplelocalsession
+boostasio_nonowner_iocontext
+standaloneasio_nonowner_iocontext
+
+# Project files
+.cproject
+.project
+.vscode/
+.vs
+*.opensdf
+*.vcxproj.filters
+*.sdf
+*.user
+*.db
+.svn
+
+# Doxygen
+doc/doxy/html
+
+# Test files
+cli_test_history
+
+# Other
+*.sh

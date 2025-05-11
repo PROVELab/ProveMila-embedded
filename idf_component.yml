@@ -1,0 +1,4 @@
+dependencies:
+  idf:
+    version: ">=4.4"
+  icm20948: "^0.21.0"

@@ -1,22 +1,6 @@
-# This file was automatically generated for projects
-# without default 'CMakeLists.txt' file.
 
-# if(CMAKE_SENSOR_ESP_BUILD)#DEFINED SENSOR_ESP_BUILD AND 
-#     # message(SEND_ERROR "Feature enabled")
-# else()
-#     # message(SEND_ERROR "no feature enabled")
-# endif()
 
-# if(CMAKE_VITALS_ESP_BUILD)
-#     message(SEND_ERROR "Feature enabled2")
-# else()
-#     message(SEND_ERROR "no feature enabled2")
-# endif()
-# if(DECPATH STREQUAL "src/sensors/genericNodeNameESP/genericNodeNamestaticDec.cpp")
-#     message(SEND_ERROR "is defined")
-# else()
-#     message(SEND_ERROR "is not defined")
-# endif()
+list(APPEND EXTRA_COMPONENT_DIRS icm20948)
 
 if(CMAKE_VITALS_ESP_BUILD)
     # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
@@ -29,6 +13,8 @@ if(CMAKE_VITALS_ESP_BUILD)
         "vitalsNode/main.c"
         "vitalsNode/mutex_declarations.c"
     )
+    set(INC_FILES
+    ".")
     # message(SEND_ERROR "SRC_FILES for VITALS_BUILD: ${SRC_FILES}")
 
 elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
@@ -43,6 +29,8 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
         "pecan/espSpecific.c"
         "espMutexes/mutex_declarations.c"
     )
+    set(INC_FILES
+    ".")
     # message(SEND_ERROR "DECPATH: ${DECPATH}")
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
 elseif(CMAKE_MOTOR_CONTROLLER)
@@ -52,19 +40,46 @@ set(SRC_FILES
     "pecan/espSpecific.c"
     "espMutexes/mutex_declarations.c"
 )
+set(INC_FILES
+".")
+elseif(CMAKE_IMU_CYBER)
+set(SRC_FILES
+    "IMU_Sample/main.c"
+    "cyberGearICM/icm20948.c"
+    "cyberGearICM/icm20948_i2c.c"
+    "espMutexes/mutex_declarations.c"
+)
+set(INC_FILES
+".")
 elseif(CMAKE_IMU_SENSE)
 set(SRC_FILES
     "IMU_Sample/main.c"
     "icm20948/icm20948.c"
     "espMutexes/mutex_declarations.c"
 )
-
+set(INC_FILES
+".")
+elseif(CMAKE_ESP_IMU_SENSE)
+set(SRC_FILES
+    "ESP_IMU_Sample/main.cpp")
+    # "ESP_IMU_Sample/sample.cpp")
+    set(INC_FILES
+        "."
+    )
+#     append(EXTRA_COMPONENT_DIRS ${CMAKE_CURRENT_LIST_DIR}/components)
+# set(COMPONENTS icm20948)
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"
     )   
+    set(INC_FILES
+        ".")
+        
 endif()
-idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
+
+
+idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ${INC_FILES})
+# idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
 
 # idf_component_register(SRCS "pecan/espSpecific.c" "pecan/common.cpp" "vitalsNode/mutex_declarations.c" "vitalsNode/vitalsHelper/vitalsHelper.c" "vitalsNode/vitalsHelper/vitalsStaticDec.c" "vitalsNode/main.c" 
 #                     INCLUDE_DIRS ".")

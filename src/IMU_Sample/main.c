@@ -113,8 +113,7 @@ icm_read_task(void *args)
 	vTaskDelete(NULL);
 }
 
-void
-app_main(void)
+void app_main(void)
 {  
 	vTaskDelay(1000/portTICK_PERIOD_MS);
 	printf("[INFO] Starting ICM test\n");

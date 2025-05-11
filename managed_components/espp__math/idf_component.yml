@@ -1,0 +1,24 @@
+dependencies:
+  espp/format:
+    version: '>=0.22.0'
+  idf:
+    version: '>=5.0'
+description: Math component for ESP-IDF
+documentation: https://esp-cpp.github.io/espp/math/index.html
+license: MIT
+maintainers:
+- William Emfinger <waemfinger@gmail.com>
+repository: git://github.com/esp-cpp/espp.git
+tags:
+- cpp
+- Component
+- Math
+- Bezier
+- Fast
+- Gaussian
+- Range
+- Mapper
+- Vector
+- Vector2d
+url: https://github.com/esp-cpp/espp/tree/main/components/math
+version: 0.22.0
