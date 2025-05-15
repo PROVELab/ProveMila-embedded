@@ -34,13 +34,13 @@ struct CANPacket {  //make sure to initialize using {{0}}
     int8_t rtr;
     int8_t extendedID;  //whether or not the packet is extended. 
 };
+
 // A single CANListenParam
 struct CANListenParam {
     uint32_t listen_id;
     int16_t (*handler)(struct CANPacket*);
     enum MATCH_TYPE mt;
 };
-
 
 // A collection containing an array of params to listen for
 // and the default handler if none of the params match with
@@ -122,11 +122,9 @@ int16_t defaultPacketRecv(struct CANPacket* p); //only platform specific because
 ///                  handler functions
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
 
-int16_t waitPackets(struct CANPacket* recv_pack,struct PCANListenParamsCollection* plpc);
+int16_t waitPackets(struct CANPacket* recv_pack, struct PCANListenParamsCollection* plpc);
 
-/// Sends a CANPacket p
+/// Sends a CANPacket 
 int16_t sendPacket(struct CANPacket* p);
-
-
 
 #endif
