@@ -13,8 +13,8 @@
 
 // #include "i2c.hpp"
 // #include "icm20948.hpp"
-// #include "kalman_filter.hpp"
-// #include "madgwick_filter.hpp"
+#include "kalman_filter.hpp"
+#include "madgwick_filter.hpp"
 
 // #include "timer.hpp"
 //^lets not use their timer (its dynamic=cringe)
@@ -81,51 +81,52 @@ extern "C" void app_main(void) {
     // set the address of the IMU
     uint8_t imu_address = found_addresses[0];
   
-    //we can look into computing orientation using Kalman and Madgwick filters later
-    //^^this could be very cool. For now, lets get a basic setup working
-
     // make the orientation filter to compute orientation from accel + gyro
-    // static constexpr float angle_noise = 0.001f;
-    // static constexpr float rate_noise = 0.1f;
-    // static espp::KalmanFilter<3> kf;
-    // kf.set_process_noise(rate_noise);
-    // kf.set_measurement_noise(angle_noise);
-    // static constexpr float beta = 0.1f; // higher = more accelerometer, lower = more gyro
-    // static espp::MadgwickFilter f(beta);
+    static constexpr float angle_noise = 0.001f;
+    static constexpr float rate_noise = 0.1f;
+    static espp::KalmanFilter<3> kf;
+    kf.set_process_noise(rate_noise);
+    kf.set_measurement_noise(angle_noise);
+    static constexpr float beta = 0.1f; // higher = more accelerometer, lower = more gyro
+    static espp::MadgwickFilter f(beta);
   
-    // auto kalman_filter_fn = [](float dt, const Imu::Value &accel, const Imu::Value &gyro,
-    //                            const Imu::Value &mag) -> Imu::Value {
-    //   // Apply Kalman filter
-    //   float accelRoll = atan2(accel.y, accel.z);
-    //   float accelPitch = atan2(-accel.x, sqrt(accel.y * accel.y + accel.z * accel.z));
-    //   // implement yaw from magnetometer
-    //   float accelYaw = atan2(mag.y, mag.x);
-    //   kf.predict({espp::deg_to_rad(gyro.x), espp::deg_to_rad(gyro.y), espp::deg_to_rad(gyro.z)}, dt);
-    //   kf.update({accelRoll, accelPitch, accelYaw});
-    //   float roll, pitch, yaw;
+    auto kalman_filter_fn = [](float dt, const Imu::Value &accel, const Imu::Value &gyro,
+                               const Imu::Value &mag) -> Imu::Value {
+      // Apply Kalman filter
+      float accelRoll = atan2(accel.y, accel.z);
+      float accelPitch = atan2(-accel.x, sqrt(accel.y * accel.y + accel.z * accel.z));
+      // implement yaw from magnetometer
+      float accelYaw = atan2(mag.y, mag.x);
+      kf.predict({espp::deg_to_rad(gyro.x), espp::deg_to_rad(gyro.y), espp::deg_to_rad(gyro.z)}, dt);
+      kf.update({accelRoll, accelPitch, accelYaw});
+      float roll, pitch, yaw;
     //   std::tie(roll, pitch, yaw) = kf.get_state();
-    //   // return the computed orientation
-    //   Imu::Value orientation{};
-    //   orientation.roll = roll;
-    //   orientation.pitch = pitch;
-    //   orientation.yaw = yaw;
-    //   return orientation;
-    // };
+    const auto &state = kf.get_state();
+    roll  = state[0];
+    pitch = state[1];
+    yaw   = state[2];
+      // return the computed orientation
+      Imu::Value orientation{};
+      orientation.roll = roll;
+      orientation.pitch = pitch;
+      orientation.yaw = yaw;
+      return orientation;
+    };
   
-    // auto madgwick_filter_fn = [](float dt, const Imu::Value &accel, const Imu::Value &gyro,
-    //                              const Imu::Value &mag) -> Imu::Value {
-    //   // Apply Madgwick filter
-    //   f.update(dt, accel.x, accel.y, accel.z, espp::deg_to_rad(gyro.x), espp::deg_to_rad(gyro.y),
-    //            espp::deg_to_rad(gyro.z), mag.x, mag.y, mag.z);
-    //   float roll, pitch, yaw;
-    //   f.get_euler(roll, pitch, yaw);
-    //   // return the computed orientation
-    //   Imu::Value orientation{};
-    //   orientation.pitch = espp::deg_to_rad(pitch);
-    //   orientation.roll = espp::deg_to_rad(roll);
-    //   orientation.yaw = espp::deg_to_rad(yaw);
-    //   return orientation;
-    // };
+    auto madgwick_filter_fn = [](float dt, const Imu::Value &accel, const Imu::Value &gyro,
+                                 const Imu::Value &mag) -> Imu::Value {
+      // Apply Madgwick filter
+      f.update(dt, accel.x, accel.y, accel.z, espp::deg_to_rad(gyro.x), espp::deg_to_rad(gyro.y),
+               espp::deg_to_rad(gyro.z), mag.x, mag.y, mag.z);
+      float roll, pitch, yaw;
+      f.get_euler(roll, pitch, yaw);
+      // return the computed orientation
+      Imu::Value orientation{};
+      orientation.pitch = espp::deg_to_rad(pitch);
+      orientation.roll = espp::deg_to_rad(roll);
+      orientation.yaw = espp::deg_to_rad(yaw);
+      return orientation;
+    };
   
     // make the IMU config
     Imu::Config config{
@@ -142,117 +143,113 @@ extern "C" void app_main(void) {
                 .gyroscope_sample_rate_divider = 9,     // 1kHz / (1 + 9) = 100Hz
                 .magnetometer_mode = Imu::MagnetometerMode::CONTINUOUS_MODE_100_HZ,
             },
-        // .orientation_filter = kalman_filter_fn,
-        //re-enalbe for kalman!
+        .orientation_filter = kalman_filter_fn,
         .auto_init = true,
     };
   
     // create the IMU
     logger.info("Creating IMU");
+    vTaskDelay(pdMS_TO_TICKS(100));   //will often creash on startup if no time is given here. maybe? tbh nt rly sure
+    // printf("running imu config!\n");
     Imu imu(config);
-    
+    printf("ran imu config!\n");
+    vTaskDelay(pdMS_TO_TICKS(100));
+
     while (true) {
         std::error_code ec;
         if (!imu.update(1.0f, ec)) {
             printf("Failed to update IMU: %s\n", ec.message().c_str());
         } else {
-            auto accel = imu.get_accelerometer();
-            auto gyro = imu.get_gyroscope();
-            auto mag = imu.get_magnetometer();
-            auto temp = imu.get_temperature();
 
-            printf("Accel: X=%.2f Y=%.2f Z=%.2f | ", (float)accel.x, (float)accel.y, (float)accel.z);
-            printf("Gyro: X=%.2f Y=%.2f Z=%.2f | ", (float)gyro.x, (float)gyro.y, (float)gyro.z);
-            printf("Mag: X=%.2f Y=%.2f Z=%.2f | ", (float)mag.x, (float)mag.y, (float)mag.z);
-            printf("Temp: %.2f C\n", temp);
+            auto now = esp_timer_get_time(); // time in microseconds
+                           static auto t0 = now;
+                           auto t1 = now;
+                           float dt = (t1 - t0) / 1'000'000.0f; // convert us to s
+                           t0 = t1;
+
+                           std::error_code ec;
+                        //    printf("updating IMU\n");
+                        //    // update the imu data
+                        //    if (!imu.update(dt, ec)) {
+                        //      logger.error("Failed to update IMU: {}", ec.message());
+                        //    }else{
+                            // get accel
+                            printf("running collections\n");
+                           auto accel = imu.get_accelerometer();
+                           auto gyro = imu.get_gyroscope();
+                           auto mag = imu.get_magnetometer();
+                           auto temp = imu.get_temperature();
+                           auto orientation = imu.get_orientation();
+                           auto gravity_vector = imu.get_gravity_vector();
+
+                           // print time and raw IMU data
+                        //    std::string text = "";
+                        //    text += fmt::format("{:.3f},", now / 1'000'000.0f);
+                        //    text += fmt::format("{:02.3f},{:02.3f},{:02.3f},", (float)accel.x,
+                        //                        (float)accel.y, (float)accel.z);
+                        //    text +=
+                        //        fmt::format("{:03.3f},{:03.3f},{:03.3f},", espp::deg_to_rad(gyro.x),
+                        //                    espp::deg_to_rad(gyro.y), espp::deg_to_rad(gyro.z));
+                        //    text += fmt::format("{:02.1f},", temp);
+                        //    // print kalman filter outputs
+                        //    text += fmt::format("{:03.3f},{:03.3f},{:03.3f},", (float)orientation.x,
+                        //                        (float)orientation.y, (float)orientation.z);
+                        //    text +=
+                        //        fmt::format("{:03.3f},{:03.3f},{:03.3f},", (float)gravity_vector.x,
+                        //                    (float)gravity_vector.y, (float)gravity_vector.z);
+
+                           auto madgwick_orientation = madgwick_filter_fn(dt, accel, gyro, mag);
+                           float roll = madgwick_orientation.roll;
+                           float pitch = madgwick_orientation.pitch;
+                           float yaw = madgwick_orientation.yaw;
+                        //    float vx = sin(pitch);
+                        //    float vy = -cos(pitch) * sin(roll);
+                        //    float vz = -cos(pitch) * cos(roll);
+
+                           // 1) Accelerometer
+                            fmt::print("Accelerometer data: x={:.3f} y={:.3f} z={:.3f}\n",
+                                (float)accel.x, (float)accel.y, (float)accel.z);
+
+                            // 2) Gyroscope
+                            fmt::print("Gyroscope data:     x={:.3f} y={:.3f} z={:.3f}\n",
+                                espp::deg_to_rad(gyro.x),
+                                espp::deg_to_rad(gyro.y),
+                                espp::deg_to_rad(gyro.z));
+
+                            // 3) Temperature
+                            fmt::print("Temperature:        {:.1f} °C\n", temp);
+
+                            // 4) Kalman filter orientation
+                            fmt::print("Kalman orientation: roll={:.3f} pitch={:.3f} yaw={:.3f}\n",
+                                orientation.x, orientation.y, orientation.z);
+
+                            // 5) Gravity vector
+                            fmt::print("Gravity vector:     x={:.3f} y={:.3f} z={:.3f}\n",
+                                gravity_vector.x, gravity_vector.y, gravity_vector.z);
+
+                            // 6) Madgwick filter orientation
+                            fmt::print("Madgwick orientation: roll={:.3f} pitch={:.3f} yaw={:.3f}\n",
+                                roll, pitch, yaw);
+
+                            // 7) Madgwick gravity vector
+                            float mvx = sin(pitch);
+                            float mvy = -cos(pitch) * sin(roll);
+                            float mvz = -cos(pitch) * cos(roll);
+                            fmt::print("Madgwick gravity:    x={:.3f} y={:.3f} z={:.3f}\n",
+                                mvx, mvy, mvz);
+
+                                //computed from magnetometer yaw:
+                            float heading_deg = fmod((yaw * 180.0f / static_cast<float>(M_PI)) + 360.0f, 360.0f);
+                            fmt::print("Compass heading:    {:.1f}°\n", heading_deg);
+                            fmt::print("\n");  // blank line between iterations
+                            printf("printing complete\n");
+                        //    }
+
+                           
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000)); // Delay for 1 second
     }
   
-    // xTaskCreateStatic(
-    //     imu_task,              // Function that implements the task
-    //     "IMU Task",            // Text name for the task
-    //     4096,                  // Stack size in words (not bytes!)
-    //     nullptr,               // Parameter passed into the task
-    //     5,                     // Priority
-    //     imu_task_stack,        // Stack array
-    //     &imu_task_buffer       // Task buffer
-    // );
-    
-    // espp::Timer imu_timer({.period = 15ms,
-    //                        .callback = [&]() -> bool {
-    //                          auto now = esp_timer_get_time(); // time in microseconds
-    //                          static auto t0 = now;
-    //                          auto t1 = now;
-    //                          float dt = (t1 - t0) / 1'000'000.0f; // convert us to s
-    //                          t0 = t1;
-  
-    //                          std::error_code ec;
-    //                          // update the imu data
-    //                          if (!imu.update(dt, ec)) {
-    //                            logger.error("Failed to update IMU: {}", ec.message());
-    //                            return false;
-    //                          }
-  
-    //                          // get accel
-    //                          auto accel = imu.get_accelerometer();
-    //                          auto gyro = imu.get_gyroscope();
-    //                          auto mag = imu.get_magnetometer();
-    //                          auto temp = imu.get_temperature();
-    //                          auto orientation = imu.get_orientation();
-    //                          auto gravity_vector = imu.get_gravity_vector();
-  
-    //                          // print time and raw IMU data
-    //                          std::string text = "";
-    //                          text += fmt::format("{:.3f},", now / 1'000'000.0f);
-    //                          text += fmt::format("{:02.3f},{:02.3f},{:02.3f},", (float)accel.x,
-    //                                              (float)accel.y, (float)accel.z);
-    //                          text +=
-    //                              fmt::format("{:03.3f},{:03.3f},{:03.3f},", espp::deg_to_rad(gyro.x),
-    //                                          espp::deg_to_rad(gyro.y), espp::deg_to_rad(gyro.z));
-    //                          text += fmt::format("{:02.1f},", temp);
-    //                          // print kalman filter outputs
-    //                          text += fmt::format("{:03.3f},{:03.3f},{:03.3f},", (float)orientation.x,
-    //                                              (float)orientation.y, (float)orientation.z);
-    //                          text +=
-    //                              fmt::format("{:03.3f},{:03.3f},{:03.3f},", (float)gravity_vector.x,
-    //                                          (float)gravity_vector.y, (float)gravity_vector.z);
-  
-    //                          auto madgwick_orientation = madgwick_filter_fn(dt, accel, gyro, mag);
-    //                          float roll = madgwick_orientation.roll;
-    //                          float pitch = madgwick_orientation.pitch;
-    //                          float yaw = madgwick_orientation.yaw;
-    //                          float vx = sin(pitch);
-    //                          float vy = -cos(pitch) * sin(roll);
-    //                          float vz = -cos(pitch) * cos(roll);
-  
-    //                          // print madgwick filter outputs
-    //                          text += fmt::format("{:03.3f},{:03.3f},{:03.3f},", roll, pitch, yaw);
-    //                          text += fmt::format("{:03.3f},{:03.3f},{:03.3f}", vx, vy, vz);
-  
-    //                          fmt::print("{}\n", text);
-  
-    //                          return false;
-    //                        },
-    //                        .task_config = {
-    //                            .name = "IMU",
-    //                            .stack_size_bytes = 6 * 1024,
-    //                            .priority = 10,
-    //                            .core_id = 0,
-    //                        }});
-  
-    // loop forever
-    // while (true) {
-    //   std::this_thread::sleep_for(5s);
-    // }
-    //! [icm20948 example]
   }
   
-
-// {  
-//     while(1){
-//         vTaskDelay(1000/portTICK_PERIOD_MS);
-//         runICM();
-//     }
-// }
