@@ -2,7 +2,7 @@
 //precharge circuit code used for testing. Not intended for final design (will also be turned on/off via can messages)
 //make sure to use a switch for input 9 when using this code to test, otherwise the value (and hence code) is undefined
 
-//assuming contacter open when written LOW
+// assuming contacter open when written LOW
 void setup() {
   // put your setup code here, to run once:
   pinMode(9,INPUT); //car is turned on when this is high, car off otherwise
@@ -27,9 +27,5 @@ void loop() {
       digitalWrite(10,HIGH);
       digitalWrite(12,LOW);
     }
-    digitalWrite(10,LOW);//turn all the comparators off when car is turned off, return to default
-    digitalWrite(11,LOW);
-    digitalWrite(12,LOW);
   }
 }
-

@@ -6,3 +6,6 @@
 .vscode/extensions.json
 .DS_Store
 .vscode/*
+
+build/
+sdkconfig.*

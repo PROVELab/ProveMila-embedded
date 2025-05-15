@@ -1,37 +1,43 @@
 #include "Arduino.h"
 
-#include "pecan.h"
 #include "CAN.h"
+#include "pecan.h"
 
 #include <Arduino.h>
 
-int16_t defaultPacketRecv(struct CANPacket *packet) {  //this is only to be used by vitals for current
+int16_t defaultPacketRecv(
+    CANPacket *packet) { // this is only to be used by vitals for current
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
     Serial.print(",  data ");
-    Serial.println((char*) packet->data);
+    for (int i = 0; i < packet->dataSize; i++) {
+        Serial.print(*(packet->data));
+        Serial.print(" ");
+    }
+    Serial.println(" ");
     return 1;
 }
-bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
+bool (*matcher[3])(uint32_t, uint32_t) = {
+    exact, matchID,
+    matchFunction}; // could alwys be moved back to pecan.h as an extern
+                    // variable if its needed elsewhere? I am not sure why this
+                    // was declared there in the first place
 
-int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollection *plpc) {
-    //Serial.println(plpc->arr[0].listen_id);
-    if (recv_pack == NULL) {
-        struct CANPacket p;
+int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
+    if (recv_pack == NULL) { // final product code cant be calling this with
+                             // NULL, since packet loses scope
+        CANPacket p;
         recv_pack = &p;
-        // We can only use this for handler
-        // Because stack
     }
 
     int8_t packetsize;
-    struct CANListenParam clp;
-    //Serial.println(CAN.parsePacket());
+    CANListenParam clp;
     if ((packetsize = CAN.parsePacket())) {
         Serial.println("recieving Packet: ");
-        delay(100);
         recv_pack->id = CAN.packetId();
         recv_pack->dataSize = packetsize;
-        recv_pack->rtr= CAN.packetRtr();
+        recv_pack->rtr = CAN.packetRtr();
+        memset(recv_pack->data, 0, 8); // re-initialize data to all 0.
         // Read and temporarily store all the packet data into PCAN
         // packet (on stack memory)
         for (int8_t j = 0; j < recv_pack->dataSize; j++) {
@@ -40,7 +46,6 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
         // Then match the packet id with our params; if none
         // match, use default handler
         Serial.println("trying match");
-        delay(100);
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
             if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
@@ -52,22 +57,20 @@ int16_t waitPackets(struct CANPacket *recv_pack, struct PCANListenParamsCollecti
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(struct CANPacket *p) {  //note: if your id is longer than 11 bits it made into
+int16_t sendPacket(
+    CANPacket *p) { // note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
-    if(p->id>0b11111111111){
+    if (p->id > 0b11111111111) {
         CAN.beginExtendedPacket(p->id, p->dataSize, p->rtr);
-    }else{
+    } else {
         CAN.beginPacket(p->id, p->dataSize, p->rtr);
     }
     for (int8_t i = 0; i < p->dataSize; i++) {
         CAN.write(p->data[i]);
     }
-    if (CAN.endPacket()) {
-        //Serial.print(CAN.parsePacket());
-        //Serial.println(CAN.packetId());
-    } else {
+    if (!CAN.endPacket()) {
         return GEN_FAILURE;
     }
     return SUCCESS;
