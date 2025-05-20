@@ -52,6 +52,20 @@ set(SRC_FILES
     "pecan/espSpecific.c"
     "espMutexes/mutex_declarations.c"
 )
+elseif(CMAKE_PRECHARGE_CIRCUIT)
+set(SRC_FILES
+    "PreChargeCan/main.c"
+    "pecan/common.cpp"
+    "pecan/espSpecific.c"
+    "espMutexes/mutex_declarations.c"
+)
+elseif(CMAKE_PRECHARGE_TEST)
+set(SRC_FILES
+    "PreChargeCanTest/main.c"
+    "pecan/common.cpp"
+    "pecan/espSpecific.c"
+    "espMutexes/mutex_declarations.c"
+)
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"

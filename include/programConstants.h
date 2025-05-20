@@ -21,5 +21,7 @@
 #define HBRespUpdate 8
 #define initFlag 0
 #define canRecoveryFlag 1
+#define shutoffCode 0
+#define turnOnCode 1
 
 #endif
