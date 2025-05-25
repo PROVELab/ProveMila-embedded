@@ -13,8 +13,8 @@
 
 // X-Macro for defining parts of the vehicle status register
 #define VSR_ITEMS                                                              \
-    APP(motor_power_status_s, motor_power)                                     \
-    APP(motor_speed_status_s, motor_speed)                                     \
+    APP(motor_mspeed_status_s, motor_power)                                    \
+    APP(motor_hspeed_status_s, motor_speed)                                    \
     APP(motor_safety_status_s, motor_safety)
 
 // === Full VSR definition ===
@@ -29,7 +29,7 @@ typedef struct {
 #undef APP
 } vehicle_status_reg_s;
 
-extern vehicle_status_reg_s vsr;
+extern vehicle_status_reg_s vehicle_status_register;
 
 // initializes the mutexes and the structs
 // returns 0 on success, -1 on failure

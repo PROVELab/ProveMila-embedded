@@ -1,10 +1,10 @@
 #include "vsr.h"
 
 // setup introspection here
-extern vehicle_status_reg_s vsr;
+extern vehicle_status_reg_s vehicle_status_register;
 
 // initialize the introspection array in the global vsr
-vehicle_status_reg_s vsr = {};
+vehicle_status_reg_s vehicle_status_register = {};
 
 int vsr_init(vehicle_status_reg_s *vsr) {
 

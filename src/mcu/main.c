@@ -13,4 +13,11 @@
 
 #include "vsr.h" // vehicle status register, holds all the information about the vehicle
 
-void app_main() {}
+static void twai_init() {
+    // TODO: initialize the CAN driver here
+}
+
+void app_main() {
+    // Initialize the global VSR
+    vsr_init(&vehicle_status_register);
+}

@@ -5,16 +5,16 @@
 // status registers for the motor controller
 // motor speed status
 typedef struct {
-    int16_t quadrature_current; // current in 0.125 Arms
-    int16_t direct_current;     // current in 0.125 Arms
+    int32_t quadrature_current; // current in Arms
+    int32_t direct_current;     // current in Arms
     int16_t motor_speed;        // speed in RPM
-} motor_speed_status_s;
+} motor_hspeed_status_s;        // high speed status messages
 
 typedef struct {
-    int16_t measured_dc_voltage;   // 0.125 V
-    int16_t calculated_dc_current; // 0.125 A
-    uint16_t motor_current_limit;  // in 0.125 Arms
-} motor_power_status_s;
+    int32_t measured_dc_voltage;   // in Volts
+    int32_t calculated_dc_current; // in Amps
+    uint32_t motor_current_limit;  // in Arms
+} motor_mspeed_status_s;           // medium speed status messages
 
 typedef struct {
     uint8_t protection_code;      // TODO: where is this defined?
@@ -23,7 +23,7 @@ typedef struct {
     uint8_t inverter_bridge_temp; // TODO: document units and add functions
     uint8_t bus_cap_temp;         // TODO: document units and add functions
     uint8_t pwm_status;           // i doubt I'll use this
-} motor_safety_status_s;
+} motor_safety_status_s;          // low speed status messages
 
 // motor control register
 typedef struct {
