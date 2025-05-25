@@ -29,7 +29,7 @@ typedef struct {
 #undef APP
 } vehicle_status_reg_s;
 
-extern vehicle_status_reg_s vehicle_status_register;
+extern volatile vehicle_status_reg_s vehicle_status_register;
 
 // initializes the mutexes and the structs
 // returns 0 on success, -1 on failure

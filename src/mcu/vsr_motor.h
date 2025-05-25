@@ -19,9 +19,9 @@ typedef struct {
 typedef struct {
     uint8_t protection_code;      // TODO: where is this defined?
     uint8_t safety_error_code;    // TODO: where is this defined?
-    uint8_t motor_temp;           // TODO: document units and add functions
-    uint8_t inverter_bridge_temp; // TODO: document units and add functions
-    uint8_t bus_cap_temp;         // TODO: document units and add functions
+    int16_t motor_temp;           // motor temp, F
+    int16_t inverter_bridge_temp; // bridge temp, F
+    int16_t bus_cap_temp;         // bus capacitor temp, F
     uint8_t pwm_status;           // i doubt I'll use this
 } motor_safety_status_s;          // low speed status messages
 
