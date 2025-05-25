@@ -45,13 +45,15 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     )
     # message(SEND_ERROR "DECPATH: ${DECPATH}")
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
-elseif(CMAKE_MOTOR_CONTROLLER)
-set(SRC_FILES
-    "motorConfig/main.c"
-    "pecan/common.cpp"
-    "pecan/espSpecific.c"
-    "espMutexes/mutex_declarations.c"
-)
+elseif(CMAKE_MCU_ESP_BUILD)
+    # message(SEND_ERROR "CMAKE_MCU_ESP_BUILD is set, using MCU ESP build configuration")
+    set(SRC_FILES
+        "mcu/main.c"
+        "mcu/vsr.c"
+        "pecan/common.cpp"
+        "pecan/espSpecific.c"
+        "espMutexes/mutex_declarations.c"
+    )
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"
