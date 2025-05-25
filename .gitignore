@@ -3,4 +3,9 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+.vscode/extensions.json
 .DS_Store
+.vscode/*
+
+build/
+sdkconfig.*

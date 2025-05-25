@@ -10,6 +10,10 @@ fi
 # Find files
 files=$(find src/ include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp")
 
+# print files to be checked
+echo "Checking formatting for the following files:"
+echo "$files"
+
 # Check formatting (without modifying files)
 if ! echo "$files" | xargs clang-format --dry-run -Werror; then
     echo "Formatting issues detected! Please run ./format.sh to fix them."
