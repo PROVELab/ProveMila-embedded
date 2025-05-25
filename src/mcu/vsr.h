@@ -19,12 +19,6 @@
 
 // === Full VSR definition ===
 
-// struct that helps introspect the vsr
-typedef struct {
-    uint16_t offset;
-    uint8_t size; // size of the struct in bytes
-} vsr_introspection_s;
-
 typedef struct {
 // add the actual fields of the VSR via apply, adding mutexes
 #define APP(type, name)                                                        \
@@ -33,17 +27,6 @@ typedef struct {
 
     VSR_ITEMS
 #undef APP
-
-    // code introspection helper
-    // #define APP(l, r) 1 +
-    //     vsr_introspection_s introspection_arr[VSR_ITEMS 0];
-    // #undef APP
-
-    vsr_introspection_s introspection_arr[
-#define APP(l, r) 1 +
-        VSR_ITEMS 0
-#undef APP
-    ];
 } vehicle_status_reg_s;
 
 extern vehicle_status_reg_s vsr;
