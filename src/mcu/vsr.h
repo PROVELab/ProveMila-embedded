@@ -11,11 +11,21 @@
 #include "freertos/FreeRTOS.h"
 #include "vsr_motor.h" // motor speed status
 
+// Acquire and release a vsr subregister
+// Assumes vsr is defined as a pointer named 'vsr'
+// and that you pass in the name of the struct item
+// (to associate the item with the mutex). waits infinite time to acquire
+#define ACQ_SUB_REG_INF(mutating_element, body)                                \
+    xSemaphoreTake(vsr->##mutating_element##_mutex, portMAX_DELAY);            \
+    body xSemaphoreGive(vsr->##mutating_element##_mutex);
+
 // X-Macro for defining parts of the vehicle status register
 #define VSR_ITEMS                                                              \
     APP(motor_mspeed_status_s, motor_power)                                    \
     APP(motor_hspeed_status_s, motor_speed)                                    \
-    APP(motor_safety_status_s, motor_safety)
+    APP(motor_safety_status_s, motor_safety)                                   \
+    APP(motor_control_s, motor_control)                                        \
+    APP(motor_error_state, motor_error)
 
 // === Full VSR definition ===
 

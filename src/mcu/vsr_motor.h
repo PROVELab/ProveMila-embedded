@@ -27,9 +27,16 @@ typedef struct {
 
 // motor control register
 typedef struct {
-    int16_t speed_reference; // speed reference in 0.125 RPM
+    int32_t speed_reference; // speed reference in RPM (from 0.125 RPM)
     uint8_t discharge_limit_pct;
     uint8_t charge_limit_pct;
 } motor_control_s;
+
+// 0 by default so MOTOR_OK initially
+typedef enum { MOTOR_OK = 0, MOTOR_ERROR_STOP } high_level_motor_state;
+
+typedef struct {
+    high_level_motor_state motor_state;
+} motor_error_state;
 
 #endif

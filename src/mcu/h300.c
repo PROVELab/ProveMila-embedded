@@ -7,19 +7,19 @@ void parse_packet(PACKET_PARSE_INPUTS) {
 
     // Check if the message ID matches any of the response message IDs
     switch (msg->identifier) {
-    case HIGH_FREQ_DATA:
+    case HIGH_FREQ_DATA_ID:
         // Handle high frequency data
         parse_high_freq_data(msg, vsr);
         break;
-    case MED_FREQ_DATA:
+    case MED_FREQ_DATA_ID:
         // Handle medium frequency data
         parse_med_freq_data(msg, vsr);
         break;
-    case LOW_FREQ_DATA:
+    case LOW_FREQ_DATA_ID:
         // Handle low frequency data
         parse_low_freq_data(msg, vsr);
         break;
-    case CALIBRATION_RESULT_MSG:
+    case CALIBRATION_RESULT_MSG_ID:
         // TODO: implement this
         break;
     default:

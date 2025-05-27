@@ -8,23 +8,23 @@
 
 enum {
     // messages that we send out
-    REFERENCE_MSG = SLAVE_ID * 10,
-    RESET_CAN_MSG = SLAVE_ID * 100 + 3,
+    REFERENCE_MSG_ID = SLAVE_ID * 10,
+    RESET_CAN_MSG_ID = SLAVE_ID * 100 + 3,
 
     // messages that we receive
-    HIGH_FREQ_DATA = SLAVE_ID * 100,
-    MED_FREQ_DATA = SLAVE_ID * 100 + 1,
-    LOW_FREQ_DATA = SLAVE_ID * 100 + 2,
+    HIGH_FREQ_DATA_ID = SLAVE_ID * 100,
+    MED_FREQ_DATA_ID = SLAVE_ID * 100 + 1,
+    LOW_FREQ_DATA_ID = SLAVE_ID * 100 + 2,
 
     // calib stuff
-    CALIBRATION_INIT_MSG = SLAVE_ID * 10 + 1,
-    CALIBRATION_RESULT_MSG = SLAVE_ID * 100 + 4,
+    CALIBRATION_INIT_MSG_ID = SLAVE_ID * 10 + 1,
+    CALIBRATION_RESULT_MSG_ID = SLAVE_ID * 100 + 4,
 } H300_MSG_IDS;
 
 // is it an h300 id?
 #define IS_H300_ID(id)                                                         \
-    ((id <= CALIBRATION_RESULT_MSG && id >= HIGH_FREQ_DATA) ||                 \
-     (id <= CALIBRATION_INIT_MSG && id >= REFERENCE_MSG))
+    ((id <= CALIBRATION_RESULT_MSG_ID && id >= HIGH_FREQ_DATA_ID) ||           \
+     (id <= CALIBRATION_INIT_MSG_ID && id >= REFERENCE_MSG_ID))
 
 #define PACKET_PARSE_INPUTS                                                    \
     twai_message_t *msg, volatile vehicle_status_reg_s *vsr

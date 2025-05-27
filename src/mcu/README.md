@@ -3,6 +3,9 @@ The MCU is at the nexus of all Low voltage activity
 in Mila, and as such needs to be a little more complex
 than just reading sensor data and sending it over CAN.
 
+## Notes before running
+- Verify motor controller can timeout ms and baud
+
 ## VSR architecture
 - The MCU manages state via the VSR (Vehicle State Register)
 - This is basically a big struct that different tasks update.

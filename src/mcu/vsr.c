@@ -15,5 +15,9 @@ int vsr_init(volatile vehicle_status_reg_s *vsr) {
     VSR_ITEMS
 #undef APP
 
+    // zero out vsr for safety, no need for mutex
+    // since nothing will be running when we call this
+    memset(&vehicle_status_register, 0, sizeof(vehicle_status_register));
+
     return 0;
 }
