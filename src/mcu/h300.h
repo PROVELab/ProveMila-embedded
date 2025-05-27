@@ -21,6 +21,11 @@ enum {
     CALIBRATION_RESULT_MSG = SLAVE_ID * 100 + 4,
 } H300_MSG_IDS;
 
+// is it an h300 id?
+#define IS_H300_ID(id)                                                         \
+    ((id <= CALIBRATION_RESULT_MSG && id >= HIGH_FREQ_DATA) ||                 \
+     (id <= CALIBRATION_INIT_MSG && id >= REFERENCE_MSG))
+
 #define PACKET_PARSE_INPUTS                                                    \
     twai_message_t *msg, volatile vehicle_status_reg_s *vsr
 

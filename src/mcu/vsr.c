@@ -6,7 +6,7 @@ extern volatile vehicle_status_reg_s vehicle_status_register;
 // initialize the introspection array in the global vsr
 volatile vehicle_status_reg_s vehicle_status_register = {};
 
-int vsr_init(vehicle_status_reg_s *vsr) {
+int vsr_init(volatile vehicle_status_reg_s *vsr) {
 
     // initialize the mutexes
 #define APP(type, name)                                                        \

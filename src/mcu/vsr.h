@@ -33,6 +33,6 @@ extern volatile vehicle_status_reg_s vehicle_status_register;
 
 // initializes the mutexes and the structs
 // returns 0 on success, -1 on failure
-int vsr_init(vehicle_status_reg_s *vsr);
+int vsr_init(volatile vehicle_status_reg_s *vsr);
 
 #endif
