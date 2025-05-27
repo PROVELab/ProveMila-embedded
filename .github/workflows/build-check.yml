@@ -1,0 +1,40 @@
+# Attempts building all targets, and errors if any don't build
+name: PlatformIO CI
+
+on:
+  pull_request:
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # You can change this to other OS if needed
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9' # Specify a Python version compatible with PlatformIO
+
+    - name: Cache PlatformIO Core and dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.platformio/.cache
+          ~/.platformio/packages
+          ~/.platformio/platforms
+        # Invalidate cache if the ini file changes
+        key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-${{ hashFiles('**/lockfile.json') }} # Add other lockfiles if you use them
+        restore-keys: |
+          ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-
+          ${{ runner.os }}-pio-
+
+    - name: Install PlatformIO Core
+      run: pip install -U platformio
+
+    - name: Run PlatformIO Build
+      run: pio run
+      # If 'pio run' exits with a non-zero status code, the step will fail,
+      # and thus the workflow run will be marked as failed.
