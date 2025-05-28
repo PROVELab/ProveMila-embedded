@@ -23,4 +23,4 @@ PointerAlignment: left
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
 AlignConsecutiveMacros: true
-AlignEscapedNewlines: ENAS_Left
+AlignEscapedNewlines: left
