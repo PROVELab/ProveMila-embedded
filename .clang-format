@@ -8,7 +8,7 @@ BreakBeforeBraces: Attach # Puts braces on the same line
 
 ColumnLimit: 80 # Wrap lines longer than 80 characters
 InsertNewlineAtEOF: true
-KeepEmptyLinesAtEOF: true
+KeepEmptyLinesAtEOF: false # to play nice with the above option 
 IndentCaseLabels: true
 
 
@@ -17,12 +17,10 @@ AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: true
 AllowShortLambdasOnASingleLine: true
-AllowShortLoopsOnASingleLine:  true
+AllowShortLoopsOnASingleLine: true
 
 PointerAlignment: left
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
-
-	
 AlignConsecutiveMacros: true
 AlignEscapedNewlines: ENAS_Left
