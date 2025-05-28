@@ -19,8 +19,8 @@ AllowShortIfStatementsOnASingleLine: true
 AllowShortLambdasOnASingleLine: true
 AllowShortLoopsOnASingleLine: true
 
-PointerAlignment: left
+PointerAlignment: Left
 SpaceAfterCStyleCast: true
 SpaceAfterLogicalNot: false
 AlignConsecutiveMacros: true
-AlignEscapedNewlines: left
+AlignEscapedNewlines: Left
