@@ -9,14 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3 # Or v4 if you update
         with:
           submodules: recursive
-      
+          token: ${{ secrets.MOTOR_NDA_SECRET }} # Add this line
+
       - name: Install clang-format
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format
-      
+
       - name: Check formatting
-        run: ./check_format.sh 
+        run: ./check_format.sh

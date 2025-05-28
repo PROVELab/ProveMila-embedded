@@ -1,0 +1,39 @@
+name: PlatformIO CI
+
+on:
+  pull_request:
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Ensure this is here or set to true
+          token: ${{ secrets.MOTOR_NDA_SECRET }} # Add this line
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Cache PlatformIO Core and dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-${{ hashFiles('**/lockfile.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-
+            ${{ runner.os }}-pio-
+
+      - name: Install PlatformIO Core
+        run: pip install -U platformio
+
+      - name: Run PlatformIO Build
+        run: pio run
