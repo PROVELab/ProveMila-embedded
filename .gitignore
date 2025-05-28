@@ -8,4 +8,5 @@
 .vscode/*
 
 build/
-sdkconfig.*
+# we actually need this; my bad!
+# sdkconfig.*
