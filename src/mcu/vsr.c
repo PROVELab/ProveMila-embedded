@@ -1,0 +1,23 @@
+#include "vsr.h"
+
+// setup introspection here
+extern volatile vehicle_status_reg_s vehicle_status_register;
+
+// initialize the introspection array in the global vsr
+volatile vehicle_status_reg_s vehicle_status_register = {};
+
+int vsr_init(volatile vehicle_status_reg_s *vsr) {
+
+    // initialize the mutexes
+#define APP(type, name)                                                        \
+    static StaticSemaphore_t name##_mutex_buf;                                 \
+    vsr->name##_mutex = xSemaphoreCreateMutexStatic(&name##_mutex_buf);
+    VSR_ITEMS
+#undef APP
+
+    // zero out vsr for safety, no need for mutex
+    // since nothing will be running when we call this
+    memset(&vehicle_status_register, 0, sizeof(vehicle_status_register));
+
+    return 0;
+}
