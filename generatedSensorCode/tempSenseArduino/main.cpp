@@ -35,10 +35,8 @@ int32_t collect_rizzMeter(){
 void setup() {
 	Serial.begin(9600);
 	Serial.println("sensor begin");
-	if (!CAN.begin(500E3)) {
-		Serial.println("Starting CAN failed!");
-		while (1);
-	}
+	pecanInit config={.nodeId= myId, .txPin= defaultPin, .rxPin= defaultPin};
+	pecan_CanInit(config);
 	vitalsInit(&plpc, &ts);
 }
 

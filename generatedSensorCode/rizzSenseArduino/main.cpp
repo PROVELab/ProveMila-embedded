@@ -9,7 +9,7 @@ PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRec
 PScheduler ts;
 //if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
 int32_t collect_rizzMeter(){
-    int32_t rizzMeter = 69;
+    int32_t rizzMeter = 9;
     Serial.println("collecting rizzMeter");
     return rizzMeter;
 }
@@ -17,10 +17,8 @@ int32_t collect_rizzMeter(){
 void setup() {
 	Serial.begin(9600);
 	Serial.println("sensor begin");
-	if (!CAN.begin(500E3)) {
-		Serial.println("Starting CAN failed!");
-		while (1);
-	}
+	pecanInit config={.nodeId= myId, .txPin= defaultPin, .rxPin= defaultPin};
+	pecan_CanInit(config);
 	vitalsInit(&plpc, &ts);
 }
 

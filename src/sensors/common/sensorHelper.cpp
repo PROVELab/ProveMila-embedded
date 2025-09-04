@@ -14,14 +14,15 @@
 #include "freertos/semphr.h"
 #include <string.h>
 #include "esp_timer.h"
-#include "../../pecan/espBusRestart.h"
 #include "../../vitalsNode/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
-
 //Declare Timers for data collection and sending
 TimerHandle_t dataCollection_Timers [ numFrames ];  //one of these timers going off trigers callback function for missing CAN Data Frane
 StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these timers
-//
-
+//task for monitering bus status, and restarting if needed
+#define SENSOR_STACK_SIZE 1000  //checkBus task is reliabley small, so we can use a smaller stack size
+StaticTask_t checkBus_Buffer;
+StackType_t checkBus_Stack[SENSOR_STACK_SIZE]; //buffer that the task will use as its stack
+int32_t checkBus_myId = myId; //parameter passed to check_bus_status task
 #elif defined(SENSOR_ARDUINO_BUILD)
 #include "../../arduinoSched/arduinoSched.hpp"
 #include "Arduino.h"
@@ -38,16 +39,6 @@ StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these 
 #endif
 
 
-#ifdef SENSOR_ESP_BUILD
-int32_t checkBus_myId=myId;    //pass this as a parameter for checkCanHandler
-#define STACK_SIZE 20000    //for deciding stack size
-StaticTask_t checkBus_Buffer;       //task for checkBus status, and restarting when necessary
-StackType_t checkBus_Stack[ STACK_SIZE ]; 
-
-#endif
-
-
-
 #include<stdint.h>
 
  int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
@@ -60,9 +51,7 @@ int16_t respondToHB(CANPacket *recvPack){
         setRTR(&responsePacket);
         
         flexiblePrint("N1RHB\n");
-        if(sendPacket(&responsePacket)){
-            flexiblePrint("error sending\n");
-        }
+        sendPacket(&responsePacket);
     return 1;
 }
 
@@ -102,7 +91,7 @@ void sendFrame(int8_t frameNum){
     dataPacket.extendedID=1;
     dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
     writeData(&dataPacket,(int8_t*) tempData,(7+currBit)/8);
-    int temp=0;
+    sendPacket(&dataPacket);
     if((temp=sendPacket(&dataPacket))){
         sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
         flexiblePrint(buffer);  
@@ -135,8 +124,9 @@ void sendFrame(int8_t frameNum){
 #endif
 
 
-
-int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler will be NULL if not arduino
+//vitals Compliance, expects Can to alr be initialized. 
+//^Creates listen param for heartbeats, and creates tasks for collecting data, and Bus State Monitoring
+int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //void* ts = PScheduler for arduino, may be NULL otherwise
     flexiblePrint("initializing\n");
 
 #ifdef SENSOR_ESP_BUILD
@@ -187,18 +177,6 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //PScheduler w
         flexiblePrint("plpc no room");
         while(1);
     }
-    #ifdef SENSOR_ESP_BUILD
-    TaskHandle_t checkCanHandler = xTaskCreateStaticPinnedToCore(  //prints out bus status info
-        check_bus_status,       /* Function that implements the task. */
-        "checkCan",          /* Text name for the task. */
-        STACK_SIZE,      /* Number of indexes in the xStack array. */
-        ( void * ) &checkBus_myId,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.
-        1,/* Priority at which the task is created. */
-        checkBus_Stack,          /* Array to use as the task's stack. */
-        &checkBus_Buffer,   /* Variable to hold the task's data structure. */
-        tskNO_AFFINITY);  //assigns printHello to core 0
-        #endif  
-
     return 0;
 }
 

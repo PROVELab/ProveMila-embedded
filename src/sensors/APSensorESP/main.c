@@ -10,28 +10,10 @@
 #include "../../pecan/pecan.h"                  //used for CAN
 #include "../common/sensorHelper.hpp"           //used for compliance with vitals and sending data
 #include "myDefines.hpp"          //contains #define statements specific to this node like myId.
-#include "../../vitalsNode/mutex_declarations.h"
-
-//tracing functionality to give warning for free or alloc.
-#include "esp_heap_caps.h"
-int init=0; //indicates that mutexes have been initialized, so we may print a warning for allocations and frees
-void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps) {  //is called every time memory is allocated, feature enabled in menuconfig
-	if(init) {
-		mutexPrint("Warning, allocating memory!\n");
-	}
-}
-void esp_heap_trace_free_hook(void* ptr) {
-	if(init) {
-		mutexPrint("Warning, freeing memory!\n");
-	}
-}
-
+#include "../../espBase/debug_esp.h"
 //add declerations to allocate space for additional tasks here as needed
-#define STACK_SIZE 20000
 StaticTask_t recieveMSG_Buffer;
 StackType_t recieveMSG_Stack[STACK_SIZE]; //buffer that the task will use as its stack
-
-//
 
 //if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
 int32_t collect_airPressure(){
@@ -42,8 +24,8 @@ int32_t collect_airPressure(){
 
 void recieveMSG(){  //task handles recieving Messages
 	CANPacket message; //will store any recieved message
-	PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
-	vitalsInit(&plpc,NULL); //vitals Compliance, and creates listen param for heartbeats
+	PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        //an array for matching recieved Can Packet's ID's to their handling functions.
+	vitalsInit(&plpc,NULL); //vitals Compliance
 
 	//declare CanListenparams here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to matchtype (or 'mt'), 'handler' is called.
 	//see Vitals' recieveMSG function for an example of what this looks like
@@ -56,35 +38,10 @@ void recieveMSG(){  //task handles recieving Messages
 }
 
 void app_main(void){
-	//Initialize configuration structures using macro initializers
-	twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_33, GPIO_NUM_32, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL for standard behavior  
-	twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-	twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-	//Install TWAI driver
-	if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-		printf("Driver installed\n");
-	} else {
-		printf("Failed to install driver\n");
-		return;
-	}
+	pecanInit config={.nodeId= myId, .txPin= defaultPin, .rxPin= defaultPin};
+	pecan_CanInit(config);   //initialize CAN
 
-	//Start TWAI driver
-	if (twai_start() == ESP_OK) {
-		printf("Driver started\n");
-	} else {
-		printf("Failed to start driver\n");
-		return;
-	}
-
-	mutexInit();    //initialize mutexes
-	init=1;
-	uint32_t alerts_to_enable = TWAI_ALERT_ALL;
-	if (twai_reconfigure_alerts(alerts_to_enable, NULL) == ESP_OK) {
-		printf("Alerts reconfigured\n");
-	} else {
-		printf("Failed to reconfigure alerts");
-	}
-
+	//Declare tasks here as needed
 	TaskHandle_t recieveHandler = xTaskCreateStaticPinnedToCore(  //recieves CAN Messages 
 		recieveMSG,       /* Function that implements the task. */
 		"msgRecieve",          /* Text name for the task. */

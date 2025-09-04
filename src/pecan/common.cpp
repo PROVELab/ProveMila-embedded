@@ -94,12 +94,12 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t
     return 0;
 }
 
-int16_t sendStatusUpdate(uint8_t flag, uint32_t Id){
+void sendStatusUpdate(uint8_t flag, uint32_t Id){
     CANPacket statusUpdatePacket;
     memset(&statusUpdatePacket, 0, sizeof(CANPacket));
     statusUpdatePacket.id =combinedID(statusUpdate,Id);  
     writeData(&statusUpdatePacket,(int8_t*) &flag,1);
-    return sendPacket(&statusUpdatePacket);
+    sendPacket(&statusUpdatePacket);
 }
 
 

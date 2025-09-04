@@ -56,7 +56,14 @@ typedef struct {
     int16_t size;
 } PCANListenParamsCollection;
 
-//common implementations:
+#define defaultPin -1
+typedef struct{
+    int nodeId;
+    int txPin;
+    int rxPin;
+} pecanInit;
+
+void pecan_CanInit(pecanInit config);
 
 /// Adds a CANListenParam to the collection
 int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp);
@@ -93,7 +100,6 @@ bool matchFunction(uint32_t id, uint32_t mask);
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
-
 //makes a packet an RTR packet
 int16_t setRTR(CANPacket * p);
 //makes a packet an extended packet
@@ -126,7 +132,7 @@ int16_t defaultPacketRecv(CANPacket* p); //only platform specific because it pri
 int16_t waitPackets(CANPacket* recv_pack,PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
-int16_t sendPacket(CANPacket* p);
+void sendPacket(CANPacket* p);
 //shorthand for sending status update. Atm, indicates node init, and bus recovery
 int16_t sendStatusUpdate(uint8_t flag, uint32_t Id);
 

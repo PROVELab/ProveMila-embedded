@@ -5,6 +5,27 @@
 
 #include <Arduino.h>
 
+void pecan_CanInit(pecanInit config){
+    const int defaultTxPin = 5;
+    const int defaultRxPin = 4;
+    if(config.txPin != defaultPin || config.rxPin !=defaultPin){    //using non-default pins has not been tested on arduino, but option is available
+        config.txPin= config.txPin == defaultPin ? defaultTxPin : config.txPin;
+        config.rxPin= config.rxPin == defaultPin ? defaultRxPin : config.rxPin;
+        CAN.setPins(config.txPin, config.rxPin);
+    }
+    if (!CAN.begin(500E3)) {
+        Serial.println("Starting CAN failed!");
+        while (1);
+    }
+    int16_t err;
+    if((err= sendStatusUpdate(initFlag, config.nodeId))){
+        char buffer[50];
+        sprintf(buffer, "error sending INIT Flag: %d\n", err);  // Convert the int8_t to a string
+        printf(buffer);  
+    }
+    return;
+}
+
 int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vitals for current
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
@@ -14,7 +35,7 @@ int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vit
         Serial.print(" ");
     }
     Serial.println(" ");
-    return 1;
+    return 0;
 }
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
@@ -51,20 +72,24 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it made into
+void sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
-        return PACKET_TOO_BIG;
+        Serial.println("Packet Too Big");
+        return;
     }
-    if(p->id>0b11111111111){
+    do {
+        if(p->id>0b11111111111){
         CAN.beginExtendedPacket(p->id, p->dataSize, p->rtr);
-    }else{
-        CAN.beginPacket(p->id, p->dataSize, p->rtr);
-    }
-    for (int8_t i = 0; i < p->dataSize; i++) {
-        CAN.write(p->data[i]);
-    }
-    if (!CAN.endPacket()) {
-        return GEN_FAILURE;
-    } 
-    return SUCCESS;
+        }else{
+            CAN.beginPacket(p->id, p->dataSize, p->rtr);
+        }
+        for (int8_t i = 0; i < p->dataSize; i++) {
+            CAN.write(p->data[i]);
+        }
+        bool success=CAN.endPacket();
+        if(!success){
+            delay(5);   //small delay before
+        }
+    } while(!success);  //Attempt to send the packet on a loop
+    //Expects watchdog timer to reset us if we get bricked trying to send a message
 }
