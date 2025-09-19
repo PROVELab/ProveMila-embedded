@@ -1,9 +1,6 @@
 #include "vsr.h"
 
-// setup introspection here
-extern volatile vehicle_status_reg_s vehicle_status_register;
-
-// initialize the introspection array in the global vsr
+// Initialize the vehicle status register:
 volatile vehicle_status_reg_s vehicle_status_register = {};
 
 int vsr_init(volatile vehicle_status_reg_s *vsr) {

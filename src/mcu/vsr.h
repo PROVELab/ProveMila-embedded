@@ -17,8 +17,8 @@
 // and that you pass in the name of the struct item
 // (to associate the item with the mutex). waits infinite time to acquire
 #define ACQ_REL_VSRSEM(mutating_element, body)                                 \
-    xSemaphoreTake(vsr->##mutating_element##_mutex, portMAX_DELAY);            \
-    body xSemaphoreGive(vsr->##mutating_element##_mutex);
+    xSemaphoreTake(vsr->mutating_element##_mutex, portMAX_DELAY);            \
+    body xSemaphoreGive(vsr->mutating_element##_mutex);
 
 // X-Macro for defining parts of the vehicle status register
 #define VSR_ITEMS                                                              \
@@ -35,7 +35,13 @@ typedef struct {
 #define APP(type, name)                                                        \
     SemaphoreHandle_t name##_mutex;                                            \
     type name;
+// END APP Macro
 
+    // Apply macro to all items
+    // so basically this ends up being something like:
+    //   SemaphoreHandle_t motor_power_mutex;
+    //   motor_mspeed_status_s motor_power;
+    // ...
     VSR_ITEMS
 #undef APP
 } vehicle_status_reg_s;
