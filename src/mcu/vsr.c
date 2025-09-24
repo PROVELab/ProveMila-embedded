@@ -9,6 +9,11 @@ int vsr_init(volatile vehicle_status_reg_s *vsr) {
 #define APP(type, name)                                                        \
     static StaticSemaphore_t name##_mutex_buf;                                 \
     vsr->name##_mutex = xSemaphoreCreateMutexStatic(&name##_mutex_buf);
+
+    // This ends up being something like:
+    //   static StaticSemaphore_t motor_power_mutex_buf;
+    //   vsr->motor_power_mutex = xSemaphoreCreateMutexStatic(&motor_power_mutex_buf);
+    // ...
     VSR_ITEMS
 #undef APP
 

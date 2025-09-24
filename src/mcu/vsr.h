@@ -49,7 +49,7 @@ typedef struct {
 extern volatile vehicle_status_reg_s vehicle_status_register;
 
 // initializes the mutexes and the structs
-// returns 0 on success, -1 on failure
+// returns 0 on success, -1 on failure (but it always returns 0)
 int vsr_init(volatile vehicle_status_reg_s *vsr);
 
 #endif
