@@ -19,7 +19,6 @@
 #define DEFAULT_STACK_SIZE 10000
 
 // === CAN static mem === //
-extern twai_handle_t motor_control_bus;
 extern twai_handle_t general_control_bus; // TODO: unused at the moment
 
 
@@ -48,6 +47,6 @@ void start_handle_h300_task(); // Starts the handle_h300 task
 // ======= SEND MOTOR DATA TASK ======= //
 // sends motor data at 200 Hz
 #define SEND_MOTOR_DATA_PRIO 20 // higher priority than all
-void start_send_motor_data_task(); // Starts the send_motor_data task
+void start_send_motor_task();
 
 #endif

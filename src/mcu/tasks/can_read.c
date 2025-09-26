@@ -1,4 +1,5 @@
 #include "tasks.h"
+#include "../motor_h300/h300.h"
 
 
 StackType_t read_can_data_stack[DEFAULT_STACK_SIZE];

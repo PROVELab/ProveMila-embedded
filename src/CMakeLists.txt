@@ -47,15 +47,20 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
 elseif(CMAKE_MCU_ESP_BUILD)
     # message(SEND_ERROR "CMAKE_MCU_ESP_BUILD is set, using MCU ESP build configuration")
-    set(SRC_FILES
-        "mcu/main.c"
-        "mcu/vsr.c"
-        "mcu/motor_h300/h300.c"
-        "mcu/motor_h300/motor_send.c"
-        "pecan/common.cpp"
-        "pecan/espSpecific.c"
-        "espMutexes/mutex_declarations.c"
+    # Recursively collect sources under mcu/ (makes stuff easier)
+    file(GLOB_RECURSE MCU_SRC
+        CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/mcu/*.c"
+        "${CMAKE_CURRENT_SOURCE_DIR}/mcu/*.cc"
+        "${CMAKE_CURRENT_SOURCE_DIR}/mcu/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/mcu/*.cxx"
     )
+
+    # If you also want to include other existing files outside mcu/, add them here:
+    set(SRC_FILES
+        ${MCU_SRC}
+    )
+
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"

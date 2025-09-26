@@ -69,6 +69,9 @@ void app_main() {
 
     start_handle_h300_task(); // higher priority, runs when we get h300 data
 
+    // Send data to the motor task
+    start_send_motor_task();
+
     xPortStartScheduler();
     vTaskStartScheduler();
 }
