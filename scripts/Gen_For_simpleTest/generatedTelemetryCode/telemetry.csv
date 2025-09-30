@@ -1,0 +1,4 @@
+nodeID,frameIndex,dataIndex,nodeName,dataName,nodeID,numData,dataTimeout,bitLength,minCritical,maxCritical,min,max,minWarning,maxWarning
+8,0,0,pedalSensor,pedalReadingOne,8,2,1000,8,5,95,-20,120,20,80
+8,0,1,pedalSensor,pedalReadingTwo,8,2,1000,8,5,95,-20,120,20,80
+10,0,0,APSensorESP,airPressure,10,1,1500,32,5,95,-2147483648,2147483647,20,80

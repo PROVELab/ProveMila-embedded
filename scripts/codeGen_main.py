@@ -1,7 +1,8 @@
 import os
-from parseFile import parse_config, globalDefines
+from parseFile import parse_config, globalDefines, ACCESS
 from genSensors import createSensors
 from genVitals import createVitals
+from genTelemetry import createTelemetry 
 import json
 def pretty_print_vitals(vitals_nodes):  #useful for debugging, to see what is being created. bloated print does however make it hard to see warnings, so typically run with this off
     print("Vitals Nodes:")
@@ -24,23 +25,29 @@ if __name__ == "__main__":
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Construct the full path to the sensors definition file
-    file_path = os.path.join(script_dir, 'sensors.def')
-    
+    fileName = input("\nEnter the name of the file (ex: sensors.def, or simpleTest.def)\n")
+    # Build absolute path to the input file (assumed to be next to this script)
+    file_path = os.path.join(script_dir, fileName)
+
+    # Make directory for the generated code
+    base_name = os.path.splitext(os.path.basename(fileName))[0]
+    generated_code_dir = os.path.join(script_dir, f"Gen_For_{base_name}")
+    os.makedirs(generated_code_dir, exist_ok=True)
+
     # Parse configuration file
     (vitalsNodes, nodeNames, boardTypes, dataNames, numData, nodeIds,
      startingNodeID, missingIDs, nodeCount, frameCount) = parse_config(file_path)
 
     print("Starting Node ID:", startingNodeID)
-    print("Missing IDs:", missingIDs)
+    print("Missimsing IDs:", missingIDs)
     print("Node Count:", nodeCount)
     print("node Names:", nodeNames)
     print("data Names:", dataNames)
-    
-    # pretty_print_vitals(vitalsNodes)
-    
-    # Generate sensor files
-    createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, script_dir, globalDefines)
-    #Generate Vitals Files
-    createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCount, frameCount, numData, script_dir, globalDefines)
 
+    # pretty_print_vitals(vitalsNodes)
+    # Generate sensor files
+    createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir, globalDefines)
+    #Generate Vitals Files
+    createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCount, frameCount, numData, generated_code_dir, globalDefines)
+
+    createTelemetry(vitalsNodes, "telemetryDashboard.csv", generated_code_dir, nodeNames, dataNames)

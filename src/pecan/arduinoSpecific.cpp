@@ -1,73 +1,134 @@
-#include "Arduino.h"
-
 #include "pecan.h"
 #include "CAN.h"
 
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
 #include <Arduino.h>
 
+void flexiblePrint(const char* str){
+    Serial.println(str);
+}
+#define defaultCSPin 10
+#define defaultIntPin 2
+
+//Note: the MCP 2515 (with the shield we use) can buffer only 2 CAN messages. The Sandeepmistry Can library we use uses this feature
+// Since we may have some actions that take a while (roughly anything > 1ms), its important to have an interrupt to store messages in
+// a SW queue imediately. (For example, responses to HB wil come quickly like this.)
+void onReceive(int packetSize);
+
+//default pins work with elecFreaks shield as is. non-defaultPins will required different/modified HW setup.
 void pecan_CanInit(pecanInit config){
-    const int defaultTxPin = 5;
-    const int defaultRxPin = 4;
-    if(config.txPin != defaultPin || config.rxPin !=defaultPin){    //using non-default pins has not been tested on arduino, but option is available
-        config.txPin= config.txPin == defaultPin ? defaultTxPin : config.txPin;
-        config.rxPin= config.rxPin == defaultPin ? defaultRxPin : config.rxPin;
-        CAN.setPins(config.txPin, config.rxPin);
+    const int irqPin        = (config.pin1 == defaultPin) ? defaultIntPin : config.pin1;
+    const int chipSelectPin = (config.pin2  == defaultPin) ? defaultCSPin  : config.pin2;
+
+    // Use non-default pins only if needed
+    if (irqPin != defaultIntPin || chipSelectPin != defaultCSPin) {
+        // CAN.setPins(chipSelectPin, irqPin);
     }
+    CAN.onReceive(onReceive);
+
     if (!CAN.begin(500E3)) {
         Serial.println("Starting CAN failed!");
         while (1);
     }
-    int16_t err;
-    if((err= sendStatusUpdate(initFlag, config.nodeId))){
-        char buffer[50];
-        sprintf(buffer, "error sending INIT Flag: %d\n", err);  // Convert the int8_t to a string
-        printf(buffer);  
-    }
+    sendStatusUpdate(initFlag, config.nodeId);
     return;
 }
 
-int16_t defaultPacketRecv(CANPacket *packet) {  //this is only to be used by vitals for current
-    Serial.print("Default Func: id ");
-    Serial.print(packet->id);
-    Serial.print(",  data ");
-    for(int i=0;i<packet->dataSize;i++){
-        Serial.print(*(packet->data));
-        Serial.print(" ");
-    }
-    Serial.println(" ");
-    return 0;
+//Queue for recieving messages:
+#define PACKET_QUEUE_SIZE 16
+volatile bool queueOverrunFlag = false;
+
+CANPacket packetQueue[PACKET_QUEUE_SIZE];
+volatile uint8_t queueHead = 0;  // ISR writes
+volatile uint8_t queueTail = 0;  // main writes
+volatile bool flagGotCalled = false;
+
+static inline uint8_t incrementIndex(uint8_t i) {
+  uint8_t n = (uint8_t)(i + 1);
+  return (n >= PACKET_QUEUE_SIZE) ? 0 : n;
 }
+
+static inline bool queueIsEmpty(void) { return queueHead == queueTail; }
+
+static inline void queuePacket(const CANPacket &pkt) {
+    uint8_t nextHead = incrementIndex(queueHead);
+    if (nextHead == queueTail) {    //indicate we dropped a packet
+        queueOverrunFlag = true;    
+        return;
+    }else{  //add packet to queue
+        packetQueue[queueHead] = pkt;
+        queueHead = nextHead;
+    }
+}
+
+
+static inline bool queuePacketPop(CANPacket *outPkt) {
+    bool ok = false;
+    noInterrupts();                 // must be atomic w.r.t. ISR
+    if (!queueIsEmpty()) {
+        *outPkt = packetQueue[queueTail];
+        queueTail = incrementIndex(queueTail);
+        ok = true;
+    }
+    interrupts();
+    return ok;
+}
+//  //
+
+
 bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
 
-int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {   
-    if (recv_pack == NULL) {    //final product code cant be calling this with NULL, since packet loses scope
-        CANPacket p;
-        recv_pack = &p;
-    }
+// expects waitPackets to 0 initialize irellevant id and data. 
+// Want to keep ISR as short as possible
+void onReceive(int packetSize) {
+    static CANPacket recv_pack;
+    recv_pack.id = CAN.packetId();
+    recv_pack.extendedID = CAN.packetExtended();
+    recv_pack.dataSize = packetSize;
+    recv_pack.rtr= CAN.packetRtr();
 
-    int8_t packetsize;
-    CANListenParam clp;
-    if ((packetsize = CAN.parsePacket())) {
-        Serial.println("recieving Packet: ");
-        recv_pack->id = CAN.packetId();
-        recv_pack->dataSize = packetsize;
-        recv_pack->rtr= CAN.packetRtr();
-        memset(recv_pack->data, 0, 8);  //re-initialize data to all 0.
-        // Read and temporarily store all the packet data into PCAN
-        // packet (on stack memory)
-        for (int8_t j = 0; j < recv_pack->dataSize; j++) {
-            recv_pack->data[j] = CAN.read();
+    // Read packet data
+    for (int8_t index=0; index < recv_pack.dataSize; index++) {
+        recv_pack.data[index] = CAN.read();
+    }
+    queuePacket(recv_pack); //queue packet for later use
+}
+
+// Matches any recieved packets with their handler
+// Not thread-safe (only call from one thread). The packet reference is overriden upon call.
+// returns value of the matching function, or NOT_RECIEVED for no new messages
+int16_t waitPackets(PCANListenParamsCollection *plpc) { 
+    static CANPacket recv_pack={0};
+    // TODO: would be nice to check for RX overruns. However, the CAN libarary we use doesnt expose this
+    // Realistically it isn't necessary, but its worth noting that its possible to drop packets if we have
+    // other interrupts taking a long time, preventing onReceieve from getting called
+
+    if(queuePacketPop(&recv_pack)){
+        //limit id. Theoretically shouldnt be necessary, but better to be safe
+        if(recv_pack.extendedID){
+            recv_pack.id &= 0x1FFFFFFF;  //Limit to first 29 bits
+        }else{
+            recv_pack.id &= 0x7FF;      //Limit to first 11 bits
         }
-        // Then match the packet id with our params; if none
-        // match, use default handler
-        Serial.println("trying match");
+        if(recv_pack.rtr == true){
+            recv_pack.dataSize=0;
+        }else{
+            recv_pack.dataSize = constrain(recv_pack.dataSize, 0, MAX_SIZE_PACKET_DATA);    //to be safe
+        }
+        //set garbage data to 0.
+        memset(recv_pack.data + recv_pack.dataSize, 0, MAX_SIZE_PACKET_DATA - recv_pack.dataSize);
+
+        CANListenParam clp;
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
-            if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
-                return clp.handler(recv_pack);
+            if (matcher[clp.mt](recv_pack.id, clp.listen_id)) {
+                return clp.handler(&recv_pack);
             }
         }
-        return plpc->defaultHandler(recv_pack);
+        plpc->defaultHandler(&recv_pack);
+        return 0;   //Success
     }
     return NOT_RECEIVED;
 }
@@ -77,18 +138,27 @@ void sendPacket(CANPacket *p) {  //note: if your id is longer than 11 bits it ma
         Serial.println("Packet Too Big");
         return;
     }
+    bool success;
     do {
+        if(p->rtr){
+            p->dataSize=1;
+        }
         if(p->id>0b11111111111){
         CAN.beginExtendedPacket(p->id, p->dataSize, p->rtr);
         }else{
             CAN.beginPacket(p->id, p->dataSize, p->rtr);
         }
-        for (int8_t i = 0; i < p->dataSize; i++) {
-            CAN.write(p->data[i]);
+
+        if(p->rtr == false){
+            for (int8_t i = 0; i < p->dataSize; i++) {
+                CAN.write(p->data[i]);
+            }
         }
-        bool success=CAN.endPacket();
+
+        success=CAN.endPacket();
         if(!success){
-            delay(5);   //small delay before
+            Serial.println("message send failure\n");
+            delay(5);   //small delay before trying again. Dont want to blow up Bus.
         }
     } while(!success);  //Attempt to send the packet on a loop
     //Expects watchdog timer to reset us if we get bricked trying to send a message

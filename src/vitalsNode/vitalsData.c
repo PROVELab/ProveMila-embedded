@@ -10,19 +10,17 @@
 
 #include "../pecan/pecan.h"   
 #include "../espBase/debug_esp.h" 
-#include "programConstants.h"
+#include "../programConstants.h"
 #include "vitalsHelper/vitalsHelper.h"
 #include "vitalsHelper/vitalsStaticDec.h"
 
 TimerHandle_t missingDataTimers [ totalNumFrames ];  //one of these timers going off trigers callback function for missing CAN Data Frane
 StaticTimer_t xTimerBuffers[ totalNumFrames ];      //array for the buffers of these timers
-
-static void vTimerCallback(TimerHandle_t xTimer);
+static void vTimerCallback(TimerHandle_t xTimer);   //callback for CanFrame Timeouts
 
 int16_t moniterData(CANPacket* message){ //for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
-    mutexPrint("recievingData\n");
     int16_t nodeId=IDTovitalsIndex(message->id);
-    if(nodeId>numberOfNodes){
+    if(nodeId == invalidVitalsIndex){
         mutexPrint("recieved data from invalid nodeId, ignoring\n");
         return 1;
     }
@@ -34,7 +32,7 @@ int16_t moniterData(CANPacket* message){ //for now just stores the data (printin
         mutexPrint("invalid dataFrame. Ignoring data\n");
         return 1;
     }
-    char str[15]; // Enough to store "-128" and null terminator
+    char str[15]; //  print info about the data we recieved. 
     sprintf(str, "%ld, %d", CanFrameNumber, nodeId);
     mutexPrint(str);
     CANFrame* frame=& (node->CANFrames[CanFrameNumber]);   //the frame this data corresponds to
@@ -46,18 +44,7 @@ int16_t moniterData(CANPacket* message){ //for now just stores the data (printin
     if(xTimerReset(missingDataTimers[frame->frameID],pdMS_TO_TICKS(10))==pdFAIL){    //wait up to 10ms to reset timer
         mutexPrint("warning, unable to reset timer");
         //Send warningFrame:
-                    //problem node    //failedTimer flag        (mask                    <-ID of missingFrame->       offset      )
-        uint32_t data=(message->id) | (0b1<<11) | (( ((1<<maxFrameCntBits) - 1) & CanFrameNumber)<<warningFrameNumBitsOffset);
-        CANPacket message={0};
-        writeData(&message,(int8_t*)&data, (warningFrameNumBitsOffset+maxFrameCntBits+maxDataInFrameBits)>>3);  //relies on esp32 being little endian (since interpretting uint32_t as array of bytes)
-        message.id=combinedID(warningCode,vitalsID); 
-        int err;
-        if((err=sendPacket(&message))){
-            if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
-                printf("failed to send warning with code %d. \n",err);
-                xSemaphoreGive(printfMutex); // Release the mutex.
-            }else { printf("cant print, in deadlock!\n"); }
-        }
+        sendWarningForDataPoint(frame, 0, frameTimerSetFail);
     } else{
         if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
             printf("timer Reset for node: %d, frame: %ld\n",nodeId, CanFrameNumber); 
@@ -84,10 +71,11 @@ int16_t moniterData(CANPacket* message){ //for now just stores the data (printin
     frame->dataLocation++;  //increment the dataIndex
     if(frame->dataLocation==10){frame->dataLocation=0;}
     frame->consecutiveMisses=0;
+    mutexPrint("moniter complete\n");
     return 0;
 }
 
-int16_t initializeDataTimers(){ //initializes timeOuts for Data collection, as soon as this runs, we need data from every node to be sending their data to prevent them getting flagged, or Bus off if critical
+void initializeDataTimers(){ //initializes timeOuts for Data collection, as soon as this runs, we need data from every node to be sending their data to prevent them getting flagged, or Bus off if critical
     int32_t numInits=0;
     mutexPrint("initializing Timers\n");
     for(int i=0;i<numberOfNodes;i++){
@@ -99,15 +87,10 @@ int16_t initializeDataTimers(){ //initializes timeOuts for Data collection, as s
                 pdMS_TO_TICKS(nodes[i].CANFrames[j].dataTimeout),
                 /* The timers will auto-reload themselves when they expire. */
                 pdTRUE,
-                /* The ID is used to store a count of the number of times
-                    the timer has expired, which is initialised to 0. */
-                ( void * ) &(nodes[i].CANFrames[j]),    //"ID" for this function, which we use to store the corresponding Can Frame for this timer
-                /* Each timer calls the same callback when it expires. */
-                vTimerCallback,
-                /* Pass in the address of a StaticTimer_t variable, which
-                    will hold the data associated with the timer being
-                    created. */
-                &( xTimerBuffers[numInits] )
+                /* pointer to the canFrame to identify which frame is missing */
+                ( void * ) &(nodes[i].CANFrames[j]),    
+                vTimerCallback, //the callback function (same for all timers)
+                &( xTimerBuffers[numInits] )    //buffer that holds timer info stuff
                 );
                 if(missingDataTimers[numInits]==NULL){
                 mutexPrint("Error creating timer, aborting\n");
@@ -129,25 +112,19 @@ int16_t initializeDataTimers(){ //initializes timeOuts for Data collection, as s
 }else { printf("cant print, in deadlock!\n"); }
 }
 
-static void vTimerCallback(TimerHandle_t xTimer){   //called when data is not correctly recieved. Triggers extrapolation, and extrapolation warning, sent directly to telem
+static void vTimerCallback(TimerHandle_t xTimer){   //called when data is never recieved. Triggers extrapolation, and extrapolation warning, sent directly to telem
     CANFrame* missingFrame = ( CANFrame* ) pvTimerGetTimerID( xTimer );
     if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
         printf("missing Data frame number: %d from node %d. \n", missingFrame->frameID, missingFrame->nodeID);
         xSemaphoreGive(printfMutex); // Release the mutex.
     }else { printf("cant print, in deadlock!\n"); }
-    //Add code or fnct call here to trigger extrapolation
+    //TODO: Add code or fnct call here to trigger extrapolation
+    //Vitals does not yet actually monitor data (I was hoping to get som1 else to do it for me, since its a fairly open and closed function,
+    // but I might end up doing it anyway). Also it would be good to get other people to agree on the algorithm (whether it be mine, theres, or a mix of both)
 
-    //Send warningFrame:
-                    //problem node    //extrapolation flag        (mask                    <-ID of missingFrame->       offset      )
-    uint32_t data=(missingFrame->nodeID) | (0b1<<10) | (( ((1<<maxFrameCntBits) - 1) & missingFrame->frameID)<<warningFrameNumBitsOffset);
-    CANPacket message={0};
-    writeData(&message,(int8_t*)&data, (warningFrameNumBitsOffset+maxFrameCntBits+maxDataInFrameBits)>>3);  //relies on esp32 being little endian (since interpretting uint32_t as array of bytes)
-    message.id=combinedID(warningCode,vitalsID); 
-    int err;
-    if((err=sendPacket(&message))){
-        if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
-            printf("failed to send status update with code %d. \n",err);
-            xSemaphoreGive(printfMutex); // Release the mutex.
-        }else { printf("cant print, in deadlock!\n"); }
-    }
+    //Send warning for extrapolation
+    sendWarningForDataPoint(missingFrame, 0, missingFrameFlag | nonCriticalWarning);
 }
+
+
+

@@ -2,9 +2,9 @@
 #define VITALS_STRUCTS_H
 
 #include <stdio.h>
-#include<stdint.h>
-#include "../programConstants.h"
-#include "vitalsStaticDec.h"
+#include <stdint.h>
+#include <stdatomic.h>
+#include "../../programConstants.h"
 #define R10(x) {x,x,x,x,x,x,x,x,x,x}
 
 typedef struct {
@@ -33,8 +33,8 @@ typedef struct {
 } CANFrame;
 
 typedef struct {
-    int8_t flags;
-    int16_t milliSeconds;
+    _Atomic int8_t flags;
+    _Atomic int16_t milliSeconds;
     int8_t numFrames;
     CANFrame *CANFrames; /* Replaced list with CANFrame pointer */
 } vitalsNode;

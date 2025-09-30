@@ -9,9 +9,15 @@
 
 #include <string.h> 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #include "pecan.h"
 #include "../espBase/debug_esp.h"
+
+void flexiblePrint(const char* str){
+    mutexPrint(str);
+}
 
 // State changing management task.
 #define busStatus_TaskSize 4096
@@ -44,13 +50,13 @@ void checkBusStatus(void *pvParameters) {
                 } else {
                     mutexPrint("Can Driver Started\n\n");
                     // send update indicating Bus restarted
-                    int16_t serr = sendStatusUpdate(canRecoveryFlag, myNodeId);
-                    if (serr) {
-                        char buffer[50];
-                        sprintf(buffer, "error sending CAN recovery Msg: %d\n", serr);
-                        mutexPrint(buffer);
-                    }
+                    sendStatusUpdate(canRecoveryFlag, myNodeId);
                 }
+            }
+            if (alerts & TWAI_ALERT_RX_FIFO_OVERRUN) {
+                // Hardware RX FIFO overrun (frames were dropped)
+                mutexPrint("TWAI: RX FIFO overrun detected — at least one frame was lost\n");
+                sendStatusUpdate(canRXOverunFlag, myNodeId);
             }
         } else if(alertStatus != ESP_ERR_TIMEOUT){
             mutexPrint("confused on what state we are in. Should never happen. rebooting\n");
@@ -58,20 +64,20 @@ void checkBusStatus(void *pvParameters) {
         }
     }
 }
+#define defaultTxPin GPIO_NUM_33
+#define defaultRxPin GPIO_NUM_32
 
+//Initialize Can for esps, also give logic for starting and restarting bus based on alerts
 void pecan_CanInit(pecanInit config){
     //parse config options
     static int nodeId;
     nodeId = config.nodeId; //need nodeId to persist, since used as task param
-    const int defaultTxPin = GPIO_NUM_33;
-    const int defaultRxPin = GPIO_NUM_32;
-    config.txPin = config.txPin == defaultPin ? defaultTxPin : config.txPin;
-    config.rxPin = config.rxPin == defaultPin ? defaultRxPin : config.rxPin;
-    //
+    const int txPin = config.pin1 == defaultPin ? defaultTxPin : config.pin1;
+    const int rxPin = config.pin2 == defaultPin ? defaultRxPin : config.pin2;
 
 	//Initialize configuration structures using macro initializers
     //TWAI_MODE_NORMAL
-	twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(config.txPin, config.rxPin, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL for standard behavior  
+	twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(txPin, rxPin, TWAI_MODE_NORMAL); //TWAI_MODE_NORMAL for standard behavior  
 	twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
 	twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 	//Install TWAI driver
@@ -90,11 +96,15 @@ void pecan_CanInit(pecanInit config){
 		exit(1);
 	}
 
-    ESP_ERROR_CHECK(twai_reconfigure_alerts(
-        TWAI_ALERT_BUS_OFF | TWAI_ALERT_BUS_RECOVERED,   // Alerts we care about
-        NULL                                             // Don’t need to get old alerts
-    ));
-
+    if (twai_reconfigure_alerts(
+            TWAI_ALERT_BUS_OFF | TWAI_ALERT_BUS_RECOVERED
+            | TWAI_ALERT_RX_FIFO_OVERRUN,   // Alerts we care about
+            NULL    //NULL since dont need old alerts
+        ) != ESP_OK)  
+    {
+        mutexPrint("couldn't configure alerts. Attempting Restart\n");
+        esp_restart();
+    }
     // Create static State task
     xTaskCreateStatic(
         checkBusStatus,         // task function
@@ -105,83 +115,70 @@ void pecan_CanInit(pecanInit config){
         busStatus_Stack,        // stack buffer
         &busStatus_Task          // task control block
     );
-    int16_t err;
-    if((err= sendStatusUpdate(initFlag, nodeId))){
-        char buffer[50];
-        sprintf(buffer, "error sending Init Flag: %d\n", err);  // Convert the int8_t to a string
-        mutexPrint(buffer);  
-    }
+
+    sendStatusUpdate(initFlag, nodeId);
     return;
 }
 
-//Simplified Can functionality Functions: feel free to never use these, and just use them as sample code for ESP-CAN library:
-int16_t defaultPacketRecv(CANPacket* p){
-    if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
-        printf("Default handler: id %ld\n with data:", p->id);
-        for(int i=0;i<p->dataSize;i++){
-            printf("% d",(p->data)[i]);
-        }
-        printf("\n");
-        xSemaphoreGive(printfMutex); // Release the mutex.
-    }else { printf("cant print, in deadlock!\n"); }
-    return 0;
-}
+bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};  //used by waitPackets to match incomming packets based on match type
 
-bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID, matchFunction};   //could alwys be moved back to pecan.h as an extern variable if its needed elsewhere? I am not sure why this was declared there in the first place
-
-int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
-    if (recv_pack == NULL) { //if no  packet provided, exit early. 
-        return 1;
-    }
-
-    CANListenParam clp;
+// Unlike pecan for Arduino, this is blocking! (everything on esp should be a seperate task, as part of the esp-idf design philosophy,
+// but make sure not to have other stuff in the same task with this!
+// Matches any recieved packets with their handler
+// Not thread-safe (only call from one thread). The packet reference is overriden upon call.
+// returns value of the matching function, or NOT_RECIEVED for no new messages
+int16_t waitPackets(PCANListenParamsCollection *plpc) {
     twai_message_t twaiMSG;
-        if ((twai_receive(&twaiMSG, portMAX_DELAY) == ESP_OK)) {   //check for message without blocking (0 ms blocking)
-        //construct CANPacket
-        if (twaiMSG.extd) {
-            recv_pack->id =twaiMSG.identifier & 0xFFFFFFF;   //view first 28 bits of id
+    static CANPacket recv_pack;
+    if ((twai_receive(&twaiMSG, portMAX_DELAY) == ESP_OK)) {   //blocking check for messages (RTOS will schedule something else while blocked)
+        if ((recv_pack.extendedID = twaiMSG.extd) == true) {
+            recv_pack.id =twaiMSG.identifier & 0x1FFFFFFF;   //view first 29 bits of id
         } else{
-            recv_pack->id =twaiMSG.identifier & 0b1111111111;    //view first 11 bits of id
-        }
-        memset(recv_pack->data, 0, 8);  //re-initialize data to all 0.
-        if(twaiMSG.rtr){    //for rtr packets, no need to look at data or data-size
-            recv_pack->rtr=1;
-            recv_pack->dataSize=0;
-            memset(recv_pack->data, 0,8);
-        }else{  //not an rtr packet, copy the data_length and size
-            recv_pack->rtr=0;
-            recv_pack->dataSize=twaiMSG.data_length_code;
-            memcpy(recv_pack->data, twaiMSG.data,recv_pack->dataSize);
+            recv_pack.id =twaiMSG.identifier & 0x7FF;    //view first 11 bits of id
         }
 
-        // Then match the packet id with our params; if none
-        // match, use default handler
+        memset(recv_pack.data, 0,8); //re-initialize data to all 0.
+        if(twaiMSG.rtr){    //for rtr packets, no need to look at data or data-size
+            recv_pack.rtr=1;
+            recv_pack.dataSize=0;
+        }else{  //not an rtr packet, copy the data_length and size
+            recv_pack.rtr=0;
+            recv_pack.dataSize=twaiMSG.data_length_code;
+            memcpy(recv_pack.data, twaiMSG.data, recv_pack.dataSize);
+        }
+
+        CANListenParam clp;
+        // Then match the packet id with our params; if none matches, use default handler
         for (int16_t i = 0; i < plpc->size; i++) {
             clp = plpc->arr[i];
-            if (matcher[clp.mt](recv_pack->id, clp.listen_id)) {
-                return clp.handler(recv_pack);
+            if (matcher[clp.mt](recv_pack.id, clp.listen_id)) {
+                return clp.handler(&recv_pack);
             }
         }
-        return plpc->defaultHandler(recv_pack);
-        
+        return plpc->defaultHandler(&recv_pack);
     }
     return NOT_RECEIVED;
 }
-
+      
 void sendPacket(CANPacket *p) {
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         mutexPrint("Packet Too Big\n");
         return;
     }
  twai_message_t message = {  //This is the struct used to create and send a CAN message. Generally speaking, only the last 3 fields should ever change.
-        .extd= (p->id)>0b11111111111,              // Standard vs extended format. makes message extended if
+        .extd= (p->id)>0b11111111111,              // Standard vs extended format. makes message extended if id is big enough
         .rtr = p->rtr,               // Data vs RTR frame. 
         .ss = 0,                // Whether the message is single shot (i.e., does not repeat on error)
         .self = 0,              // Whether the message is a self reception request (loopback)
         .dlc_non_comp = 0,      // DLC is less than 8  I beleive, for our purposes, this should always be 0, we want to be compliant with 8 byte data frames, and not confuse arduino guys
-        .identifier=p->id,  //id of vitals Heart Beat Ping
-        .data_length_code = p->dataSize,
+        .identifier=p->id,  
+        .data_length_code = p->dataSize
     };
+    //arduino's will through out any messages with DLC = 0. Arbitrarily set = 1.
+    if(message.rtr){
+        message.data_length_code=1;
+        p->dataSize=0;
+    }
     memcpy(message.data, p->data, p->dataSize); //copy data into msg
     esp_err_t err;
     int transmitAttemptCount = 0;
@@ -194,9 +191,9 @@ void sendPacket(CANPacket *p) {
             mutexPrint(buffer);
         }
         transmitAttemptCount += 1;
-    } while(err != ESP_OK && transmitAttemptCount!=100);
+    } while(err != ESP_OK && transmitAttemptCount!=50);
     
-    if(transmitAttemptCount == 100){
+    if(transmitAttemptCount == 50){
         mutexPrint("Unable to transmit msg for at least 1 second of time. attempting reboot\n");
         esp_restart();
     }

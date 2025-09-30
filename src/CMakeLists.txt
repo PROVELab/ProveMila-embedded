@@ -1,5 +1,5 @@
 
-list(APPEND EXTRA_COMPONENT_DIRS icm20948)
+# list(APPEND EXTRA_COMPONENT_DIRS icm20948)
 
 if(CMAKE_VITALS_ESP_BUILD)
 
@@ -10,6 +10,8 @@ if(CMAKE_VITALS_ESP_BUILD)
         "pecan/espSpecific.c"
         "vitalsNode/main.c"
         "espBase/debug_esp.c"
+        "vitalsNode/vitalsData.c"
+        "vitalsNode/vitalsHB.c"
     )
 
 elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
@@ -20,6 +22,7 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
         "sensors/common/sensorHelper.cpp"
         "pecan/common.cpp"
         "pecan/espSpecific.c"
+        "pecan/vitalsInit.c"
         "espBase/debug_esp.c"
     )
 

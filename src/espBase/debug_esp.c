@@ -56,6 +56,7 @@ static void warning_on_alloc_task(void *arg){
     }
 }
 
+//just initializes printfMutex (for mutexPrint) and heap tracking (to ensure we follow prove no dynamic allocation principles)
 void base_ESP_init(void){
     printfMutex= xSemaphoreCreateMutexStatic(&printfMutexBuffer);
     if (printfMutex == NULL)    {
@@ -66,4 +67,4 @@ void base_ESP_init(void){
         // Small stack is fine; it only prints.
         (void)xTaskCreate(warning_on_alloc_task, "heap_warn",
                           1024, NULL, 1, &heapWarnTask);
-    }
+}

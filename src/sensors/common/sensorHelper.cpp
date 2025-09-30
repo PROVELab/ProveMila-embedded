@@ -1,4 +1,4 @@
-#include "../../vitalsNode/programConstants.h"
+#include "../../programConstants.h"
 #include "sensorHelper.hpp"
 #include "../../pecan/pecan.h"
 //recomended for viewing this file, select one env for which SENSOR_ESP_BUILD is defined (like genericNodeNameESP)
@@ -14,7 +14,7 @@
 #include "freertos/semphr.h"
 #include <string.h>
 #include "esp_timer.h"
-#include "../../vitalsNode/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
+#include "../../espBase/debug_esp.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
 //Declare Timers for data collection and sending
 TimerHandle_t dataCollection_Timers [ numFrames ];  //one of these timers going off trigers callback function for missing CAN Data Frane
 StaticTimer_t xTimerBuffers[ numFrames ];      //array for the buffers of these timers
@@ -42,18 +42,6 @@ int32_t checkBus_myId = myId; //parameter passed to check_bus_status task
 #include<stdint.h>
 
  int32_t (*mydataCollectors[node_numData])(void) = {dataCollectorsList};  //the list of functions to be called for collecting data. These are to be defined in the main file for each sensor
-
-int16_t respondToHB(CANPacket *recvPack){
-        CANPacket responsePacket;
-        memset(&responsePacket, 0, sizeof(CANPacket));
-        // CANPacket responsePacket={0};
-        responsePacket.id =combinedID(HBPong,myId);       //sendPong, myId
-        setRTR(&responsePacket);
-        
-        flexiblePrint("N1RHB\n");
-        sendPacket(&responsePacket);
-    return 1;
-}
 
 /*Note: myframes is an extern variable declared in sensorHelper.hpp, and defined in <nodeName>/sensorStaticDec.cpp.
  This variable is needed to format and send CAN Data. While with the default implementation this variable is only needed in this file,
@@ -92,14 +80,8 @@ void sendFrame(int8_t frameNum){
     dataPacket.id =combinedIDExtended(transmitData,myId,(uint32_t)frameNum);   
     writeData(&dataPacket,(int8_t*) tempData,(7+currBit)/8);
     sendPacket(&dataPacket);
-    if((temp=sendPacket(&dataPacket))){
-        sprintf(buffer, "error sending: %d\n", temp);  // Convert the int8_t to a string
-        flexiblePrint(buffer);  
-    }
-    //
 }
 #ifdef SENSOR_ARDUINO_BUILD  //On arduino task library, task functions cant have parameters, using templates to define a distinct function for collecting each frame
-    PTask sendFrameTasks [numFrames];
     void (*sendFrameHandlers[numFrames])(void); //each of these functions collects data for, and sends a CAN frame
     template <int N>
     void func() {
@@ -114,7 +96,7 @@ void sendFrame(int8_t frameNum){
             GenerateFunctions<N - 1>::generate(sendFrameHandlers); // Recurse
         }
     };
-    // Base template  (for N = 0)
+    // Base template  (for N-1 = 0)
     template <>
     struct GenerateFunctions<1> {
         static void generate(void (*sendFrameHandlers[])(void)) {
@@ -126,7 +108,7 @@ void sendFrame(int8_t frameNum){
 
 //vitals Compliance, expects Can to alr be initialized. 
 //^Creates listen param for heartbeats, and creates tasks for collecting data, and Bus State Monitoring
-int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //void* ts = PScheduler for arduino, may be NULL otherwise
+int8_t sensorInit(PCANListenParamsCollection* plpc, void* ts){    //void* ts = PScheduler for arduino, may be NULL otherwise
     flexiblePrint("initializing\n");
 
 #ifdef SENSOR_ESP_BUILD
@@ -154,29 +136,13 @@ int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts){    //void* ts = P
     GenerateFunctions<numFrames>::generate(sendFrameHandlers);
     //schedules dataCollection + frame Sends:
     for(int i=0;i<numFrames;i++){
-        sendFrameTasks[i].function=sendFrameHandlers[i];
-        sendFrameTasks[i].interval=myframes[i].frequency;
-        sendFrameTasks[i].delay=0;
+        sched->scheduleTask(sendFrameHandlers[i], myframes[i].frequency);
         flexiblePrint("scheduling");
-        sched->scheduleTask(&(sendFrameTasks[i]));
     }
 #endif  
-    int16_t err;
-    if((err=sendStatusUpdate(initFlag, myId))){
-        char buffer[50];
-        sprintf(buffer, "error sending Init Msg: %d\n", err);  // Convert the int8_t to a string
-        flexiblePrint(buffer);  
-    }
+    vitalsInit(plpc, myId); //creates listen param for heartbeats
+    //send init status update
 
-    CANListenParam babyDuck;
-    babyDuck.handler=respondToHB;
-    babyDuck.listen_id =combinedID(HBPing,vitalsID);
-    babyDuck.mt=MATCH_EXACT;
- 
-    if (addParam(plpc,babyDuck)!= SUCCESS){    //plpc declared above setup()
-        flexiblePrint("plpc no room");
-        while(1);
-    }
     return 0;
 }
 

@@ -1,5 +1,10 @@
 #ifndef DEBUG_ESP
 #define DEBUG_ESP
+
+#ifdef __cplusplus
+extern "C" {  // Ensure C linkage
+#endif
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "stdint.h"
@@ -19,4 +24,7 @@ extern SemaphoreHandle_t printfMutex;
 void esp_heap_trace_alloc_hook(void* ptr, size_t size, uint32_t caps);
 void esp_heap_trace_free_hook(void* ptr);
 
+#ifdef __cplusplus
+}  // End extern "C"
+#endif
 #endif

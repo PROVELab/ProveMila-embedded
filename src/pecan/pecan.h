@@ -6,12 +6,11 @@ extern "C" {  // Ensures C linkage for all functions. This is needed since ardui
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "../vitalsNode/programConstants.h"
+#include "../programConstants.h"
 
 //pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
-#define MAX_TASK_COUNT 5
 #define MAX_PCAN_PARAMS 6
 //
 
@@ -34,10 +33,10 @@ enum MATCH_TYPE {
 // A CANPacket: takes in 11-bit id, 8 bytes of data
 typedef struct {  //can initialize using {0} for .c (esp). For arduino (cpp) need to use memset.
     uint8_t data[MAX_SIZE_PACKET_DATA];
-    uint32_t id;
+    int32_t id;
     uint8_t dataSize;
-    int8_t rtr;
-    int8_t extendedID;  //whether or not the packet is extended. 
+    bool rtr;
+    bool extendedID;  //whether or not the packet is extended. 
 } CANPacket;
 // A single CANListenParam
 typedef struct {
@@ -56,14 +55,20 @@ typedef struct {
     int16_t size;
 } PCANListenParamsCollection;
 
+
 #define defaultPin -1
-typedef struct{
+typedef struct {
     int nodeId;
-    int txPin;
-    int rxPin;
+    int pin1;   //for ESP: txLine. for Arduino: intPin
+    int pin2;   //for ESP: rxLine. for Arduino: csPin
 } pecanInit;
 
+void flexiblePrint(const char* str);
+
 void pecan_CanInit(pecanInit config);
+
+//Initializes HB response
+void vitalsInit(PCANListenParamsCollection* plpc, uint16_t nodeID);
 
 /// Adds a CANListenParam to the collection
 int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp);
@@ -120,21 +125,15 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit, int8_t
 int16_t defaultPacketRecv(CANPacket* p); //only platform specific because it prints things. In final implementation, we won't need this to print, so could be merged
 
 
-/// @brief Blocking wait on a packet with listen_id, other packets are ignored
-/// @param recv_pack a pointer to a packet-sized place in
-///                  such that the caller can see what
-///                  the received packet is if necessary
-///                  If NULL, the recv_pack will create its own
-/// @param plpc A PCANListenParamsCollection, which specifies a bunch
-///                  of ids to listen for, and their corresponding
-///                  handler functions
-/// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int16_t waitPackets(CANPacket* recv_pack,PCANListenParamsCollection* plpc);
+// Matches any recieved packets with their handler based on plpc
+// Not thread-safe (only call from one thread). The packet reference is overriden upon call.
+// returns value of the matching function, or NOT_RECIEVED for no new messages
+int16_t waitPackets(PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
 void sendPacket(CANPacket* p);
 //shorthand for sending status update. Atm, indicates node init, and bus recovery
-int16_t sendStatusUpdate(uint8_t flag, uint32_t Id);
+void sendStatusUpdate(uint8_t flag, uint32_t Id);
 
 #ifdef __cplusplus
 }  // End extern "C"

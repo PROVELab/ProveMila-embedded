@@ -3,6 +3,8 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass
 import math
+import re
+
 #values must fit in int32_t
 INT_MIN = -2147483648
 INT_MAX = 2147483647
@@ -18,36 +20,48 @@ def ACCESS(fields, name):
 
 # A copy of each of these will be made for every dataPoint
 dataPoint_fields = [                                                    
-    {"name": "bitLength",       "type": "int8_t",  "expectation": "required", "value": 0, "node": "both", "isSet": False},    # bitLength is manually computed, no need to specify
-    {"name": "minCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
-    {"name": "maxCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
-    {"name": "min",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": "both", "isSet": False},
-    {"name": "max",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": "both", "isSet": False},
-    {"name": "minWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
-    {"name": "maxWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": "vitals", "isSet": False},
-    {"name": "startingValue",   "type": "int32_t", "expectation": "required",    "value": 0,  "node": "vitals", "isSet": False}
+    {"name": "bitLength",       "type": "int8_t",  "expectation": "required", "value": 0, "node": ["vitals", "sensor", "telemetry"], "isSet": False},    # bitLength is manually computed, no need to specify
+    {"name": "minCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
+    {"name": "maxCritical",     "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
+    {"name": "min",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals", "sensor", "telemetry"], "isSet": False},
+    {"name": "max",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals", "sensor", "telemetry"], "isSet": False},
+    {"name": "minWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
+    {"name": "maxWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
+    {"name": "startingValue",   "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals"], "isSet": False}
 ]
 
 # A copy of each of these will be made for every CANFrame
 CANFrame_fields = [  
-    {"name": "nodeID",          "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": "vitals", "isSet": False},    # set based on which node this frame belongs to
-    {"name": "frameID",         "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": "vitals", "isSet": False},    # explicitly computed by program
-    {"name": "numData",    "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": "both", "isSet": False},     # computed by the program
-    {"name": "dataInfo",        "type": "list",   "expectation": "dontSpecify", "value": [], "node": "array", "isSet": False},      # List of dataPoint structs; element‐wise parsed
-    {"name": "isCritical",      "type": "int8_t",  "expectation": "optional", "value": 0,  "node": "vitals", "isSet": False},  # should we raise critical error if this frame is not being sent? 
-    {"name": "flags",           "type": "int8_t", "expectation": "optional",    "value": 0, "node": "vitals", "isSet": False},      # if not specified, set to 0
-    {"name": "dataLocation",    "type": "int8_t", "expectation": "optional",    "value": 0, "node": "vitals", "isSet": False},      # never needs to be changed
-    {"name": "consecutiveMisses","type": "int8_t", "expectation": "optional",   "value": 0, "node": "vitals", "isSet": False},
-    {"name": "dataTimeout",     "type": "int32_t","expectation": "required",    "value": 0, "node": "vitals", "isSet": False},     # Must be specified
-    {"name": "frequency",       "type": "int32_t","expectation": "required",    "value": 0, "node": "sensor", "isSet": False}
+    {"name": "nodeID",          "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": ["vitals", "telemetry"], "isSet": False},    # set based on which node this frame belongs to
+    {"name": "frameID",         "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": ["vitals"], "isSet": False},    # explicitly computed by program
+    {"name": "numData",    "type": "int8_t", "expectation": "dontSpecify", "value": 0, "node": ["vitals", "sensor", "telemetry"], "isSet": False},     # computed by the program
+    {"name": "dataInfo",        "type": "list",   "expectation": "dontSpecify", "value": [], "node": [], "isSet": False},      # List of dataPoint structs; element‐wise parsed. was node: "array", but I think uncessary?
+    {"name": "isCritical",      "type": "int8_t",  "expectation": "optional", "value": 0,  "node": ["vitals"], "isSet": False},  # should we raise critical error if this frame is not being sent? 
+    {"name": "flags",           "type": "int8_t", "expectation": "optional",    "value": 0, "node": ["vitals"], "isSet": False},      # if not specified, set to 0
+    {"name": "dataLocation",    "type": "int8_t", "expectation": "optional",    "value": 0, "node": ["vitals"], "isSet": False},      # never needs to be changed
+    {"name": "consecutiveMisses","type": "int8_t", "expectation": "optional",   "value": 0, "node": ["vitals"], "isSet": False},
+    {"name": "dataTimeout",     "type": "int32_t","expectation": "required",    "value": 0, "node": ["vitals", "telemetry"], "isSet": False},     # Must be specified
+    {"name": "frequency",       "type": "int32_t","expectation": "required",    "value": 0, "node": ["sensor"], "isSet": False}
 ]
 #A copy of each of these will be made for every sensor node
 vitalsNode_fields = [   # fields only for vitals; each processed manually
-    {"name": "flags",       "type": "int8_t", "expectation": "dontSpecify", "value": 0, "isSet": False},
-    {"name": "milliSeconds","type": "int16_t", "expectation": "dontSpecify", "value": 0, "isSet": False},
-    {"name": "numFrames",   "type": "int8_t", "expectation": "dontSpecify", "value": 0, "isSet": False},
-    {"name": "CANFrames",   "type": "list",   "expectation": "dontSpecify", "value": [], "isSet": False}  # List of CANFrame structs
+    {"name": "flags",       "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
+    {"name": "milliSeconds","type": "int16_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
+    {"name": "numFrames",   "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : False, "isSet": False},
+    {"name": "CANFrames",   "type": "list",   "expectation": "dontSpecify", "value": [], "Atomic" : False, "isSet": False}  # List of CANFrame structs
 ]
+
+@dataclass
+class EnumEntry:
+    name: str
+    value: str  # raw string so we can eval later
+
+@dataclass
+class GlobalEnum:
+    enum_name: str
+    entries: list[EnumEntry]
+# Global list to store enums
+globalEnums: list[GlobalEnum] = []
 
 @dataclass
 class globalDefine:
@@ -164,8 +178,10 @@ def parse_config(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    for line in lines:
-        line = line.strip()
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        i += 1
         if line.startswith("#") or not line:
             continue
 
@@ -208,6 +224,57 @@ def parse_config(file_path):
 
             updateEntries(frame_info, frame)
 
+        elif line.startswith("global enum"):
+            # header line is already in `line` (stripped). Keep it.
+            header = line
+            block_lines = [header]
+
+            # Only collect more lines if header didn't already close the enum
+            if "}" not in header:
+                while i < len(lines):
+                    raw = lines[i]
+                    i += 1
+                    s = raw.strip()
+                    # skip blank / full-line comments
+                    if not s or s.startswith("#"):
+                        continue
+                    block_lines.append(raw)
+                    # stop at the first line that contains a closing brace
+                    if "}" in raw:
+                        break
+
+            # Remove inline comments then join
+            joined = "\n".join(l.split("#", 1)[0] for l in block_lines).strip()
+
+            # --- Parse name from header (no greedy body regex) ---
+            import re
+            m = re.match(r"global\s+enum:\s*(\w+)\s*=", joined)
+            if not m:
+                raise ValueError(f"Bad enum declaration header: {joined!r}")
+            enum_name = m.group(1)
+
+            # --- Slice body strictly between the first '{' and the first '}' after it ---
+            open_idx = joined.find("{")
+            if open_idx == -1:
+                raise ValueError(f"Enum {enum_name} missing '{{': {joined!r}")
+            close_idx = joined.find("}", open_idx + 1)
+            if close_idx == -1:
+                raise ValueError(f"Enum {enum_name} missing '}}': {joined!r}")
+
+            body = joined[open_idx + 1:close_idx].strip()
+
+            # --- Split entries on commas into name=value pairs ---
+            entries = []
+            for piece in body.split(","):
+                piece = piece.strip()
+                if not piece:
+                    continue
+                if "=" not in piece:
+                    raise ValueError(f"Bad enum entry: {piece!r}")
+                k, v = [s.strip() for s in piece.split("=", 1)]
+                entries.append(EnumEntry(k, v))
+
+            globalEnums.append(GlobalEnum(enum_name, entries))
         elif "global" in line:
             # example: global: vitalsID=0b000010, will make: #define vitalsID 2
             split = line.strip().split(":")[1].strip().split("=")

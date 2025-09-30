@@ -10,7 +10,8 @@
 
 #include "../pecan/pecan.h"    //helper code for CAN stuff
 #include "../espBase/debug_esp.h" //for checking and restarting CAN bus
-#include "programConstants.h"
+#include "../programConstants.h"    //Constants
+//random vitals stuff:
 #include "vitalsHelper/vitalsHelper.h"
 #include "vitalsHelper/vitalsStaticDec.h"
 #include "vitalsData.h"
@@ -18,30 +19,30 @@
 
 // Initialize space for each task
 StaticTask_t sendHB_Buffer;
-StackType_t sendHB_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
+StackType_t sendHB_Stack[ STACK_SIZE ];
 StaticTask_t recieveMSG_Buffer;
-StackType_t recieveMSG_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
+StackType_t recieveMSG_Stack[ STACK_SIZE ]; 
 StaticTask_t checkStatus_Buffer;
-StackType_t checkStatus_Stack[ STACK_SIZE ]; //buffer that the task will use as its stack
+StackType_t checkStatus_Stack[ STACK_SIZE ]; 
 
-
-void vitals_check_bus_status(void * pvParameters){ //should send all this to telem
+// send bus status info to telem, also prints it out
+void vitals_check_bus_status(void * pvParameters){ 
     for(;;){
         twai_status_info_t status_info;
         esp_err_t err;
-        if((err=twai_get_status_info(&status_info))){
-        if (xSemaphoreTake(printfMutex, portMAX_DELAY)) { 
-            printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
-            printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
-            printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
-            printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
-            printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
-            printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
-            printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
-            printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
-            printf("Bus Error Count: %lu\n", status_info.bus_error_count);
-            xSemaphoreGive(printfMutex); // Release the mutex.
-        }else { printf("cant print, in deadlock!\n"); }
+        if((err=twai_get_status_info(&status_info)) == ESP_OK){
+            if (xSemaphoreTake(printfMutex, portMAX_DELAY)) { 
+                printf("Messages to TX: %lu\n", status_info.msgs_to_tx);
+                printf("Messages to RX: %lu\n", status_info.msgs_to_rx);
+                printf("TX Error Counter: %lu\n", status_info.tx_error_counter);
+                printf("RX Error Counter: %lu\n", status_info.rx_error_counter);
+                printf("TX Failed Count: %lu\n", status_info.tx_failed_count);
+                printf("RX Missed Count: %lu\n", status_info.rx_missed_count);
+                printf("RX Overrun Count: %lu\n", status_info.rx_overrun_count);
+                printf("Arbitration Lost Count: %lu\n", status_info.arb_lost_count);
+                printf("Bus Error Count: %lu\n", status_info.bus_error_count);
+                xSemaphoreGive(printfMutex); // Release the mutex.
+            }else { printf("cant print, in deadlock!\n"); }
 
             //send Status update
             int8_t frameNumData=8;
@@ -56,52 +57,23 @@ void vitals_check_bus_status(void * pvParameters){ //should send all this to tel
             rxOverrun=status_info.rx_overrun_count;
             rxMissed=status_info.rx_missed_count;
             int8_t tempData[8]={0};
-            for(int i=0;i<frameNumData;i++){//iterate over each data. Colect data from dataCollectors, and store compressed version into tempdata.
-                uint32_t unsignedConstrained= formatValue(dataPoints[i],0, dataMaxes[i]);   //constraining and subtracting min forces this value to be positive
+            for(int i=0;i<frameNumData;i++){//iterate over each dataPoint that is taken above
+                uint32_t unsignedConstrained= formatValue(dataPoints[i],0, dataMaxes[i]);   //constraining. All data have min of 0.
                 copyValueToData(&unsignedConstrained, (uint8_t*)tempData,currBit,bitLengths[i]);
                 currBit+=bitLengths[i];
             }
-            //Send HB
+            //Send the status update
             CANPacket message={0};
             writeData(&message, tempData, 8);
-            message.id=combinedID(warningCode,vitalsID); 
-            int err;
-            if((err=sendPacket(&message))){
-                if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
-                    printf("failed to send status update with code %d. \n",err);
-                    xSemaphoreGive(printfMutex); // Release the mutex.
-                }else { printf("cant print, in deadlock!\n"); }
+            message.id=combinedID(busStatusUpdate,vitalsID);  
+            sendPacket(&message);
             }
-        }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
-void printAllData(){    //not for final use. for testing only
-    if (xSemaphoreTake(printfMutex, portMAX_DELAY)) {
-        for(int i=0;i<numberOfNodes;i++){   //each node
-            printf("printData: node (vitalsId): %d, numFrams: %d\n",i, (nodes[i]).numFrames);
-            for (int8_t j=0;j<nodes[i].numFrames;j++){  //each frame
-                printf("frameInfo: id: %d  numData: %d\n",j, ((nodes[i]).CANFrames[j]).numData);
-                if((nodes[i]).CANFrames ==NULL){
-                    printf("error printg, framesptr not initialized, terminating\n");
-                    return;
-                }
-                for(int8_t k=0;k<(((nodes[i]).CANFrames)[j]).numData;k++){ //each data
-                    printf("node: %d. frame: %d. datanum: %d data: ",i,j,k);
-                    for(int l=0;l<pointsPerData;l++){
-                        printf("%ld ",nodes[i].CANFrames[j].data[k][l]);
-                    }
-                    printf("\n");
-                }
-            }
-        }
-        xSemaphoreGive(printfMutex); // Release the mutex.
-    }else { printf("cant print, in deadlock!\n"); }
-}
-
-void recieveMSG(){   //prints information about and contents of every recieved message
-    CANPacket message; //will store any recieved message
+//recv Can messages
+void recieveMSG(){   
     //an array for matching recieved Can Packet's ID's to their handling functions. MAX length set to 20 by default initialized to default values
     PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };
 
@@ -129,12 +101,12 @@ void recieveMSG(){   //prints information about and contents of every recieved m
     //
 
     for(;;){
-        waitPackets(&message, &plpc);
+        waitPackets(&plpc);
     }
 }
 void app_main(void){    
     base_ESP_init();
-    pecanInit config= {.nodeId=vitalsID, .txPin=defaultPin, .rxPin=defaultPin};
+    pecanInit config= {.nodeId=vitalsID, .pin1=defaultPin, .pin2=defaultPin};
     pecan_CanInit(config);
     
 

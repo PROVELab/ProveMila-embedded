@@ -1,10 +1,7 @@
 import os
 from parseFile import dataPoint_fields, CANFrame_fields, globalDefine, ACCESS
 
-def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, script_dir, globalDefines):
-    parent_dir = os.path.dirname(script_dir)     # Get the parent directory of the script
-    generated_code_dir = os.path.join(parent_dir, 'generatedSensorCode')    
-    os.makedirs(generated_code_dir, exist_ok=True)      # Create the 'generatedSensorCode' directory (overwrite if it exists)
+def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir, globalDefines):
     
     # create files for which only one exists (sensorHelper.hpp, and vitalsStaticDec)
     universalPath = os.path.join(generated_code_dir, "Universal")
@@ -16,7 +13,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             "#ifndef SENSOR_HELP\n"
             "#define SENSOR_HELP\n\n"
             "#ifdef __cplusplus\nextern \"C\" { //Need C linkage since ESP uses C \"C\"\n#endif\n"
-            "#include \"../../vitalsNode/programConstants.h\"\n"
+            "#include \"../../programConstants.h\"\n"
             "#define STRINGIZE_(a) #a\n"
             "#define STRINGIZE(a) STRINGIZE_(a)\n"
             '#include STRINGIZE(../NODE_CONFIG)  //includes node Constants\n\n'
@@ -34,14 +31,14 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         # write the dataPoints struct (for sensors):
         f.write("typedef struct{\n")
         for field in dataPoint_fields:
-            if field["node"] == "sensor" or field["node"] == "both":
+            if "sensor" in field["node"]:
                 f.write("    " + field["type"] + " " + field["name"] + ";\n")
 
         f.write("} dataPoint;\n\n")
         # write the CANFrame struct
         f.write("typedef struct{    //identified by a 2 bit identifier 0-3 in function code\n")
         for field in CANFrame_fields:
-            if field["node"] == "sensor" or field["node"] == "both":
+            if "sensor" in field["node"]:
                 f.write("    " + field["type"] + " " + field["name"] + ";\n")     
         # custom fields here
         f.write("    int8_t startingDataIndex;  //what is the starting index of data in this frame? (needed for calling appropriate collector function)\n")
@@ -53,7 +50,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         "//shortened versions of vitals structs, containing only stuff the sensors need for sending\n")
 
 
-        f.write("int8_t vitalsInit(PCANListenParamsCollection* plpc, void* ts);  //for arduino, this should be a PScheduler*. Otherwise, just pass Null\n")
+        f.write("int8_t sensorInit(PCANListenParamsCollection* plpc, void* ts);  //for arduino, this should be a PScheduler*. Otherwise, just pass Null\n")
         f.write("#ifdef __cplusplus\n}  // End extern \"C\"\n#endif\n#endif")
     
     # write stuff for each sensor
@@ -94,6 +91,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         with open(file_path, 'w') as f:
             if(boardTypes[nodeIndex]=="arduino"):    #create main.cpp for arduino sensors
                 f.write("#include <Arduino.h>\n"
+                    "#include <avr/wdt.h>\n"
                     "#include \"CAN.h\"\n"
                     "#include \"../../pecan/pecan.h\"                  //used for CAN\n"
                     "#include \"../../arduinoSched/arduinoSched.hpp\"  //used for scheduling\n"
@@ -111,12 +109,15 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 f.write("void setup() {\n"
                     "\tSerial.begin(9600);\n"
 	                "\tSerial.println(\"sensor begin\");\n"
-                    "\tpecanInit config={.nodeId= myId, .txPin= defaultPin, .rxPin= defaultPin};\n"
+                    "\twdt_enable(WDTO_2S); // enable watchdog with 2s timeout. reset in ts.mainloop\n"
+                    "\tpecanInit config={.nodeId= myId, .pin1= defaultPin, .pin2= defaultPin};\n"
                     "\tpecan_CanInit(config);\n"
-                    "\tvitalsInit(&plpc, &ts);\n"
+                    "\tsensorInit(&plpc, &ts);\n"
                     "}\n\n")
                 f.write("void loop() {\n"
-                    "\tts.mainloop(&plpc);\n"
+                    "\twdt_reset();\n"
+                    "\twhile( waitPackets(&plpc) != NOT_RECEIVED);	//handle CAN messages\n"
+                    "\tts.execute();	//Execute scheduled tasks\n"
                     "}\n")
                 f.close()
             elif(boardTypes[nodeIndex]=="esp"):
@@ -143,20 +144,19 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void recieveMSG(){  //task handles recieving Messages\n"
-                    "\tCANPacket message; //will store any recieved message\n"
                     "\tPCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        //an array for matching recieved Can Packet's ID's to their handling functions.\n"
-                    "\tvitalsInit(&plpc,NULL); //vitals Compliance\n\n"
+                    "\tsensorInit(&plpc,NULL); //vitals Compliance\n\n"
                     "\t//declare CanListenparams here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to matchtype (or 'mt'), 'handler' is called.\n"
                     "\t//see Vitals' recieveMSG function for an example of what this looks like\n\n"
                     "\t//this task will the call the appropriate ListenParams function when a CAN message is recieved\n"
                     "\tfor(;;){\n"
-                    "\t\twaitPackets(&message, &plpc);\n"
+                    "\t\twhile(waitPackets(&plpc) != NOT_RECEIVED);\n"
                     "\t\ttaskYIELD();    //task runs constantly since no delay, but on lowest priority (idlePriority), so effectively runs in the background\n"
                     "\t}\n"
                     "}\n\n"
                     "void app_main(void){\n" 
                     "\tbase_ESP_init();\n"
-                    "\tpecanInit config={.nodeId= myId, .txPin= defaultPin, .rxPin= defaultPin};\n"  
+                    "\tpecanInit config={.nodeId= myId, .pin1= defaultPin, .pin2= defaultPin};\n"  
                     "\tpecan_CanInit(config);   //initialize CAN\n\n"
                     "\t//Declare tasks here as needed\n"
                     "\tTaskHandle_t recieveHandler = xTaskCreateStaticPinnedToCore(  //recieves CAN Messages \n"
@@ -167,7 +167,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                     "\t\ttskIDLE_PRIORITY,/* Priority at which the task is created. */\n"
                     "\t\trecieveMSG_Stack,          /* Array to use as the task's stack. */\n"
                     "\t\t&recieveMSG_Buffer,   /* Variable to hold the task's data structure. */\n"
-                    "\t\ttskNO_AFFINITY);  //assigns printHello to core 0\n"
+                    "\t\ttskNO_AFFINITY);  //assign to either core\n"
                     "}\n")
                 f.close()
         
@@ -184,7 +184,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                     fields = []
                     for field in dataPoint_fields:
-                        if field["node"] == "both" or field["node"] == "sensor":
+                        if "sensor" in field["node"]:
                             value = ACCESS(dataPoint, field["name"])["value"]
                             fields.append(f".{field['name']}={value}")
                     f.write("    {" + ", ".join(fields) + "},\n")
@@ -196,7 +196,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 f.write("    {")
                 first = True
                 for field in CANFrame_fields:
-                    if field["node"] == "both" or field["node"] == "sensor":
+                    if "sensor" in field["node"]:
                         if not first:
                             f.write(", ")
                         f.write(f".{field['name']} = {ACCESS(frame, field['name'])['value']}")
@@ -218,16 +218,16 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         for node in vitalsNodes:
             if(boardTypes[nodeIndex]=="arduino"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
-                f.write("extends=arduinoBase\n")
-                f.write(f"build_src_filter = +<sensors/{nodeNames[nodeIndex]}> +<sensors/common> +<pecan> -<pecan/espSpecific.c> +<arduinoSched>\n")
+                f.write("extends=arduinoSensorBase\n")
+                f.write(f"build_src_filter = ${{arduinoSensorBase.build_src_filter}} +<sensors/{nodeNames[nodeIndex]}>\n")
                 f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
 
                 # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
             elif(boardTypes[nodeIndex]=="esp"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
-                f.write("extends=espBase\n")
-                f.write(f"board_build.cmake_extra_args = -DSENS_DIR={nodeNames[nodeIndex]} -DCMAKE_SENSOR_ESP_BUILD=ON\n")
-                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp -DSENSOR_ESP_BUILD=ON\n\n")
+                f.write("extends=espSensorBase\n")
+                f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}} -DSENS_DIR={nodeNames[nodeIndex]}\n")
+                f.write(f"build_flags = ${{espSensorBase.build_flags}} -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
             nodeIndex+=1
         f.close()
 

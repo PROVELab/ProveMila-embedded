@@ -1,7 +1,10 @@
 #include <stdint.h>
 #include <string.h> // memcpy
 #include "pecan.h"
-#include "../vitalsNode/programConstants.h"
+#include "../programConstants.h"
+#include <stdbool.h>
+#include <stdio.h>  //for snprintf
+
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
     return (fn_id << 7) + node_id;
 }
@@ -9,9 +12,27 @@ uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id,uint32_t extension)
     return combinedID(fn_id,node_id) + (extension<<11);
 }
 
-
 void setSensorID(CANPacket * p, uint8_t sensorId){
     p->data[0] = sensorId;
+}
+
+int16_t defaultPacketRecv(CANPacket* p) {
+    char buf[48];  
+    // Print the header
+    snprintf(buf, sizeof(buf), "Default recv: id %ld\n with data:", p->id);
+    flexiblePrint(buf);
+
+    // Print each data element
+    if(p->rtr == false){
+        for (int i = 0; i < p->dataSize; i++) {
+            snprintf(buf, sizeof buf, " %02X", (unsigned)p->data[i]);  // two-digit uppercase hex
+            flexiblePrint(buf);
+        }
+    }
+
+    // Print the final newline
+    flexiblePrint("\n");
+    return 0;
 }
 
 int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
@@ -34,29 +55,17 @@ int16_t setExtended(CANPacket * p){  //makes the given packet an extended ID pac
     p->extendedID=1;
     return 0;
 }
-//int16_t setExtended(struct CANPacket *p)
+
 int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
     if(p->rtr){
         return -4;  //this is an rtr packet, can not write data
     }
-    int16_t current_size = p->dataSize;
-    int16_t i = 0;
-    if (i + size > MAX_SIZE_PACKET_DATA){
+    const size_t originalSize = p->dataSize;
+    if (originalSize + size > MAX_SIZE_PACKET_DATA){
         return NOSPACE;
     }
-    for (; current_size + i < current_size + size; i++){
-        // DataSize can be interpreted as both
-        // Size, and Index
-        // Casting to 16-bit because compiler not happy
-        p->data[(int16_t)p->dataSize] = dataPoint[i];
-        p->dataSize++;
-
-        // This check should've been working above
-        // But just in case, we'll do it in the loop as well
-        if (i > MAX_SIZE_PACKET_DATA){
-            return NOSPACE;
-        }
-    }
+    memcpy(&(p->data[originalSize]), dataPoint, size);
+    (p->dataSize) += size;
     return SUCCESS;
 }
 

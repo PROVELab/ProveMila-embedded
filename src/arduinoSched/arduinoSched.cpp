@@ -1,5 +1,5 @@
 #include "Arduino.h"
-
+#include "avr/wdt.h"
 #include <TaskScheduler.h>
 
 #include "../pecan/pecan.h"
@@ -8,63 +8,61 @@
 
 #include <Arduino.h>
 
-Task dTasks [MAX_TASK_COUNT]={};    /*only one of these arrays is declared, there should only ever be one pScheduler instance*/
 
 typedef Task ard_event;
 
+// A small wrapper for arkhipenko's Task library.
+// This was created so we could in theory use the same scheduling code across all frameworks.
+// ^Would have been the case if we stuck with mbed, but esp-idf scheduling doesn't really map onto the same scheduling layout.
+// Nevertheless, still useful to simplify scheduling, and avoid dynamic memory allocations (per PROVE coding principles)
+   
+Task dTasks [MAX_TASK_COUNT]={};   //Container holds the arkhipenko library Tasks
+Scheduler Arduino_ts;   //arkhipenko's scheduler
 
 PScheduler::PScheduler(){};
-/**
- * @brief 
- * 
- * @param inp Just pass in null, it's not used; this will allocate
- *              20 stuff on stack by itself 
- */
-/*
-void PScheduler::print(int num){
-    Serial.println(num);
-}*/
-int PScheduler::scheduleTask(PTask *t){
-    if (ctr >= MAX_TASK_COUNT){
+
+//function is the callback. interval to execute the functoin is in ms
+int PScheduler::scheduleTask(void (*function)(void), int16_t interval){
+    if (taskSpaceRemaining == 0){
         return NOSPACE;
     }
-    //Task newTask;
-    dTasks[ctr].set(t->interval,TASK_FOREVER,t->function);
-    ctr++;
-    //Serial.println(ctr);
-    return ctr-1;
-    }
+    taskSpaceRemaining--;
+    dTasks[taskSpaceRemaining].set(interval,TASK_FOREVER,function);
+    Arduino_ts.addTask(dTasks[taskSpaceRemaining]);
+    dTasks[taskSpaceRemaining].enableDelayed(interval);
+    return taskSpaceRemaining;
+}
 
 void PScheduler::runOneTimeTask(int task, int timeDelay){
-        //Serial.println(task);
-        dTasks[task].disable();
-        dTasks[task].setIterations(1);
-        dTasks[task].enableDelayed(timeDelay);
+    if(task < taskSpaceRemaining || task >= MAX_TASK_COUNT){
+        Serial.println("Cant run this task! It does not exist");
+        return;
     }
+    dTasks[task].disable();
+    dTasks[task].setIterations(1);
+    dTasks[task].enableDelayed(timeDelay);
+}
 
-int PScheduler::scheduleOneTimeTask(PTask *t){    //only needs the function, delay and interval not used, the delay wanted is passed into runTask
-        if (ctr >= MAX_TASK_COUNT){
+//function is the callback, delay is in ms
+int PScheduler::scheduleOneTimeTask(void (*function)(void), int16_t delay){
+    if (taskSpaceRemaining == 0){
         return NOSPACE;
     }
+    taskSpaceRemaining--;
     //Task newTask;
-    dTasks[ctr].set(1000,1,t->function);   //1000 chosen as default time if no time is indicated in 1 time task
-    ctr++;
-    return ctr-1;
+    dTasks[taskSpaceRemaining].set(delay,1,function);   
+    Arduino_ts.addTask(dTasks[taskSpaceRemaining]);
+    dTasks[taskSpaceRemaining].enableDelayed(delay);
+    return taskSpaceRemaining;
 }
-//void PScheduler::mainloop(int8_t *inp)
-void PScheduler::mainloop(PCANListenParamsCollection* listens) {
-    
-    PCANListenParamsCollection* inp=(PCANListenParamsCollection*) listens;
-    Scheduler ts;
-    for (int16_t i = 0; i < this->ctr; i++) {
-        ts.addTask(dTasks[i]);
-    }
-    ts.enableAll();
-    //while (1);
-    CANPacket recv_pack;
-    while(1){
-        ts.execute();
-        waitPackets(&recv_pack,inp);
-    }
 
+void PScheduler::changeInterval(int task, int newInterval){
+    dTasks[task].setInterval(newInterval);
+}
+void PScheduler::changeIterations(int task, int numtIterations){
+    dTasks[task].setIterations(numtIterations);
+}
+// Generally: call this in your Arduino loop.
+void PScheduler::execute() {
+    Arduino_ts.execute();
 }
