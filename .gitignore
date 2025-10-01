@@ -7,3 +7,5 @@
 .DS_Store
 .vscode/*
 build/
+scripts/Gen_For_sensors/*
+scripts/Gen_For_simpleTest/*
