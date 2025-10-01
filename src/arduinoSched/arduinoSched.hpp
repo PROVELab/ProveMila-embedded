@@ -5,20 +5,20 @@
 struct PTask {
     void (*function)(void); // Function to call
     int16_t delay = 0;      // Milliseconds from start before a task runs
-    int16_t interval; // Milliseconds between task runs, a negative interval
-                      // indicates a task occruing one time, -interval ms after
-                      // its declared
-    int16_t location; // Location of Task in task array, assigned upon task
-                      // scheduling
-    bool locked;      // Lock CAN - Only applicable to multithreading
+    int16_t interval;       // Milliseconds between task runs, a negative interval
+                            // indicates a task occruing one time, -interval ms after
+                            // its declared
+    int16_t location;       // Location of Task in task array, assigned upon task
+                            // scheduling
+    bool locked;            // Lock CAN - Only applicable to multithreading
 };
 
 /* "Scheduler/TaskManager" */
 class PScheduler {
   private:
     int16_t ctr = 0; // Counts how many events are in queue
-    // PTask tasks[MAX_TASK_COUNT];    //delete wen decide not to use originally
-    // scheduling int16_t dCtr=0;
+                     // PTask tasks[MAX_TASK_COUNT];    //delete wen decide not to use originally
+                     // scheduling int16_t dCtr=0;
 
   public:
     int scheduleTask(PTask *t);

@@ -71,8 +71,7 @@ uint32_t combinedID(uint32_t fn_id, uint32_t node_id);
 uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id,
                             uint32_t extension); // also combines an extended ID
 
-inline uint32_t getNodeId(
-    uint32_t id) { // take the first seven bits of Can Id to isolate nodeId
+inline uint32_t getNodeId(uint32_t id) { // take the first seven bits of Can Id to isolate nodeId
     return id & 0b1111111;
 }
 inline uint32_t getFunctionId(uint32_t id) { // take bits 7-10 for functionId
@@ -83,8 +82,7 @@ inline uint32_t getIdExtension(uint32_t id) { // take bits 7-10 for functionId
 }
 inline uint32_t getDataFrameId(uint32_t id) {
     return getIdExtension(id) &
-           ((0b1 << maxFrameCntBits) -
-            1); // the Can Frame index is stored in first two bits of extension
+           ((0b1 << maxFrameCntBits) - 1); // the Can Frame index is stored in first two bits of extension
 }
 
 // Returns true if id and func code of id match mask
@@ -112,25 +110,21 @@ int32_t squeeze(int32_t value, int32_t min,
                 int32_t max); // identical to arduino constrain macro, other mcs
                               // dont have it :(
 
-uint32_t
-formatValue(int32_t value, int32_t min,
-            int32_t max); // returns value in sensors standard format for CAN
-                          // data. (forces data in bounds, and makes it signed)
+uint32_t formatValue(int32_t value, int32_t min,
+                     int32_t max); // returns value in sensors standard format for CAN
+                                   // data. (forces data in bounds, and makes it signed)
 
-int16_t copyValueToData(
-    uint32_t *value, uint8_t *target, int8_t startBit,
-    int8_t numBits); // copies the first numBits of value into target, starting
-                     // from target's startBit'th bit. target must be 8 bytes.
+int16_t copyValueToData(uint32_t *value, uint8_t *target, int8_t startBit,
+                        int8_t numBits); // copies the first numBits of value into target, starting
+                                         // from target's startBit'th bit. target must be 8 bytes.
 
 int16_t copyDataToValue(uint32_t *target, uint8_t *data, int8_t startBit,
                         int8_t numBits); // inverse of above function
 
 // The default handler for a packet who
 // we couldn't match with other params
-int16_t defaultPacketRecv(
-    CANPacket
-        *p); // only platform specific because it prints things. In final
-             // implementation, we won't need this to print, so could be merged
+int16_t defaultPacketRecv(CANPacket *p); // only platform specific because it prints things. In final
+                                         // implementation, we won't need this to print, so could be merged
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in

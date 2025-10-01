@@ -8,9 +8,8 @@
 
 #include <Arduino.h>
 
-Task dTasks[MAX_TASK_COUNT] =
-    {}; /*only one of these arrays is declared, there should only ever be one
-           pScheduler instance*/
+Task dTasks[MAX_TASK_COUNT] = {}; /*only one of these arrays is declared, there should only ever be one
+                                     pScheduler instance*/
 
 typedef Task ard_event;
 
@@ -43,9 +42,8 @@ void PScheduler::runOneTimeTask(int task, int timeDelay) {
     dTasks[task].enableDelayed(timeDelay);
 }
 
-int PScheduler::scheduleOneTimeTask(
-    PTask *t) { // only needs the function, delay and interval not used, the
-                // delay wanted is passed into runTask
+int PScheduler::scheduleOneTimeTask(PTask *t) { // only needs the function, delay and interval not used, the
+                                                // delay wanted is passed into runTask
     if (ctr >= MAX_TASK_COUNT) {
         return NOSPACE;
     }

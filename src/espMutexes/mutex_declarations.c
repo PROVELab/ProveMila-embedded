@@ -6,9 +6,8 @@
 #define mutexCount 2
 // declare all mutexes as an array, so that they may be created in a loop
 SemaphoreHandle_t mutexes[mutexCount];
-StaticSemaphore_t
-    mutexBuffers[mutexCount]; // note that the usr does not interact with the
-                              // buffers directly
+StaticSemaphore_t mutexBuffers[mutexCount]; // note that the usr does not interact with the
+                                            // buffers directly
 
 // declare each mutex pointer, which will be used in program, essentially just
 // giving each element of mutexes a name

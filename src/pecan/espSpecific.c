@@ -25,11 +25,10 @@ int16_t defaultPacketRecv(CANPacket *p) {
     return 0;
 }
 
-bool (*matcher[3])(uint32_t, uint32_t) = {
-    exact, matchID,
-    matchFunction}; // could alwys be moved back to pecan.h as an extern
-                    // variable if its needed elsewhere? I am not sure why this
-                    // was declared there in the first place
+bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID,
+                                          matchFunction}; // could alwys be moved back to pecan.h as an extern
+                                                          // variable if its needed elsewhere? I am not sure why this
+                                                          // was declared there in the first place
 
 int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     if (recv_pack == NULL) { // if no empyt packet provided, exit early.
@@ -38,20 +37,16 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
 
     CANListenParam clp;
     twai_message_t twaiMSG;
-    if (twai_receive(&twaiMSG, pdMS_TO_TICKS(0)) ==
-        ESP_OK) { // check for message without blocking (0 ms blocking)
+    if (twai_receive(&twaiMSG, pdMS_TO_TICKS(0)) == ESP_OK) { // check for message without blocking (0 ms blocking)
 
         // construct CANPacket
         if (twaiMSG.extd) {
-            recv_pack->id =
-                twaiMSG.identifier & 0xFFFFFFF; // view first 28 bits of id
+            recv_pack->id = twaiMSG.identifier & 0xFFFFFFF; // view first 28 bits of id
         } else {
-            recv_pack->id =
-                twaiMSG.identifier & 0b1111111111; // view first 11 bits of id
+            recv_pack->id = twaiMSG.identifier & 0b1111111111; // view first 11 bits of id
         }
         memset(recv_pack->data, 0, 8); // re-initialize data to all 0.
-        if (twaiMSG
-                .rtr) { // for rtr packets, no need to look at data or data-size
+        if (twaiMSG.rtr) {             // for rtr packets, no need to look at data or data-size
             recv_pack->rtr = 1;
             recv_pack->dataSize = 0;
             memset(recv_pack->data, 0, 8);
@@ -84,14 +79,13 @@ int16_t sendPacket(CANPacket *p) {
         .extd = (p->id) > 0b11111111111, // Standard vs extended format. makes
                                          // message extended if
         .rtr = p->rtr,                   // Data vs RTR frame.
-        .ss = 0, // Whether the message is single shot (i.e., does not repeat on
-                 // error)
-        .self = 0, // Whether the message is a self reception request (loopback)
-        .dlc_non_comp =
-            0, // DLC is less than 8  I beleive, for our purposes, this should
-               // always be 0, we want to be compliant with 8 byte data frames,
-               // and not confuse arduino guys
-        .identifier = p->id, // id of vitals Heart Beat Ping
+        .ss = 0,                         // Whether the message is single shot (i.e., does not repeat on
+                                         // error)
+        .self = 0,                       // Whether the message is a self reception request (loopback)
+        .dlc_non_comp = 0,               // DLC is less than 8  I beleive, for our purposes, this should
+                                         // always be 0, we want to be compliant with 8 byte data frames,
+                                         // and not confuse arduino guys
+        .identifier = p->id,             // id of vitals Heart Beat Ping
         .data_length_code = p->dataSize,
     };
     memcpy(message.data, p->data, p->dataSize); // copy data into msg
@@ -116,9 +110,8 @@ void check_bus_status(void *pvParameters) { // pass pointer to nodeID
     for (;;) {
         twai_status_info_t status_info;
         if (twai_get_status_info(&status_info)) {
-            vTaskDelay(1000 /
-                       portTICK_PERIOD_MS); // if unable to get status info,
-                                            // just try again next time
+            vTaskDelay(1000 / portTICK_PERIOD_MS); // if unable to get status info,
+                                                   // just try again next time
             continue;
         }
 
@@ -126,17 +119,15 @@ void check_bus_status(void *pvParameters) { // pass pointer to nodeID
             mutexPrint("initiating recovery\n");
             int recover;
             if ((recover = twai_initiate_recovery()) != ESP_OK) {
-                mutexPrint(
-                    "invalid recovery attempting to reboot. This should never "
-                    "happen\n"); // this should only be called here when Bus is
-                                 // off state, and we never unistall the driver,
-                                 // so error should not be possible
+                mutexPrint("invalid recovery attempting to reboot. This should never "
+                           "happen\n"); // this should only be called here when Bus is
+                                        // off state, and we never unistall the driver,
+                                        // so error should not be possible
                 esp_restart();
             }
             xSemaphoreGive(*printfMutex);
 
-        } else if (status_info.state ==
-                   TWAI_STATE_STOPPED) { // Presumably we have finished recovery
+        } else if (status_info.state == TWAI_STATE_STOPPED) { // Presumably we have finished recovery
             mutexPrint("Recovery attempt Complete\n\n\n");
             int err = twai_start();
             if (err != ESP_OK) { // restarts program in the event that we can't
@@ -163,10 +154,9 @@ void check_bus_status(void *pvParameters) { // pass pointer to nodeID
             }
         }
 
-        if (status_info.state ==
-            TWAI_STATE_BUS_OFF) { // check constantly if recovery is complete
-                                  // and we are ready to restart CAN in the
-                                  // event of Bus off
+        if (status_info.state == TWAI_STATE_BUS_OFF) { // check constantly if recovery is complete
+                                                       // and we are ready to restart CAN in the
+                                                       // event of Bus off
             mutexPrint("NOTICE: Bus Off\n");
             vTaskDelay(10 / portTICK_PERIOD_MS);
         } else {

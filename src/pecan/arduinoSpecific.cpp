@@ -5,8 +5,7 @@
 
 #include <Arduino.h>
 
-int16_t defaultPacketRecv(
-    CANPacket *packet) { // this is only to be used by vitals for current
+int16_t defaultPacketRecv(CANPacket *packet) { // this is only to be used by vitals for current
     Serial.print("Default Func: id ");
     Serial.print(packet->id);
     Serial.print(",  data ");
@@ -17,11 +16,10 @@ int16_t defaultPacketRecv(
     Serial.println(" ");
     return 1;
 }
-bool (*matcher[3])(uint32_t, uint32_t) = {
-    exact, matchID,
-    matchFunction}; // could alwys be moved back to pecan.h as an extern
-                    // variable if its needed elsewhere? I am not sure why this
-                    // was declared there in the first place
+bool (*matcher[3])(uint32_t, uint32_t) = {exact, matchID,
+                                          matchFunction}; // could alwys be moved back to pecan.h as an extern
+                                                          // variable if its needed elsewhere? I am not sure why this
+                                                          // was declared there in the first place
 
 int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     if (recv_pack == NULL) { // final product code cant be calling this with
@@ -57,8 +55,7 @@ int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc) {
     return NOT_RECEIVED;
 }
 
-int16_t sendPacket(
-    CANPacket *p) { // note: if your id is longer than 11 bits it made into
+int16_t sendPacket(CANPacket *p) { // note: if your id is longer than 11 bits it made into
     if (p->dataSize > MAX_SIZE_PACKET_DATA) {
         return PACKET_TOO_BIG;
     }
