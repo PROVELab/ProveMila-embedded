@@ -35,7 +35,7 @@ void start_can_read_task(); // starts the CAN read task
 
 // CAN Read task puts onto these queues:
 #define H300_RX_QUEUE_LENGTH 20
-#define H300_RX_ITEM_SIZE sizeof(twai_message_t)
+#define H300_RX_ITEM_SIZE    sizeof(twai_message_t)
 extern QueueHandle_t h300_rx_queue_handle; // Queue for receiving h300 messages
 
 // ====== HANDLE H300 TASK ======= //
