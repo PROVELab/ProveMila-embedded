@@ -1,11 +1,16 @@
-name: Check Code Formatting (uv)
+name: Check Code Formatting
 
 on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check-format:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,10 +21,9 @@ jobs:
           python-version: 3.12
           enable-cache: true
 
-      # Install the clang-format tool and expose it on PATH
       - name: Install clang-format tool
         run: |
-          uv tool install clang-format
+          uv tool install 'clang-format==21.1.2'
           echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
 
       - run: ./check_format.sh
