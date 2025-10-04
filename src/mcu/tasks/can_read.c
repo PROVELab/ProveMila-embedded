@@ -2,9 +2,6 @@
 #include "../motor_h300/h300.h"
 
 
-StackType_t read_can_data_stack[DEFAULT_STACK_SIZE];
-StaticTask_t read_can_data_buffer;
-
 // idk why I'm passing it in as a param
 void read_can_data() {
 
@@ -27,6 +24,9 @@ void read_can_data() {
 }
 
 void start_can_read_task() {
+    static StackType_t read_can_data_stack[DEFAULT_STACK_SIZE];
+    static StaticTask_t read_can_data_buffer;
+
     xTaskCreateStaticPinnedToCore(
         read_can_data, "read_can_data", DEFAULT_STACK_SIZE, NULL,
         READ_TASK_PRIO, read_can_data_stack, &read_can_data_buffer, 0);
