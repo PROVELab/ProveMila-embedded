@@ -8,7 +8,7 @@ BreakBeforeBraces: Attach # Puts braces on the same line
 
 ColumnLimit: 120 # Wrap lines longer than 80 characters
 InsertNewlineAtEOF: true
-KeepEmptyLinesAtEOF: false # to play nice with the above option 
+KeepEmptyLinesAtEOF: false # to play nice with the above option
 IndentCaseLabels: true
 
 
