@@ -22,4 +22,4 @@ jobs:
           uv tool install clang-format
           echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
 
-      - run: ./check-format.sh
+      - run: ./check_format.sh
