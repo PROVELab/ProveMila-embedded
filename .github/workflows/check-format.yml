@@ -12,8 +12,8 @@ jobs:
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
-        python-version: 3.12t
         with:
+          python-version: 3.12
           enable-cache: true
 
       # Install the clang-format tool and expose it on PATH
