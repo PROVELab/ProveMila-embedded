@@ -9,7 +9,7 @@ extern "C" { // Ensures C linkage for all functions. This is needed since
              // compile all functions with C linkage
 #endif
 
-void check_bus_status(void *pvParameters);
+void check_bus_status(void* pvParameters);
 
 #ifdef __cplusplus
 } // End extern "C"

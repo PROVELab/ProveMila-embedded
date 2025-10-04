@@ -7,7 +7,7 @@
 // assuming contacter open when written LOW
 void setup() {
     // put your setup code here, to run once:
-    pinMode(9, INPUT); // car is turned on when this is high, car off otherwise
+    pinMode(9, INPUT);     // car is turned on when this is high, car off otherwise
     pinMode(10, OUTPUT);   // contacter 1
     pinMode(11, OUTPUT);   // contacter 2
     pinMode(12, OUTPUT);   // contacter 3
@@ -22,11 +22,10 @@ void loop() {
     if (digitalRead(9) == HIGH) { // car is turned on
         digitalWrite(11, HIGH);   // Close RL2 and RL3 for 2 seconds
         digitalWrite(12, HIGH);
-        digitalWrite(13, HIGH); // turn LED on during precharge
-        delay(5000);            // wait 5 seconds
-        digitalWrite(13, LOW);  // turn LED off after precharge
-        while (digitalRead(9) ==
-               HIGH) { // while the car is still on, after two second delay
+        digitalWrite(13, HIGH);          // turn LED on during precharge
+        delay(5000);                     // wait 5 seconds
+        digitalWrite(13, LOW);           // turn LED off after precharge
+        while (digitalRead(9) == HIGH) { // while the car is still on, after two second delay
             digitalWrite(10, HIGH);
             digitalWrite(12, LOW);
         }
