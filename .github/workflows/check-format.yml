@@ -4,20 +4,26 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   check-format:
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3 # Or v4 if you update
+      - uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
-          submodules: recursive
-          token: ${{ secrets.MOTOR_NDA_SECRET }} # Add this line
+          python-version: 3.12
+          enable-cache: true
 
-      - name: Install clang-format
+      - name: Install clang-format tool
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+          uv tool install 'clang-format==21.1.2'
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
 
-      - name: Check formatting
-        run: ./check_format.sh
+      - run: ./check_format.sh

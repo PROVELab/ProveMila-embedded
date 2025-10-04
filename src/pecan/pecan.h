@@ -14,7 +14,7 @@ extern "C" { // Ensures C linkage for all functions. This is needed since
 // pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
 // DEFINITIONS, TYPEDEFS
-#define MAX_TASK_COUNT 5
+#define MAX_TASK_COUNT  5
 #define MAX_PCAN_PARAMS 6
 //
 
@@ -46,7 +46,7 @@ typedef struct { // can initialize using {0} for .c (esp). For arduino (cpp)
 // A single CANListenParam
 typedef struct {
     uint32_t listen_id;
-    int16_t (*handler)(CANPacket *);
+    int16_t (*handler)(CANPacket*);
     enum MATCH_TYPE mt;
 } CANListenParam;
 
@@ -55,24 +55,23 @@ typedef struct {
 // a given packet
 typedef struct {
     CANListenParam arr[MAX_PCAN_PARAMS];
-    int16_t (*defaultHandler)(CANPacket *p);
+    int16_t (*defaultHandler)(CANPacket* p);
     int16_t size;
 } PCANListenParamsCollection;
 
 // common implementations:
 
 /// Adds a CANListenParam to the collection
-int16_t addParam(PCANListenParamsCollection *plpc, CANListenParam clp);
+int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp);
 
 // Only in use with sensor stuff
-void setSensorID(CANPacket *p, uint8_t sensorId);
+void setSensorID(CANPacket* p, uint8_t sensorId);
 
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id);
 uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id,
                             uint32_t extension); // also combines an extended ID
 
-inline uint32_t getNodeId(
-    uint32_t id) { // take the first seven bits of Can Id to isolate nodeId
+inline uint32_t getNodeId(uint32_t id) { // take the first seven bits of Can Id to isolate nodeId
     return id & 0b1111111;
 }
 inline uint32_t getFunctionId(uint32_t id) { // take bits 7-10 for functionId
@@ -83,8 +82,7 @@ inline uint32_t getIdExtension(uint32_t id) { // take bits 7-10 for functionId
 }
 inline uint32_t getDataFrameId(uint32_t id) {
     return getIdExtension(id) &
-           ((0b1 << maxFrameCntBits) -
-            1); // the Can Frame index is stored in first two bits of extension
+           ((0b1 << maxFrameCntBits) - 1); // the Can Frame index is stored in first two bits of extension
 }
 
 // Returns true if id and func code of id match mask
@@ -99,12 +97,12 @@ bool matchFunction(uint32_t id, uint32_t mask);
 
 // Write size bytes to the packet, accounting
 // For Max Length
-int16_t writeData(CANPacket *p, int8_t *dataPoint, int16_t size);
+int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
 // makes a packet an RTR packet
-int16_t setRTR(CANPacket *p);
+int16_t setRTR(CANPacket* p);
 // makes a packet an extended packet
-int16_t setExtended(CANPacket *p);
+int16_t setExtended(CANPacket* p);
 
 // the below functions are used in base implementation of vitals and sensors,
 // and may be needed elsewhere:
@@ -112,25 +110,21 @@ int32_t squeeze(int32_t value, int32_t min,
                 int32_t max); // identical to arduino constrain macro, other mcs
                               // dont have it :(
 
-uint32_t
-formatValue(int32_t value, int32_t min,
-            int32_t max); // returns value in sensors standard format for CAN
-                          // data. (forces data in bounds, and makes it signed)
+uint32_t formatValue(int32_t value, int32_t min,
+                     int32_t max); // returns value in sensors standard format for CAN
+                                   // data. (forces data in bounds, and makes it signed)
 
-int16_t copyValueToData(
-    uint32_t *value, uint8_t *target, int8_t startBit,
-    int8_t numBits); // copies the first numBits of value into target, starting
-                     // from target's startBit'th bit. target must be 8 bytes.
+int16_t copyValueToData(uint32_t* value, uint8_t* target, int8_t startBit,
+                        int8_t numBits); // copies the first numBits of value into target, starting
+                                         // from target's startBit'th bit. target must be 8 bytes.
 
-int16_t copyDataToValue(uint32_t *target, uint8_t *data, int8_t startBit,
+int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit,
                         int8_t numBits); // inverse of above function
 
 // The default handler for a packet who
 // we couldn't match with other params
-int16_t defaultPacketRecv(
-    CANPacket
-        *p); // only platform specific because it prints things. In final
-             // implementation, we won't need this to print, so could be merged
+int16_t defaultPacketRecv(CANPacket* p); // only platform specific because it prints things. In final
+                                         // implementation, we won't need this to print, so could be merged
 
 /// @brief Blocking wait on a packet with listen_id, other packets are ignored
 /// @param recv_pack a pointer to a packet-sized place in
@@ -141,10 +135,10 @@ int16_t defaultPacketRecv(
 ///                  of ids to listen for, and their corresponding
 ///                  handler functions
 /// @return 0 on success, nonzero on Failure (see PCAN_ERR enum)
-int16_t waitPackets(CANPacket *recv_pack, PCANListenParamsCollection *plpc);
+int16_t waitPackets(CANPacket* recv_pack, PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
-int16_t sendPacket(CANPacket *p);
+int16_t sendPacket(CANPacket* p);
 // shorthand for sending status update. Atm, indicates node init, and bus
 // recovery
 int16_t sendStatusUpdate(uint8_t flag, uint32_t Id);
