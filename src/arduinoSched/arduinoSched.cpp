@@ -8,9 +8,8 @@
 
 #include <Arduino.h>
 
-Task dTasks[MAX_TASK_COUNT] =
-    {}; /*only one of these arrays is declared, there should only ever be one
-           pScheduler instance*/
+Task dTasks[MAX_TASK_COUNT] = {}; /*only one of these arrays is declared, there should only ever be one
+                                     pScheduler instance*/
 
 typedef Task ard_event;
 
@@ -25,10 +24,8 @@ PScheduler::PScheduler() {}
 void PScheduler::print(int num){
     Serial.println(num);
 }*/
-int PScheduler::scheduleTask(PTask *t) {
-    if (ctr >= MAX_TASK_COUNT) {
-        return NOSPACE;
-    }
+int PScheduler::scheduleTask(PTask* t) {
+    if (ctr >= MAX_TASK_COUNT) { return NOSPACE; }
     // Task newTask;
     dTasks[ctr].set(t->interval, TASK_FOREVER, t->function);
     ctr++;
@@ -43,12 +40,9 @@ void PScheduler::runOneTimeTask(int task, int timeDelay) {
     dTasks[task].enableDelayed(timeDelay);
 }
 
-int PScheduler::scheduleOneTimeTask(
-    PTask *t) { // only needs the function, delay and interval not used, the
-                // delay wanted is passed into runTask
-    if (ctr >= MAX_TASK_COUNT) {
-        return NOSPACE;
-    }
+int PScheduler::scheduleOneTimeTask(PTask* t) { // only needs the function, delay and interval not used, the
+                                                // delay wanted is passed into runTask
+    if (ctr >= MAX_TASK_COUNT) { return NOSPACE; }
     // Task newTask;
     dTasks[ctr].set(1000, 1, t->function); // 1000 chosen as default time if no
                                            // time is indicated in 1 time task
@@ -56,13 +50,11 @@ int PScheduler::scheduleOneTimeTask(
     return ctr - 1;
 }
 // void PScheduler::mainloop(int8_t *inp)
-void PScheduler::mainloop(PCANListenParamsCollection *listens) {
+void PScheduler::mainloop(PCANListenParamsCollection* listens) {
 
-    PCANListenParamsCollection *inp = (PCANListenParamsCollection *)listens;
+    PCANListenParamsCollection* inp = (PCANListenParamsCollection*) listens;
     Scheduler ts;
-    for (int16_t i = 0; i < this->ctr; i++) {
-        ts.addTask(dTasks[i]);
-    }
+    for (int16_t i = 0; i < this->ctr; i++) { ts.addTask(dTasks[i]); }
     ts.enableAll();
     // while (1);
     CANPacket recv_pack;
