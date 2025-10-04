@@ -2,23 +2,35 @@ name: PlatformIO CI
 
 on:
   pull_request:
-  workflow_dispatch: # Allows manual triggering
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Ensure this is here or set to true
-          token: ${{ secrets.MOTOR_NDA_SECRET }} # Add this line
+          submodules: recursive
+          token: ${{ secrets.MOTOR_NDA_SECRET }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.9'
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install PlatformIO (via uv tool)
+        run: |
+          uv tool install platformio
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+          pio --version
 
       - name: Cache PlatformIO Core and dependencies
         uses: actions/cache@v4
@@ -31,9 +43,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-
             ${{ runner.os }}-pio-
-
-      - name: Install PlatformIO Core
-        run: pip install -U platformio
 
       - name: Run PlatformIO Build
         run: pio run
