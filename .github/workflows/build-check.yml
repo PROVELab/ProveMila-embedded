@@ -20,6 +20,12 @@ jobs:
           submodules: recursive
           token: ${{ secrets.MOTOR_NDA_SECRET }}
 
+      - name: Install system build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3-dev libffi-dev libssl-dev
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
         with:
