@@ -1,84 +1,49 @@
-
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+// Minimal ESP-IDF console REPL (UART0) with
 #include "driver/uart.h"
+#include "esp_clk_tree.h"
+#include "esp_console.h"
+#include "esp_log.h"
 #include "esp_system.h"
-#include "esp_vfs_dev.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "soc/clk_tree_defs.h"
+#include "tasks.h"
+#include <esp_chip_info.h>
+#include <stdio.h>
 
-// Seems like too much work to setup the actual espidf console tbh
+#define CONSOLE_MAX_TASKS 64U
 
-// ---- UART0 (USB) console setup ----
-static void console_init(void) {
-    const uart_config_t cfg = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_APB,
-    };
-    // Install UART0 driver (RX buffer only; TX can be blocking)
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_0, 2048, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_0, &cfg));
-    ESP_ERROR_CHECK(
-        uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+typedef union {
+    char text[4096];
+    TaskStatus_t task_status[CONSOLE_MAX_TASKS];
+} console_scratch_t;
 
-    // Normalize line endings so CRLF from terminals becomes '\n'
-    esp_vfs_dev_uart_port_set_rx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CRLF);
-    esp_vfs_dev_uart_port_set_tx_line_endings(UART_NUM_0, ESP_LINE_ENDINGS_CRLF);
+// Reused scratch space to avoid per-command heap usage.
+static console_scratch_t console_scratch;
 
-    // Route stdin/stdout/stderr to the UART driver
-    esp_vfs_dev_uart_use_driver(UART_NUM_0);
+char* mila_text = "\n      __  __ ___ _        _    "
+                  "\n     |  \\/  |_ _| |      / \\   "
+                  "\n     | |\\/| || || |     / _ \\  "
+                  "\n     | |  | || || |___ / ___ \\ "
+                  "\n     |_|  |_|___|_____/_/   \\_\\ "
+                  "\n ";
 
-    // Make stdio unbuffered so prints appear immediately
-    setvbuf(stdin, NULL, _IONBF, 0);
-    setvbuf(stdout, NULL, _IONBF, 0);
-}
-
-// ---- tiny command framework ----
-typedef int (*cmd_fn)(int argc, char** argv);
-typedef struct {
-    const char* name;
-    const char* help;
-    cmd_fn fn;
-} cmd_t;
-
-// forward decls
-static int cmd_help(int argc, char** argv);
-static int cmd_echo(int argc, char** argv);
-static int cmd_add(int argc, char** argv);
-static int cmd_free(int argc, char** argv);
-
-static const cmd_t CMDS[] = {
-    {"help", "List commands", cmd_help},
-    {"echo", "Echo args back", cmd_echo},
-    {"add", "add A B  -> prints A+B", cmd_add},
-    {"free", "Show free heap", cmd_free},
-};
-
-static int cmd_help(int argc, char** argv) {
-    (void) argc;
-    (void) argv;
-    for (size_t i = 0; i < sizeof(CMDS) / sizeof(CMDS[0]); ++i) { printf("%-8s - %s\n", CMDS[i].name, CMDS[i].help); }
-    return 0;
-}
-static int cmd_echo(int argc, char** argv) {
-    for (int i = 1; i < argc; ++i) { printf("%s%s", argv[i], (i + 1 < argc) ? " " : "\n"); }
-    return 0;
-}
-static int cmd_add(int argc, char** argv) {
-    if (argc < 3) {
-        printf("usage: add A B\n");
-        return 1;
+// Redirect logging
+static int uart_log_vprintf(const char* fmt, va_list ap) {
+    char buf[256];
+    int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+    static const char* kPrompt = "mcu> ";
+    if (n > 0) {
+        uart_write_bytes(UART_NUM_0, buf, n);                                           // same UART the console uses
+        if (buf[n - 1] == '\n') uart_write_bytes(UART_NUM_0, kPrompt, strlen(kPrompt)); // optional prompt redraw
     }
-    long a = strtol(argv[1], NULL, 0);
-    long b = strtol(argv[2], NULL, 0);
-    printf("%ld\n", a + b);
+    return n;
+}
+
+// ---- basic commands ----
+static int cmd_echo(int argc, char** argv) {
+    for (int i = 1; i < argc; ++i) printf("%s%s", argv[i], (i + 1 < argc) ? " " : "\n");
     return 0;
 }
 static int cmd_free(int argc, char** argv) {
@@ -88,56 +53,103 @@ static int cmd_free(int argc, char** argv) {
     return 0;
 }
 
-// split a line into argv (very simple: whitespace-delimited)
-static int split_args(char* line, char** argv, int max_args) {
-    int argc = 0;
-    char* p = line;
+// ---- status commands ----
 
-    while (*p && argc < max_args) {
-        while (isspace((unsigned char) *p)) p++;
-        if (!*p) break;
-        argv[argc++] = p;
-        while (*p && !isspace((unsigned char) *p)) p++;
-        if (*p) *p++ = '\0';
-    }
-    return argc;
-}
-
-void console_main(void) {
-    console_init();
-    printf("\nMCU repl ready. type 'help'.\n");
-
-    char line[256];
-    char* argv[16];
-
-    while (true) {
-        printf("mcu> ");
-        fflush(stdout);
-
-        if (!fgets(line, sizeof(line), stdin)) {
-            // if something odd happens, just continue
-            continue;
-        }
-
-        // trim trailing \r\n
-        size_t n = strlen(line);
-        while (n && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = 0;
-        if (n == 0) continue;
-
-        int argc = split_args(line, argv, 16);
-        if (argc == 0) continue;
-
-        // dispatch
-        bool handled = false;
-        for (size_t i = 0; i < sizeof(CMDS) / sizeof(CMDS[0]); ++i) {
-            if (strcmp(argv[0], CMDS[i].name) == 0) {
-                CMDS[i].fn(argc, argv);
-                handled = true;
-                break;
-            }
-        }
-        if (!handled) { printf("unknown command: %s (try 'help')\n", argv[0]); }
+// Map FreeRTOS task state enum to a compact display code.
+static char task_state_char(eTaskState state) {
+    switch (state) {
+        case eRunning: return 'R';
+        case eReady: return 'r';
+        case eBlocked: return 'B';
+        case eSuspended: return 'S';
+        case eDeleted: return 'D';
+        default: return '?';
     }
 }
 
-void
+// "top" -> system info + per-task CPU/stack stats
+static int cmd_top(int argc, char** argv) {
+    (void) argc;
+    (void) argv;
+    ESP_LOGE(__func__, "LOG ERROR TEST");
+    uint64_t us = esp_timer_get_time();
+
+    uint32_t cpu_hz = 0, apb_hz = 0;
+    esp_clk_tree_src_get_freq_hz(SOC_MOD_CLK_CPU, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &cpu_hz);
+    esp_clk_tree_src_get_freq_hz(SOC_MOD_CLK_APB, ESP_CLK_TREE_SRC_FREQ_PRECISION_CACHED, &apb_hz);
+
+    esp_chip_info_t info;
+    esp_chip_info(&info);
+    printf("uptime: %.3fs\n", (double) us / 1e6);
+    printf("cpu: %lu Hz  apb: %lu Hz\n", cpu_hz, apb_hz);
+    printf("chip: cores=%d  rev=%d\n", info.cores, info.revision);
+
+    UBaseType_t task_count = uxTaskGetNumberOfTasks();
+    if (task_count > CONSOLE_MAX_TASKS) {
+        printf("too many tasks (%lu) for stats buffer (%u max)\n", (unsigned long) task_count,
+               (unsigned) CONSOLE_MAX_TASKS);
+        return 1;
+    }
+
+    uint32_t total_runtime = 0;
+    UBaseType_t fetched = uxTaskGetSystemState(console_scratch.task_status, CONSOLE_MAX_TASKS, &total_runtime);
+    if (fetched == 0) {
+        puts("failed to collect task stats");
+        return 1;
+    }
+
+    if (total_runtime == 0) {
+        for (UBaseType_t i = 0; i < fetched; ++i) total_runtime += console_scratch.task_status[i].ulRunTimeCounter;
+        if (total_runtime == 0) total_runtime = 1;
+    }
+
+    puts("Task             St Prio Stack(B)  CPU%   AbsTime");
+    for (UBaseType_t i = 0; i < fetched; ++i) {
+        const TaskStatus_t* st = &console_scratch.task_status[i];
+        double cpu_pct = ((double) st->ulRunTimeCounter * 100.0) / (double) total_runtime;
+        unsigned stack_bytes = (unsigned) st->usStackHighWaterMark * sizeof(StackType_t);
+        printf("%-16s %c %4u %8u %6.2f %10lu\n", st->pcTaskName, task_state_char(st->eCurrentState),
+               (unsigned) st->uxCurrentPriority, stack_bytes, cpu_pct, (unsigned long) st->ulRunTimeCounter);
+    }
+    return 0;
+}
+
+static void register_cmds(void) {
+    const esp_console_cmd_t cmds[] = {
+        {.command = "echo", .help = "Echo args back", .func = &cmd_echo},
+        {.command = "free", .help = "Show free heap", .func = &cmd_free},
+        {.command = "top", .help = "System info + per-task CPU/stack", .func = &cmd_top},
+    };
+    for (size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); ++i) ESP_ERROR_CHECK(esp_console_cmd_register(&cmds[i]));
+}
+
+static void console_main(void* arg) {
+    (void) arg;
+
+    esp_console_repl_config_t repl_cfg = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
+    repl_cfg.prompt = "mcu> ";
+    repl_cfg.max_cmdline_length = 256;
+
+    esp_console_dev_uart_config_t dev_cfg = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+    dev_cfg.channel = UART_NUM_0;
+    dev_cfg.baud_rate = 115200;
+
+    esp_console_repl_t* repl = NULL;
+    ESP_ERROR_CHECK(esp_console_new_repl_uart(&dev_cfg, &repl_cfg, &repl));
+
+    register_cmds();
+
+    ESP_ERROR_CHECK(esp_console_start_repl(repl));
+    esp_log_set_vprintf(&uart_log_vprintf);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    printf("%s", mila_text);
+    vTaskDelete(NULL);
+}
+
+// ---- required external entrypoint ----
+void start_console_task() {
+    static StackType_t stack[DEFAULT_STACK_SIZE];
+    static StaticTask_t tcb;
+    xTaskCreateStaticPinnedToCore(console_main, "console_main", DEFAULT_STACK_SIZE, NULL, CONSOLE_TASK_PRIO, stack,
+                                  &tcb, 0);
+}

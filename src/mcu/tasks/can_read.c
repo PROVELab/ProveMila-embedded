@@ -1,10 +1,13 @@
 #include "../motor_h300/h300.h"
+#include "esp_log.h"
 #include "tasks.h"
 
 // idk why I'm passing it in as a param
 void read_can_data() {
 
     twai_message_t temp_msg;
+
+    ESP_LOGI(__func__, "Entering Read Can Data");
 
     // this is the main task that runs always
     // and gets pre-empted into higher-priority tasks
