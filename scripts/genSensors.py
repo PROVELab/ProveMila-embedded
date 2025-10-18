@@ -137,8 +137,8 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 localDataIndex = dataIndex - numData[nodeIndex]  # reset localDataIndex for this node
                 for frame in ACCESS(node, "CANFrames")["value"]:
                     for dataPoint in ACCESS(frame, "dataInfo")["value"]:
-                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n\
-                                mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
+                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n"
+                                "mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void recieveMSG(){  //task handles recieving Messages\n"
@@ -218,18 +218,18 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             if(boardTypes[nodeIndex]=="arduino"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
                 f.write("extends=arduinoSensorBase\n")
-                f.write(f"build_src_filter = ${{arduinoSensorBase.build_src_filter}}\
-                        +<sensors/{nodeNames[nodeIndex]}>\n")
-                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}\
-                        /myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
+                f.write(f"build_src_filter = ${{arduinoSensorBase.build_src_filter}}"
+                        f"+<sensors/{nodeNames[nodeIndex]}>\n")
+                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}"
+                        "/myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
 
             elif(boardTypes[nodeIndex]=="esp"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
                 f.write("extends=espSensorBase\n")
-                f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}} \
-                         -DSENS_DIR={nodeNames[nodeIndex]}\n")
-                f.write(f"build_flags = ${{espSensorBase.build_flags}}\
-                         -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
+                f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}}"
+                         "-DSENS_DIR={nodeNames[nodeIndex]}\n")
+                f.write(f"build_flags = ${{espSensorBase.build_flags}}"
+                         f"-DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
             nodeIndex+=1
         f.close()
 

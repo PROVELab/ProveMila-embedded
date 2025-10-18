@@ -113,7 +113,7 @@ global: frame0FillerBits = 11
 #warningCode
 
 #node Definitions
-node: id=8, name=pedalSensor, board=arduino
+node: id=8, name=pedalSensor, board=esp
 CANFrame: frequency=400, dataTimeout=1000
 pedalReadingOne: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
 pedalReadingTwo: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50

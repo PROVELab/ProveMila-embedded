@@ -4,7 +4,7 @@ from genSensors import createSensors
 from genVitals import createVitals
 from genTelemetry import createTelemetry 
 import json
-def pretty_print_vitals(vitals_nodes):  #useful for debugging, to see what is being created. bloated print does however make it hard to see warnings, so typically run with this off
+def pretty_print_vitals(vitals_nodes):  #useful for debugging
     print("Vitals Nodes:")
     for i, node in enumerate(vitals_nodes):
         print(f"\nNode {i + 1}:")

@@ -13,8 +13,9 @@
 // Usage as a power sensor requires a larger votage divider between the ADCPin
 typedef struct{
     int ADCPin;
+    int ADCUnit; //Only for ESP32. For Arduino, this can be ignored. can be 1 or 2
     int R1;     //resistor between Vin and ADC. (For Arduino, power should use Vin.)
-    int R2;     //resisotr between ADC and GND
+    int R2;     //resistor between ADC and GND
  } selfPowerConfig;
 
 //Optionally overide the defaultValues. Hardware must always match what is specified.

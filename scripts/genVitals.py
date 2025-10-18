@@ -49,8 +49,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, nodeCount, frameCo
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 frame_fields = [f".{field['name']}={ACCESS(frame, field['name'])['value']}"
                                 for field in CANFrame_fields if "vitals" in field["node"]]
-                f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex} \
-                    Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
+                f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex}"
+                    f"Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
             f.write("};\n\n")
 
         #vitalsNode nodes
