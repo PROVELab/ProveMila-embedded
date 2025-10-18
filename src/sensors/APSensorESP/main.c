@@ -38,7 +38,7 @@ int16_t recvTelemCommand(CANPacket* p){
 	return 0;
 }
 
-//if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
+
 int32_t collect_airPressure(){
     int32_t airPressure = atomic_load_explicit(&storedAirPressure, memory_order_relaxed);
 	char buffer[64];
@@ -48,15 +48,16 @@ int32_t collect_airPressure(){
 }
 
 void recieveMSG(){  //task handles recieving Messages
-	PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        //an array for matching recieved Can Packet's ID's to their handling functions.
+	PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        
 	sensorInit(&plpc,NULL); //vitals Compliance
 
-	//declare CanListenparams here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to matchtype (or 'mt'), 'handler' is called.
-	//see Vitals' recieveMSG function for an example of what this looks like
+	//declare CanListenparams here, each param has 3 entries. 
+	//When recv a msg whose id matches 'listen_id' according to matchtype (or 'mt'), 'handler' is called.
+
 	CANListenParam processCMD;
     processCMD.handler=recvTelemCommand;
-    processCMD.listen_id =combinedID(TelemetryCommand, telemetryID);   //setting vitals ID doesnt matter, just checking function
-    processCMD.mt=MATCH_EXACT; //MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits of node ID. MATCH_FUNCTION for same 4 bits of function code
+    processCMD.listen_id =combinedID(TelemetryCommand, telemetryID);   
+    processCMD.mt=MATCH_EXACT;
     if (addParam(&plpc,processCMD)!= SUCCESS){ //adds the parameter
         mutexPrint("plpc no room");
         while(1);
@@ -79,7 +80,7 @@ void app_main(void){
 		recieveMSG,       /* Function that implements the task. */
 		"msgRecieve",          /* Text name for the task. */
 		STACK_SIZE,      /* Number of indexes in the xStack array. */
-		( void * ) 1,    /* Parameter passed into the task. */    // should be constant or a variable that doesnt lose scope
+		( void * ) 1,    /* Parameter passed into the task. */   
 		tskIDLE_PRIORITY,/* Priority at which the task is created. */
 		recieveMSG_Stack,          /* Array to use as the task's stack. */
 		&recieveMSG_Buffer,   /* Variable to hold the task's data structure. */

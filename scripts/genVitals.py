@@ -3,7 +3,7 @@ from parseFile import dataPoint_fields, CANFrame_fields, vitalsNode_fields, glob
 from constantGen import writeConstants
 
 
-def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCount, frameCount, numData, generated_code_dir, globalDefines):
+def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, nodeCount, frameCount, generated_code_dir, globalDefines):
 
     vitals_dir = os.path.join(generated_code_dir, "generatedVitalsCode")
     os.makedirs(vitals_dir, exist_ok=True)
@@ -40,7 +40,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCou
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 num_data_points = ACCESS(frame, "numData")["value"]
                 f.write(f"int32_t n{nodeIndex}f{frameIndex}Data[{num_data_points}][10]={{")
-                f.write(",".join(f"R10({ACCESS(dataPoint, 'startingValue')['value']})" for dataPoint in ACCESS(frame, "dataInfo")["value"] if any("vitals" in field["node"] for field in dataPoint_fields))) 
+                f.write(",".join(f"R10({ACCESS(dataPoint, 'startingValue')['value']})"  for dataPoint in \
+                   ACCESS(frame, "dataInfo")["value"] if any("vitals" in field["node"] for field in dataPoint_fields)))
                 f.write("};\n\n")
 
             #CANFrames
@@ -48,7 +49,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCou
             for frameIndex, frame in enumerate(ACCESS(node, "CANFrames")["value"]):
                 frame_fields = [f".{field['name']}={ACCESS(frame, field['name'])['value']}"
                                 for field in CANFrame_fields if "vitals" in field["node"]]
-                f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex}Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
+                f.write(f"    {{{', '.join(frame_fields)}, .data=n{nodeIndex}f{frameIndex} \
+                    Data , .dataInfo=n{nodeIndex}f{frameIndex}DPs}},\n")
             f.write("};\n\n")
 
         #vitalsNode nodes
@@ -56,7 +58,8 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCou
         f.write(f"vitalsNode nodes [{len(vitalsNodes)}]={{\n")
         for nodeIndex, node in enumerate(vitalsNodes):
             NODE_fields = [f".{field['name']}={ACCESS(node, field['name'])['value']}"
-                            for field in vitalsNode_fields if field["name"] not in {"CANFrames"}] #exclude frames from auto generation
+                            for field in vitalsNode_fields if field["name"] not in {"CANFrames"}]
+                            #^ Exclude CANFrames, as that is handled specially below
             f.write(f"    {{{', '.join(NODE_fields)}, .CANFrames=n{nodeIndex}}},\n")
         f.write("};\n")
 
@@ -105,15 +108,14 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCou
                 f.write(f"    {field['type']} {field['name']};\n")
         
         # Manually insert the custom 'data' field
-        f.write("    int32_t (*data)[10]; /* Custom field for data, initialized to [data points per data =10] [numData for this frame] */\n")
+        f.write("    int32_t (*data)[10]; /* Init to [data points per data =10] [numData for this frame] */\n")
         f.write("} CANFrame;\n\n")
 
         # VitalsNode struct definition
         f.write("typedef struct {\n")
         for field in vitalsNode_fields:
             if field['name'] == "CANFrames":
-                # Replace 'list' with the correct type
-                f.write("    CANFrame *CANFrames; /* Replaced list with CANFrame pointer */\n")
+                f.write("    CANFrame *CANFrames; \n")  #Write CANFrames field manually as pointer
             else:
                 # For other fields, write them as usual
                 f.write("    ")

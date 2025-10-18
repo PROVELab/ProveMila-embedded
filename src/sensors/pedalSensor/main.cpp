@@ -8,7 +8,7 @@
 
 PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};
 PScheduler ts;
-//if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data
+
 int32_t collect_pedalReadingOne(){
     int32_t pedalReadingOne = 50;
     Serial.println("c pedalReadingOne");

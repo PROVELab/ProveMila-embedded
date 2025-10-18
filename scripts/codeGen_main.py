@@ -1,5 +1,5 @@
 import os
-from parseFile import parse_config, globalDefines, ACCESS
+from parseFile import parse_config, globalDefines
 from genSensors import createSensors
 from genVitals import createVitals
 from genTelemetry import createTelemetry 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
     fileName = input("\nEnter the name of the file (ex: sensors.def, or simpleTest.def)\n")
-    # Build absolute path to the input file (assumed to be next to this script)
+    # Build absolute path to the input file (assumed to be in same dir as this script)
     file_path = os.path.join(script_dir, fileName)
 
     # Make directory for the generated code
@@ -46,8 +46,8 @@ if __name__ == "__main__":
 
     # pretty_print_vitals(vitalsNodes)
     # Generate sensor files
-    createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir, globalDefines)
+    createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir)
     #Generate Vitals Files
-    createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, dataNames, nodeCount, frameCount, numData, generated_code_dir, globalDefines)
+    createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, nodeCount, frameCount, generated_code_dir, globalDefines)
 
     createTelemetry(vitalsNodes, "telemetryDashboard.csv", generated_code_dir, nodeNames, dataNames)

@@ -66,6 +66,8 @@ def genNodeIDsJava(f, missingIDs, numberOfNodes, startingOffset):
 
     node_elems = ", ".join(str(x) for x in nodeIDs)
     f.write("\n\tpublic static final int[] nodeIDs = new int[]{ " + node_elems + " };\n")
+
+#write enums to file f, in either C or Java syntax    
 def writeEnums(f, lang_l: str):
     if not globalEnums:
         return

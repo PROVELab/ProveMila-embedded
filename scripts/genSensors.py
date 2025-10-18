@@ -1,7 +1,7 @@
 import os
-from parseFile import dataPoint_fields, CANFrame_fields, globalDefine, ACCESS
+from parseFile import dataPoint_fields, CANFrame_fields, ACCESS
 
-def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir, globalDefines):
+def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numData, generated_code_dir):
     
     # create files for which only one exists (sensorHelper.hpp, and vitalsStaticDec)
     universalPath = os.path.join(generated_code_dir, "Universal")
@@ -21,12 +21,6 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             '#include <stdint.h>\n\n'
             "//universal globals. Used by every sensor\n"
         )
-        # for i in globalDefines:
-        #     f.write("#define ")
-        #     f.write(i.name)
-        #     f.write(" ")
-        #     f.write(i.value)
-        #     f.write("\n")
 
         # write the dataPoints struct (for sensors):
         f.write("typedef struct{\n")
@@ -41,7 +35,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             if "sensor" in field["node"]:
                 f.write("    " + field["type"] + " " + field["name"] + ";\n")     
         # custom fields here
-        f.write("    int8_t startingDataIndex;  //what is the starting index of data in this frame? (needed for calling appropriate collector function)\n")
+        f.write("    int8_t startingDataIndex;  //starting index of data in this frame. used by collector function\n")
         f.write("    dataPoint *dataInfo;\n")
         f.write("} CANFrame;\n")
         #
@@ -49,8 +43,8 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         f.write("extern CANFrame myframes[numFrames];    //defined in sensorStaticDec.cpp in <sensor_name> folder\n\n"
         "//shortened versions of vitals structs, containing only stuff the sensors need for sending\n")
 
-
-        f.write("int8_t sensorInit(PCANListenParamsCollection* plpc, void* ts);  //for arduino, this should be a PScheduler*. Otherwise, just pass Null\n")
+        f.write("//For ts, pass PScheduler* for arduino, else pass NULL\n")
+        f.write("int8_t sensorInit(PCANListenParamsCollection* plpc, void* ts);\n")
         f.write("#ifdef __cplusplus\n}  // End extern \"C\"\n#endif\n#endif")
     
     # write stuff for each sensor
@@ -64,7 +58,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
         with open(file_path, 'w') as f:
             # includes
             f.write('#ifndef ' + nodeNames[nodeIndex] + '_DATA_H\n#define ' + nodeNames[nodeIndex] + '_DATA_H\n')
-            f.write("//defines constants specific to " + nodeNames[nodeIndex] + "\n//each sensor file gets one of these .h files")
+            f.write("//defines constants specific to " + nodeNames[nodeIndex])
             f.write('#include "../common/sensorHelper.hpp"\n#include<stdint.h>\n')
             f.write("#define myId " + str(nodeIds[nodeIndex]))
             f.write("\n#define numFrames " + str(ACCESS(node, "numFrames")["value"]))
@@ -75,18 +69,18 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 localDataIndex += 1
                 dataIndex += 1  # increment dataIndex for each function declared
             f.write("\n#define dataCollectorsList ")
-            f.write(', '.join("collect_" + name for name in dataNames[localDataIndex - numData[nodeIndex]: localDataIndex]))
+            f.write(', '.join("collect_" + name\
+                    for name in dataNames[localDataIndex - numData[nodeIndex]: localDataIndex]))
             f.write("\n\n#endif")
         file_path
         if(boardTypes[nodeIndex]=="arduino"):
             file_path = os.path.join(sub_dir_path, 'main.cpp')
-            # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
         elif(boardTypes[nodeIndex]=="esp"):
             file_path = os.path.join(sub_dir_path, 'main.c')
-            # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.c')
 
         else:
-            print(f"Warning: For {nodeNames[nodeIndex]} (node {nodeIds[nodeIndex]}): Please Specify an appropraite board (esp, arduino, ...?)")
+            print(f"Warning: For {nodeNames[nodeIndex]} (node {nodeIds[nodeIndex]})\
+                  : Please Specify an appropraite board (esp, arduino, ...?)")
             while(1): pass
         with open(file_path, 'w') as f:
             if(boardTypes[nodeIndex]=="arduino"):    #create main.cpp for arduino sensors
@@ -95,15 +89,17 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                     "#include \"CAN.h\"\n"
                     "#include \"../../pecan/pecan.h\"                  //used for CAN\n"
                     "#include \"../../arduinoSched/arduinoSched.hpp\"  //used for scheduling\n"
-                    "#include \"../common/sensorHelper.hpp\"           //used for compliance with vitals and sending data\n"
-                    "#include \"myDefines.hpp\"          //contains #define statements specific to this node like myId.\n\n")
-                f.write("PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};\n"
-                    "PScheduler ts;\n"
-                    "//if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data\n")
+                    "#include \"../common/sensorHelper.hpp\"      //used for compliance with vitals and sending data\n"
+                    "#include \"myDefines.hpp\"    //contains #define statements specific to this node like myId.\n\n")
+                f.write("PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};"
+                    "\nPScheduler ts;\n"
+                    "//For Standard behavior, fill in the collectData<NAME>() function(s).\n"
+                    "//In the function, return an int32_t with the corresponding data\n")
                 localDataIndex = dataIndex - numData[nodeIndex]  # reset localDataIndex for this node
                 for frame in ACCESS(node, "CANFrames")["value"]:
                     for dataPoint in ACCESS(frame, "dataInfo")["value"]:
-                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n    Serial.println(\"collecting {0}\");\n    return {0};\n}}\n\n".format(
+                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n\
+                                Serial.println(\"collecting {0}\");\n    return {0};\n}}\n\n".format(
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void setup() {\n"
@@ -129,29 +125,31 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                     "#include \"freertos/semphr.h\"\n"
                     "#include <string.h>\n"
                     "#include \"esp_timer.h\"\n\n"
-                    "#include \"../../pecan/pecan.h\"                  //used for CAN\n"
-                    "#include \"../common/sensorHelper.hpp\"           //used for compliance with vitals and sending data\n"
-                    "#include \"myDefines.hpp\"          //contains #define statements specific to this node like myId.\n"
+                    "#include \"../../pecan/pecan.h\"             //used for CAN\n"
+                    "#include \"../common/sensorHelper.hpp\"      //used for compliance with vitals and sending data\n"
+                    "#include \"myDefines.hpp\"       //contains #define statements specific to this node like myId.\n"
                     "#include \"../../espBase/debug_esp.h\"\n"
                     "//add declerations to allocate space for additional tasks here as needed\n"
                     "StaticTask_t recieveMSG_Buffer;\n"
                     "StackType_t recieveMSG_Stack[STACK_SIZE]; //buffer that the task will use as its stack\n\n"
-                    "//if no special behavior, all you need to fill in the collectData<NAME>() function(s). Have them return an int32_t with the corresponding data\n")
+                    "//For Standard behavior, fill in the collectData<NAME>() function(s).\n"
+                    "//In the function, return an int32_t with the corresponding data\n")
                 localDataIndex = dataIndex - numData[nodeIndex]  # reset localDataIndex for this node
                 for frame in ACCESS(node, "CANFrames")["value"]:
                     for dataPoint in ACCESS(frame, "dataInfo")["value"]:
-                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n    mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
+                        f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n\
+                                mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void recieveMSG(){  //task handles recieving Messages\n"
-                    "\tPCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };        //an array for matching recieved Can Packet's ID's to their handling functions.\n"
+                    "\tPCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0, };\n"
                     "\tsensorInit(&plpc,NULL); //vitals Compliance\n\n"
-                    "\t//declare CanListenparams here, each param has 3 entries. When recieving a msg whose id matches 'listen_id' according to matchtype (or 'mt'), 'handler' is called.\n"
-                    "\t//see Vitals' recieveMSG function for an example of what this looks like\n\n"
-                    "\t//this task will the call the appropriate ListenParams function when a CAN message is recieved\n"
+                    "\t//declare CanListenparams here, each param has 3 entries:\n"
+                    "\t//When recv msg with id = 'listen_id' according to matchtype (or 'mt'), 'handler' is called.\n"
+                    "\t\n//task calls the appropriate ListenParams function when a CAN message is recieved\n"
                     "\tfor(;;){\n"
                     "\t\twhile(waitPackets(&plpc) != NOT_RECEIVED);\n"
-                    "\t\ttaskYIELD();    //task runs constantly since no delay, but on lowest priority (idlePriority), so effectively runs in the background\n"
+                    "\t\ttaskYIELD();\n"
                     "\t}\n"
                     "}\n\n"
                     "void app_main(void){\n" 
@@ -163,7 +161,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                     "\t\trecieveMSG,       /* Function that implements the task. */\n"
                     "\t\t\"msgRecieve\",          /* Text name for the task. */\n"
                     "\t\tSTACK_SIZE,      /* Number of indexes in the xStack array. */\n"
-                    "\t\t( void * ) 1,    /* Parameter passed into the task. */    // should only use constants here. Global variables may be ok? cant be a stack variable.\n"
+                    "\t\t( void * ) 1,    /* Task Parameter. Must remain in scope or be constant!*/ \n"
                     "\t\ttskIDLE_PRIORITY,/* Priority at which the task is created. */\n"
                     "\t\trecieveMSG_Stack,          /* Array to use as the task's stack. */\n"
                     "\t\t&recieveMSG_Buffer,   /* Variable to hold the task's data structure. */\n"
@@ -210,7 +208,8 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             f.close()
         nodeIndex += 1
 
-    #Generate platformio.ini environments. Only contains environments for sensor nodes, to be pasted into actual platformio.ini file as an add-on
+    #Generate platformio.ini environments. Only contains environments for sensor nodes. 
+    #Code to be pasted into actual platformio.ini file as an add-on
     file_path = os.path.join(generated_code_dir,'Generatedplatformio.ini')
     with open(file_path, 'w') as f:
         nodeIndex=0
@@ -219,15 +218,18 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
             if(boardTypes[nodeIndex]=="arduino"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
                 f.write("extends=arduinoSensorBase\n")
-                f.write(f"build_src_filter = ${{arduinoSensorBase.build_src_filter}} +<sensors/{nodeNames[nodeIndex]}>\n")
-                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
+                f.write(f"build_src_filter = ${{arduinoSensorBase.build_src_filter}}\
+                        +<sensors/{nodeNames[nodeIndex]}>\n")
+                f.write(f"build_flags = -DNODE_CONFIG={nodeNames[nodeIndex]}\
+                        /myDefines.hpp -DSENSOR_ARDUINO_BUILD=ON\n\n")
 
-                # file_path = os.path.join(sub_dir_path, nodeNames[nodeIndex] + '_main.cpp')
             elif(boardTypes[nodeIndex]=="esp"):
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
                 f.write("extends=espSensorBase\n")
-                f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}} -DSENS_DIR={nodeNames[nodeIndex]}\n")
-                f.write(f"build_flags = ${{espSensorBase.build_flags}} -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
+                f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}} \
+                         -DSENS_DIR={nodeNames[nodeIndex]}\n")
+                f.write(f"build_flags = ${{espSensorBase.build_flags}}\
+                         -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
             nodeIndex+=1
         f.close()
 

@@ -104,6 +104,9 @@ int16_t waitPackets(PCANListenParamsCollection *plpc) {
     // TODO: would be nice to check for RX overruns. However, the CAN libarary we use doesnt expose this
     // Realistically it isn't necessary, but its worth noting that its possible to drop packets if we have
     // other interrupts taking a long time, preventing onReceieve from getting called
+    if(queueOverrunFlag){
+        sendStatusUpdate()
+    }
 
     if(queuePacketPop(&recv_pack)){
         //limit id. Theoretically shouldnt be necessary, but better to be safe

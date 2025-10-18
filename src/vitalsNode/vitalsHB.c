@@ -56,6 +56,7 @@ int16_t recieveHeartbeat(CANPacket* message){    //mark the HB for given node as
     mutexPrint(printer);
     int16_t nodeIndex=IDTovitalsIndex(message->id);
     if(nodeIndex == invalidVitalsIndex){
+        mutexPrint("recieved HB from invalid nodeId, ignoring\n");
         return 0;   //invalid id
     }
     int64_t responseTime = esp_timer_get_time()-HBSendTime;

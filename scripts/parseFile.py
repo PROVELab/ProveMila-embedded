@@ -9,14 +9,15 @@ import re
 INT_MIN = -2147483648
 INT_MAX = 2147483647
 
-# Access a field by name
+# Access a field by name. EX: given fields = dataPoint_fieds, name = "min", ACCESS returns the dict for the "min" field
 def ACCESS(fields, name):
     return next(field for field in fields if field["name"] == name)
 
 # For expectation field:
-# dontSpecify means a field is computed specially in some way based on other specified fields already present.
-# required means this field must be provided by the user.
-# optional means this field will take on the value already in value, unless otherwise specified.
+# -dontSpecify means the field should not be specified by the user (in the .def file)
+# The field is either computed automatically, or used by the program internally.
+# -required means this field must be provided by the user (in the .def file)
+# -optional means this field will take on the value already in value, unless otherwise specified.
 
 # A copy of each of these will be made for every dataPoint
 dataPoint_fields = [                                                    
@@ -44,7 +45,7 @@ CANFrame_fields = [
     {"name": "frequency",       "type": "int32_t","expectation": "required",    "value": 0, "node": ["sensor"], "isSet": False}
 ]
 #A copy of each of these will be made for every sensor node
-vitalsNode_fields = [   # fields only for vitals; each processed manually
+vitalsNode_fields = [   # these fields are only used by vitals. ATM each processed manually (dont specify
     {"name": "flags",       "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
     {"name": "milliSeconds","type": "int16_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
     {"name": "numFrames",   "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : False, "isSet": False},
@@ -72,6 +73,8 @@ class globalDefine:
 globalDefines = []
 
 #this function contains several manual checks to confirm that the values entered for a datapoint make sense
+#The function will also set values that were not specified based on other values
+#Ex: if minWarning was not specified, it will be set to min, so that it never triggers (comparison is exclusive)
 def validate_datapoint(dp, dataName, node_id):
     # Retrieve values from the datapoint.
     bit_length    = int(ACCESS(dp, "bitLength")["value"])
@@ -88,13 +91,15 @@ def validate_datapoint(dp, dataName, node_id):
     starting_val  = int(ACCESS(dp, "startingValue")["value"])   
     # Check overall range is valid.
     if not (min_value < max_value):
-        print(f"Error: For {dataName} (node {node_id}): Overall range invalid: min ({min_value}) must be less than max ({max_value}).")
+        print(f"Error: For {dataName} (node {node_id}): \
+              Overall range invalid: min ({min_value}) must be less than max ({max_value}).")
         while(1): pass
     # Check that bit_length is appropriate,Compute the number of bits required for the range.
     req = math.log2(int(max_value) - int(min_value) + 1)
     required_bits = math.ceil(req)
     if bit_length != required_bits:
-        print(f"Warning: For {dataName} (node {node_id}): Bit length {bit_length} does not match the required {required_bits} for range size ({max_value} - {min_value}).")
+        print(f"Warning: For {dataName} (node {node_id}): Bit length {bit_length} \
+              does not match the required {required_bits} for range size ({max_value} - {min_value}).")
         while(1): pass
     # Check that ranges are within in max and min
     if (min_value<INT_MIN):
@@ -126,7 +131,9 @@ def validate_datapoint(dp, dataName, node_id):
     if(minCriticalSet and minCritical<min_value or (maxCriticalSet and maxCritical>max_value)):
         print(f"Warning: For {dataName} (node {node_id}): critical outside of given range")
         while(1): pass
-    if(minWarningSet and minCriticalSet and minWarning<minCritical or (maxWarningSet and maxCriticalSet and maxWarning>maxCritical)):
+    if(minWarningSet and minCriticalSet and minWarning<minCritical \
+        or (maxWarningSet and maxCriticalSet and maxWarning>maxCritical)
+    ):
         print(f"Warning: For {dataName} (node {node_id}): warningRange outside of critical range")
         while(1): pass
 
@@ -169,11 +176,12 @@ def parse_config(file_path):
     # Parallel arrays for each node.
     vitalsNodes = []  # stores info for vitals and sensor nodes
     nodeNames = []    # stores the names of each node
-    boardTypes = []
+    boardTypes = []   # stores the board type of each node. atm "esp" or "arduino"
     dataNames = []    # stores the names of each piece of data (organized per node)
     numData = []      # stores number of datapoints each node has
-    node_ids = []
-    missingIDs = []     #not parallel. 
+    node_ids = []     #Array of node ID's
+
+    missingIDs = []   # will be computed based on node_ids
 
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -193,7 +201,7 @@ def parse_config(file_path):
             node_name = node_info["name"]
             board_type= node_info["board"]
             # Initialize vitalsNode
-            vitalsNodes.append(deepcopy(vitalsNode_fields)) #create a copy of array of structs at top of file, and modify values as we parse
+            vitalsNodes.append(deepcopy(vitalsNode_fields)) #create new vitalsNode entry
             nodeNames.append(node_name)
             boardTypes.append(board_type)
             if startingNodeID is None:
@@ -208,15 +216,12 @@ def parse_config(file_path):
             nodeFrames = ACCESS(vitalsNodes[nodeCount - 1], "numFrames")
             nodeFrames["value"] += 1
             numFrames=nodeFrames["value"]
-            # if (numFrames := nodeFrames["value"]) > 4:    #
-            #     print("Warning: more than 4 frames for node " + nodeNames[nodeCount - 1])
-            #     while(1): pass
 
             frame_details = line.split(":")[1].split(",")
             frame_info = {k.strip(): v.strip() for k, v in (item.split("=") for item in frame_details)}
 
-            framesArr = ACCESS(vitalsNodes[nodeCount - 1], "CANFrames")["value"]
-            framesArr.append(deepcopy(CANFrame_fields))
+            framesArr = ACCESS(vitalsNodes[nodeCount - 1], "CANFrames")["value"] #list of CANFrames for this node
+            framesArr.append(deepcopy(CANFrame_fields)) #add a new CANFrame entry to this list
             frame = framesArr[numFrames - 1]
             ACCESS(frame, "nodeID")["value"] = node_ids[nodeCount - 1]
             ACCESS(frame, "frameID")["value"] = frameCount - 1
@@ -224,8 +229,8 @@ def parse_config(file_path):
 
             updateEntries(frame_info, frame)
 
+        #Process an enum block
         elif line.startswith("global enum"):
-            # header line is already in `line` (stripped). Keep it.
             header = line
             block_lines = [header]
 
@@ -243,17 +248,17 @@ def parse_config(file_path):
                     if "}" in raw:
                         break
 
-            # Remove inline comments then join
+            # Parse the collected lines into joined string. remove comments
             joined = "\n".join(l.split("#", 1)[0] for l in block_lines).strip()
 
-            # --- Parse name from header (no greedy body regex) ---
+            #Parse enum name
             import re
             m = re.match(r"global\s+enum:\s*(\w+)\s*=", joined)
             if not m:
                 raise ValueError(f"Bad enum declaration header: {joined!r}")
             enum_name = m.group(1)
 
-            # --- Slice body strictly between the first '{' and the first '}' after it ---
+            # Find indices of opening and closing braces
             open_idx = joined.find("{")
             if open_idx == -1:
                 raise ValueError(f"Enum {enum_name} missing '{{': {joined!r}")
@@ -261,9 +266,10 @@ def parse_config(file_path):
             if close_idx == -1:
                 raise ValueError(f"Enum {enum_name} missing '}}': {joined!r}")
 
+            # Extract body between braces
             body = joined[open_idx + 1:close_idx].strip()
 
-            # --- Split entries on commas into name=value pairs ---
+            # Retrieve entries split by commas of the form name=value
             entries = []
             for piece in body.split(","):
                 piece = piece.strip()
@@ -271,16 +277,19 @@ def parse_config(file_path):
                     continue
                 if "=" not in piece:
                     raise ValueError(f"Bad enum entry: {piece!r}")
-                k, v = [s.strip() for s in piece.split("=", 1)]
+                k, v = [s.strip() for s in piece.split("=", 1)] #split name and value on '='
                 entries.append(EnumEntry(k, v))
 
-            globalEnums.append(GlobalEnum(enum_name, entries))
+            globalEnums.append(GlobalEnum(enum_name, entries))  #add the enum block to the global list
+
+        #parse global defines. will become #define in C, and final const in Java
         elif "global" in line:
             # example: global: vitalsID=0b000010, will make: #define vitalsID 2
             split = line.strip().split(":")[1].strip().split("=")
             newGlobal = globalDefine(split[0], split[1])
             globalDefines.append(newGlobal)
 
+        # Process a dataPoint
         elif ":" in line:
             # example: temperature: bitLength=7, min=-10, max=117, ...
             frame = ACCESS(vitalsNodes[nodeCount - 1], "CANFrames")["value"][-1]
@@ -301,4 +310,5 @@ def parse_config(file_path):
     all_ids = range(min(node_ids), max(node_ids) + 1)
     missingIDs = [node_id for node_id in all_ids if node_id not in node_ids]
 
-    return vitalsNodes, nodeNames, boardTypes, dataNames, numData, node_ids, startingNodeID, missingIDs, nodeCount, frameCount
+    return vitalsNodes, nodeNames, boardTypes, dataNames, numData, \
+            node_ids, startingNodeID, missingIDs, nodeCount, frameCount
