@@ -1,32 +1,52 @@
 #ifndef SELF_POWER_SENSOR_HEADER
 #define SELF_POWER_SENSOR_HEADER
 
-
-//gives a function
-
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../../pecan/pecan.h"
+//Performance Notes: reports 975mV for 1V, and 6024mV for 6V input when tested with divider of 114k and 57k resistors.
+//This is close enough to expected values. The linear scaling found exactly 4V at 4V.
+//It becomes widely inaccurate for <1V, (not this would be for less than 300mV after the voltage divider)
+//Reporting 400mV at 0V. So long as we measure only above 1V with divider, or 300mV raw, we are accurate enough
+//if we see 400mV, we can assume 0V input.
 
-// Usage as a power sensor requires a larger votage divider between the ADCPin
-typedef struct{
-    int ADCPin;
-    int ADCUnit; //Only for ESP32. For Arduino, this can be ignored. can be 1 or 2
-    int R1;     //resistor between Vin and ADC. (For Arduino, power should use Vin.)
-    int R2;     //resistor between ADC and GND
- } selfPowerConfig;
 
-//Optionally overide the defaultValues. Hardware must always match what is specified.
-// Ideally
-// Default Values for Arduino: ADCPin = . R1=. R2 =
-// Default Values for ESP:     ADCPin = . R1=. R2 = 
-//must be called before first instance of calling collectVoltagemV
-void initializeSelfPower(selfPowerConfig config);
+typedef enum {
+    SUCCESSFUL_INIT_CALIBRATED = 0,
+    SUCCESSFUL_INIT_NO_CALIBRATION = 1,
+    INIT_FAILURE = 2,
+    READ_SUCCESS = 3,
+    NOTHING_TO_READ = 4,
+    READ_FAILURE = 5
+} selfPowerStatus_t;
+
+
+// Per-channel configuration (same as your current single-pin struct)
+typedef struct {
+    int ADCPin;          // e.g., 34 for GPIO34
+    int ADCUnit;         // must be 1 (ADC1)
+    int R1;              // resistor between Vin and ADC (ohms)
+    int R2;              // resistor between ADC and GND (ohms)
+} selfPowerConfig;
+
+
+
+/**
+ * - configs: array of per-channel selfPowerConfig entries (length >= num_channels)
+ * - num_channels: number of active channels (1..MAX_CHANNELS)
+ * All configs must have ADCUnit == 1. ADCPin must be ADC1-capable (GPIO32–39 on ESP32).
+ */
+selfPowerStatus_t initializeSelfPowerN(const selfPowerConfig *configs, int num_channels);
+
 
 //returns the voltage supplied to the microcontroller (by Vin pin)
 //Assumption: For both ESP and
-int32_t collectSelfPowermV(){
+selfPowerStatus_t collectSelfPowermV(int32_t *out_vin_mV);
 
-}
+#include "../../pecan/pecan.h"  //for sendStatusUpdate
+
+//checks for errors. If theres an error, sends CAN status update, and aborts.
+void selfPowerStatusCheck(selfPowerStatus_t ADC_status, int id);
+
+#endif

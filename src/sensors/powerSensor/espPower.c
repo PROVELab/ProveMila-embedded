@@ -1,5 +1,9 @@
+// espPower.c
+#include <stdio.h>
 #include <string.h>
-#include "esp_log.h"
+#include <stdarg.h>
+#include <inttypes.h>
+
 #include "esp_err.h"
 #include "esp_check.h"
 
@@ -7,188 +11,241 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 
-#define TAG "SELF_POWER"
+#include "../../espBase/debug_esp.h"   // mutexPrint()
+#include "powerSensor.h"               // selfPowerConfig + prototypes + selfPowerStatus_t
 
-// ---------- Your defines ----------
-#define ADC_CHANNEL        ADC_CHANNEL_6        // ADC1_CHANNEL_6 == GPIO34
-#define ADC_UNIT           ADC_UNIT_1
+// ---- sizing (20 kHz fixed) ----
+#define MIN_FREQUENCY_HZ         20000u // SOC_ADC_SAMPLE_FREQ_THRES_LOW
+#define ADC_TOTAL_SAMPLES        256u   // ~12.8 ms @ 20 kHz
+#define ADC_CONV_FRAME_SAMPLES   (ADC_TOTAL_SAMPLES / 4u)  // 64 samples/frame (~3.2 ms)
+#define ADC_READ_BUF_SAMPLES     (ADC_TOTAL_SAMPLES)       // drain up to full window each call
 
-#define R1_VALUE           47000.0f             // 47kΩ (top)
-#define R2_VALUE           10000.0f             // 10kΩ (bottom)
-#define DIVIDER_GAIN       ((R1_VALUE + R2_VALUE) / R2_VALUE)   // ~5.7
+// ---- bytes ----
+#define ADC_SAMPLE_BYTES         (sizeof(adc_digi_output_data_t))
+#define ADC_POOL_BYTES           (ADC_TOTAL_SAMPLES      * ADC_SAMPLE_BYTES)
+#define ADC_CONV_FRAME_BYTES     (ADC_CONV_FRAME_SAMPLES * ADC_SAMPLE_BYTES)
+#define ADC_READ_BUF_BYTES       (ADC_READ_BUF_SAMPLES   * ADC_SAMPLE_BYTES)
 
-// Sampling plan: 200 Hz -> 5 ms per sample, average ~20 each 100 ms read
-#define SELF_POWER_SAMPLE_FREQ_HZ  200
+_Static_assert(ADC_READ_BUF_SAMPLES >= ADC_CONV_FRAME_SAMPLES, "read buf must be >= frame");
+_Static_assert((ADC_POOL_BYTES % 4) == 0, "pool must be 4-byte aligned");
 
-// Frame/pool sizing: small but safe for low sample rate
-#define ADC_CONV_FRAME_BYTES       256
-#define ADC_POOL_BYTES             1024
+// Use DB_12 attenuation and 12-bit width
+static const adc_atten_t    defaultAtten    = ADC_ATTEN_DB_12;
+static const adc_bitwidth_t defaultBitWidth = ADC_BITWIDTH_12;
 
-// Buffer we read DMA results into each call
-#define READ_BUF_BYTES             512
+// -------- Module state --------
+static struct {
+    bool initialized;
+    selfPowerConfig hw;               // from powerSensor.h
+    float divider_gain;               // (R1+R2)/R2
+    adc_continuous_handle_t adc_h;
+    adc_cali_handle_t cali_h;
+    adc_unit_t unit;                  // ADC_UNIT_1
+    adc_channel_t channel;            // resolved from ADCPin
+} S = {0};
 
-// -------- Optional: expose the latest computed mV here --------
-static volatile int g_self_power_input_mV = 0;  // Vin after divider compensation
-int getSelfPower_mV(void) { return g_self_power_input_mV; }
+// DMA-capable buffer, for reading measurements (app-owned)
+DMA_ATTR static uint8_t s_adc_read_buf[ADC_READ_BUF_BYTES];
 
-// ---------- Local state ----------
-static adc_continuous_handle_t s_adc_handle = NULL;
-static adc_cali_handle_t       s_adc_cali   = NULL;
-static bool                    s_initialized = false;
+// -------- GPIO→ADC1 channel map (ESP32) --------
+static bool gpio_to_adc1_channel(int gpio, adc_channel_t *ch_out) {
+    switch (gpio) {
+        case 36: *ch_out = ADC_CHANNEL_0; return true;
+        case 37: *ch_out = ADC_CHANNEL_1; return true;
+        case 38: *ch_out = ADC_CHANNEL_2; return true;
+        case 39: *ch_out = ADC_CHANNEL_3; return true;
+        case 32: *ch_out = ADC_CHANNEL_4; return true;
+        case 33: *ch_out = ADC_CHANNEL_5; return true;
+        case 34: *ch_out = ADC_CHANNEL_6; return true;
+        case 35: *ch_out = ADC_CHANNEL_7; return true;
+        default: return false;
+    }
+}
 
-// A tiny helper: parse one digi result
-static bool parse_one_result(const adc_digi_output_data_t *d, int *raw_out) {
-    // Format is ADC_DIGI_OUTPUT_FORMAT_TYPE1 by default on ESP32
-    // Check channel, unit and get raw
-    if (d->type1.channel == ADC_CHANNEL && d->type1.unit == ADC_UNIT) {
+// calibration. returns true on success, false on failure (non-fatal)
+static bool init_calibration(adc_unit_t unit, adc_channel_t ch) {
+#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+    adc_cali_curve_fitting_config_t cfg_cf = {
+        .unit_id  = unit,
+        .chan     = ch,
+        .atten    = defaultAtten,
+        .bitwidth = defaultBitWidth,
+    };
+    if (adc_cali_create_scheme_curve_fitting(&cfg_cf, &S.cali_h) == ESP_OK) {
+        mutexPrint("ADC calibration: curve-fitting enabled\n");
+        return true;
+    }
+#endif
+#if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+    adc_cali_line_fitting_config_t cfg_lf = {
+        .unit_id  = unit,
+        .atten    = defaultAtten,
+        .bitwidth = defaultBitWidth,
+    #if CONFIG_IDF_TARGET_ESP32
+        .default_vref = 1100, // mV fallback if no eFuse data
+    #endif
+    };
+    if (adc_cali_create_scheme_line_fitting(&cfg_lf, &S.cali_h) == ESP_OK) {
+        mutexPrint("ADC calibration: line-fitting enabled\n");
+        return true;
+    }
+#endif
+    mutexPrint("ADC calibration: unavailable, running uncalibrated\n");
+    S.cali_h = NULL;
+    return false;
+}
+
+// Parse one piece of data from the DMA buffer
+static inline bool parse_one(const adc_digi_output_data_t *d, int *raw_out) {
+    if (d->type1.channel == S.channel) {
         *raw_out = d->type1.data;
         return true;
     }
     return false;
 }
 
-// ---- You can define the config the caller passes if you like ----
-typedef struct {
-    adc_atten_t atten;          // e.g. ADC_ATTEN_DB_11
-    adc_bitwidth_t bitwidth;    // ADC_BITWIDTH_DEFAULT
-    uint32_t sample_hz;         // e.g. 200
-} selfPowerConfig;
-
-static esp_err_t init_calibration(adc_unit_t unit, adc_channel_t chan,
-                                  adc_atten_t atten, adc_bitwidth_t bitwidth)
-{
-    // Try Curve Fitting first (more accurate when supported), else Line Fitting
-#if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
-    adc_cali_curve_fitting_config_t cfg = {
-        .unit_id  = unit,
-        .chan     = chan,
-        .atten    = atten,
-        .bitwidth = bitwidth,
-    };
-    if (adc_cali_create_scheme_curve_fitting(&cfg, &s_adc_cali) == ESP_OK) {
-        ESP_LOGI(TAG, "ADC calibration: curve-fitting");
-        return ESP_OK;
+// -------- PUBLIC API --------
+// Setup ADC and DMA. Returns selfPowerStatus_t per header enum.
+selfPowerStatus_t initializeSelfPower(selfPowerConfig config) {
+    if (S.initialized) {
+        mutexPrint("SelfPower already initialized\n");
+        return (S.cali_h ? SUCCESSFUL_INIT_CALIBRATED : SUCCESSFUL_INIT_NO_CALIBRATION);
     }
-#endif
-#if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
-    adc_cali_line_fitting_config_t cfg = {
-        .unit_id  = unit,
-        .atten    = atten,
-        .bitwidth = bitwidth,
-#if CONFIG_IDF_TARGET_ESP32
-        // Only needed if eFuse Vref/TP not present:
-        .default_vref = 1100, // mV fallback; used only if required by your chip
-#endif
-    };
-    if (adc_cali_create_scheme_line_fitting(&cfg, &s_adc_cali) == ESP_OK) {
-        ESP_LOGI(TAG, "ADC calibration: line-fitting");
-        return ESP_OK;
+
+    if (config.ADCUnit != 1) {
+        mutexPrint("Only ADC1 is supported (ADCUnit=1)\n");
+        return INIT_FAILURE;
     }
-#endif
-    ESP_LOGW(TAG, "ADC calibration not supported (no eFuse or scheme), using uncalibrated values");
-    s_adc_cali = NULL;
-    return ESP_ERR_NOT_SUPPORTED;
-}
+    if (config.R1 <= 0 || config.R2 <= 0) {
+        mutexPrint("Invalid R1/R2 divider values\n");
+        return INIT_FAILURE;
+    }
+    if (!gpio_to_adc1_channel(config.ADCPin, &S.channel)) {
+        mutexPrint("ADC GPIO PIN invalid (must be GPIO32–39)\n");
+        return INIT_FAILURE;
+    }
 
-// ================== PUBLIC API ==================
+    S.hw = config;
+    S.unit = ADC_UNIT_1;
+    S.divider_gain = ((float)config.R1 + (float)config.R2) / (float)config.R2;
 
-void initializeSelfPower(selfPowerConfig config)
-{
-    if (s_initialized) return;
-
-    // 1) Allocate continuous driver
+    // 1) Handle (driver ring and frame sizes)
     adc_continuous_handle_cfg_t hcfg = {
         .max_store_buf_size = ADC_POOL_BYTES,
         .conv_frame_size    = ADC_CONV_FRAME_BYTES,
     };
-    ESP_ERROR_CHECK(adc_continuous_new_handle(&hcfg, &s_adc_handle));
+    if (adc_continuous_new_handle(&hcfg, &S.adc_h) != ESP_OK) {
+        mutexPrint("adc_continuous_new_handle failed\n");
+        return INIT_FAILURE;
+    }
 
-    // 2) Configure channel pattern
+    // 2) Pattern
     adc_digi_pattern_config_t pattern = {
-        .atten     = config.atten,             // e.g. ADC_ATTEN_DB_11 (~0-3.3V at pin)
-        .channel   = ADC_CHANNEL,              // ADC1_CH6
-        .unit      = ADC_UNIT,                 // ADC_UNIT_1
-        .bit_width = config.bitwidth,          // ADC_BITWIDTH_DEFAULT -> max for chip
+        .atten     = defaultAtten,
+        .channel   = S.channel,
+        .unit      = S.unit,    // harmless for single-unit targets
+        .bit_width = defaultBitWidth,
     };
 
+    // 3) Fixed minimum sampling rate
     adc_continuous_config_t cfg = {
-        .sample_freq_hz = config.sample_hz,    // 200 Hz
-        .conv_mode      = ADC_CONV_SINGLE_UNIT_1, // single unit, ADC1
+        .sample_freq_hz = MIN_FREQUENCY_HZ,               // 20 kHz
+        .conv_mode      = ADC_CONV_SINGLE_UNIT_1,
         .format         = ADC_DIGI_OUTPUT_FORMAT_TYPE1,
         .pattern_num    = 1,
         .adc_pattern    = &pattern,
     };
-    ESP_ERROR_CHECK(adc_continuous_config(s_adc_handle, &cfg));
+    if (adc_continuous_config(S.adc_h, &cfg) != ESP_OK) {
+        mutexPrint("adc_continuous_config failed\n");
+        return INIT_FAILURE;
+    }
+    if (adc_continuous_start(S.adc_h) != ESP_OK) {
+        mutexPrint("adc_continuous_start failed\n");
+        return INIT_FAILURE;
+    }
 
-    // 3) Start
-    ESP_ERROR_CHECK(adc_continuous_start(s_adc_handle));
+    bool calibrated = init_calibration(S.unit, S.channel);
+    S.initialized = true;
 
-    // 4) Calibration (uses eFuse when available)
-    (void)init_calibration(ADC_UNIT, ADC_CHANNEL, config.atten, config.bitwidth);
+    char buffer[160];
+    snprintf(buffer, sizeof(buffer),
+             "SelfPower init: GPIO%d (ADC1_CH%u), %d/%dΩ, gain=%.3f, %lu Hz fixed (~50 µs/sample)\n",
+             config.ADCPin, (unsigned)S.channel, config.R1, config.R2,
+             (double)S.divider_gain, (unsigned long)MIN_FREQUENCY_HZ);
+    mutexPrint(buffer);
 
-    s_initialized = true;
-    ESP_LOGI(TAG, "SelfPower ADC started @ %lu Hz on ADC1_CH%u (GPIO34)",
-             (unsigned long)config.sample_hz, (unsigned)ADC_CHANNEL);
+    return calibrated ? SUCCESSFUL_INIT_CALIBRATED : SUCCESSFUL_INIT_NO_CALIBRATION;
 }
 
-void collectSelfPowermV(void)
-{
-    if (!s_initialized) {
-        selfPowerConfig def = {
-            .atten     = ADC_ATTEN_DB_11,           // maximize range at pin
-            .bitwidth  = ADC_BITWIDTH_DEFAULT,      // 12-bit on ESP32
-            .sample_hz = SELF_POWER_SAMPLE_FREQ_HZ, // 200 Hz
-        };
-        initializeSelfPower(def);
+// Read and compute Vin (mV). Returns status, writes result to *out_vin_mV on READ_SUCCESS.
+selfPowerStatus_t collectSelfPowermV(int32_t *out_vin_mV) {
+    if (!S.initialized) {
+        mutexPrint("collectSelfPowermV() called before initializeSelfPower()\n");
+        return INIT_FAILURE;
+    }
+    if (!out_vin_mV) {
+        mutexPrint("collectSelfPowermV() out pointer is NULL\n");
+        return READ_FAILURE;
     }
 
-    uint8_t buf[READ_BUF_BYTES];
     uint32_t got = 0;
-    int64_t sum_raw = 0;
-    int count = 0;
+    int64_t sum = 0;
+    int n = 0;
 
-    // drain up to READ_BUF_BYTES worth of results (non-blocking-ish)
-    esp_err_t err = adc_continuous_read(s_adc_handle, buf, sizeof(buf), &got, /*timeout_ms*/ 0);
-    if (err == ESP_OK && got > 0) {
-        for (uint32_t i = 0; i + sizeof(adc_digi_output_data_t) <= got; i += sizeof(adc_digi_output_data_t)) {
-            const adc_digi_output_data_t *d = (const adc_digi_output_data_t *)&buf[i];
-            int raw = 0;
-            if (parse_one_result(d, &raw)) {
-                sum_raw += raw;
-                count++;
-            }
+    // Drain all currently available bytes from the driver ring
+    for (;;) {
+        esp_err_t err = adc_continuous_read(S.adc_h, s_adc_read_buf, ADC_READ_BUF_BYTES, &got, 0);
+        if (err == ESP_ERR_TIMEOUT || got == 0) break; // nothing left at this instant
+        if (err != ESP_OK) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "adc_continuous_read error=%d\n", (int)err);
+            mutexPrint(buf);
+            return READ_FAILURE;
         }
-    } else if (err != ESP_OK && err != ESP_ERR_TIMEOUT) {
-        ESP_LOGW(TAG, "adc_continuous_read err=%d", err);
+
+        for (uint32_t i = 0; i + sizeof(adc_digi_output_data_t) <= got; i += sizeof(adc_digi_output_data_t)) {
+            const adc_digi_output_data_t *d = (const adc_digi_output_data_t *)&s_adc_read_buf[i];
+            int raw;
+            if (parse_one(d, &raw)) { sum += raw; n++; }
+        }
     }
 
-    if (count == 0) {
-        // Nothing available this tick; keep last value
-        return;
+    if (n == 0) {
+        return NOTHING_TO_READ;
     }
 
-    int avg_raw = (int)(sum_raw / count);
-
-    // Convert to mV at the *pin* (after divider), using calibration if available
+    const int avg_raw = (int)(sum / n);
     int pin_mV = 0;
-    if (s_adc_cali) {
-        if (adc_cali_raw_to_voltage(s_adc_cali, avg_raw, &pin_mV) != ESP_OK) {
-            pin_mV = 0;
+
+    if (S.cali_h) {
+        if (adc_cali_raw_to_voltage(S.cali_h, avg_raw, &pin_mV) != ESP_OK) {
+            pin_mV = 0; // graceful fallback
         }
     } else {
-        // very rough fallback if no calibration available (not recommended)
-        // Assume 12-bit and 1100 mV @ 0 dB; at 11 dB full-scale ~ 3100–3600 mV depending on chip
-        // You can refine if needed.
+        // Uncalibrated estimate
         const float assumed_fullscale_mV = 3300.0f;
         pin_mV = (int)((avg_raw / 4095.0f) * assumed_fullscale_mV);
     }
 
-    // Scale back through divider to get *input/source* voltage
-    float vin_mV_f = (float)pin_mV * DIVIDER_GAIN;
-    int vin_mV = (int)(vin_mV_f + 0.5f);
+    const float vin = (float)pin_mV * S.divider_gain;
+    *out_vin_mV = (int32_t)(vin + 0.5f);
 
-    g_self_power_input_mV = vin_mV;
+    // Debug line (optional—keep or remove)
+    char printBuffer[128];
+    snprintf(printBuffer, sizeof(printBuffer),
+             "SelfPower: ADC avg=%d raw -> pin=%d mV -> Vin=%" PRId32 " mV (samples=%d)\n",
+             avg_raw, pin_mV, *out_vin_mV, n);
+    mutexPrint(printBuffer);
 
-    // Optional: log a concise line for debugging
-    ESP_LOGD(TAG, "samples=%d raw_avg=%d pin=%d mV -> Vin=%d mV", count, avg_raw, pin_mV, vin_mV);
+    return READ_SUCCESS;
+}
+
+//checks for errors. If theres an error, sends CAN status update, and aborts.
+void selfPowerStatusCheck(selfPowerStatus_t ADC_status, int id){
+    if(ADC_status != READ_SUCCESS){ //we have an error, or want to report init status
+        sendStatusUpdate(ADC_status, id);
+    }
+    if(ADC_status == INIT_FAILURE){ //try again if we fail to initialize
+        esp_restart();    
+    }
 }

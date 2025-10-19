@@ -14,7 +14,7 @@ if(CMAKE_VITALS_ESP_BUILD)
         "vitalsNode/vitalsHB.c"
     )
 
-elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
+elseif(CMAKE_SENSOR_ESP_BUILD)  
 
     set(SRC_FILES
         "sensors/${SENS_DIR}/main.c"
@@ -24,6 +24,7 @@ elseif(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
         "pecan/espSpecific.c"
         "pecan/vitalsInit.c"
         "espBase/debug_esp.c"
+        "sensors/powerSensor/espPower.c"
     )
 
 elseif(CMAKE_MOTOR_CONTROLLER)

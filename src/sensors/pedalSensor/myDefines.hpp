@@ -1,7 +1,6 @@
 #ifndef pedalSensor_DATA_H
 #define pedalSensor_DATA_H
-//defines constants specific to pedalSensor
-//each sensor file gets one of these .h files#include "../common/sensorHelper.hpp"
+//defines constants specific to pedalSensor#include "../common/sensorHelper.hpp"
 #include<stdint.h>
 #define myId 8
 #define numFrames 1

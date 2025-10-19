@@ -227,9 +227,9 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 f.write(f"[env:{nodeNames[nodeIndex]}]\n")
                 f.write("extends=espSensorBase\n")
                 f.write(f"board_build.cmake_extra_args = ${{espSensorBase.board_build.cmake_extra_args}}"
-                         "-DSENS_DIR={nodeNames[nodeIndex]}\n")
+                        f" -DSENS_DIR={nodeNames[nodeIndex]}\n")
                 f.write(f"build_flags = ${{espSensorBase.build_flags}}"
-                         f"-DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
+                         f" -DNODE_CONFIG={nodeNames[nodeIndex]}/myDefines.hpp\n\n")
             nodeIndex+=1
         f.close()
 
