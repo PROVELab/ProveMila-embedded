@@ -1,0 +1,125 @@
+#Vitals related Constants
+#To avoid issues with longs being interpreted wierdly on different platforms, all values here should fit in int32_t.
+
+# Also, no sensor IDs = 0. Telem interprets an ID = 0 as null for VitalsHB Updates
+global: nullID = 0
+
+#General Constants
+global: pointsPerData=10
+global enum: specialIDs = {
+    vitalsID    = 2,
+    prechargeID = 3,
+    telemetryID = 4
+}
+global: nodeIDSizeBits = 7
+
+//set motor controller ID = 1.
+global enum: functionCodes = {
+    reservedForMotorController = 0b0000,
+    reservedForMotorController = 0b0001,
+    warningCode             = 0b0010,
+    TelemetryCommand        = 0b0011,
+    statusUpdate            = 0b0100,
+    HBPing                  = 0b0101,
+    HBPong                  = 0b0110,
+
+    transmitData            = 0b0111,
+    HBRespUpdate            = 0b1000,
+    busStatusUpdate         = 0b1001,
+
+    CAN_Open_Err_Cntrl      = 0b1110
+}
+
+# #warningCode flags # # 
+global: nonCriticalWarning= 0b010 
+global: CriticalWarning = 0b100 
+global: warningTypeMask = 0b111
+
+global enum: warningFlags = {
+    missingFrameFlag = 0b1 << 4,
+    frameTimerSetFail = 0b1 << 5, 
+    dataToHigh = 0b1 << 6,
+    dataToLow = 0b1 << 7,
+# three possible triggers for too high/low. two values in that range, or extrapolated point from linear best fit line of past 5 or 10 points was out of bounds 
+    doubleCritical = 0b1 << 8,
+    extrapolate5 = 0b1 << 9,
+    extrap10 = 0b1 << 10
+}
+
+#the above flags takes up the first 11 bits:
+global: warningNodeFlagIndex = 11
+global: warningFrameFlagIndex=18
+#After the flags, we have identify the problematic frame and data point
+# setting maxFrameCnt = 8 (2^3=8)
+global: maxFrameCntBits=3
+# setting max number of data in a given frame to 8 (2^3=8)
+global: warningDataFlagIndex=21
+global: maxDataInFrameBits=3
+# #    # #
+
+
+global enum: telemetryCommandFlags = {
+    # Telemetry Command flags. to be used as first byte of data for TelemetryCommands.
+    # To force precharge on/off. Should override any previous or future precharge commands from vitalsNode
+    enablePrecharge       = 4,
+    disablePrecharge      = 5,
+    telemetryCommandAck   = 6,
+    telemetryCommandCRCError = 7,
+    # for debugging/testing. Not intended as final flags:
+    # APSensorESP updates what value it reads when recv this. Updates the value to the int32_t following the flag.
+    customChangeDataFlag  = 9
+}
+
+#flags for status Updates. The data sent will just be this flag
+global enum: statusUpdates = {
+    initFlag =                      0b00000000,
+    canRecoveryFlag =               0b00000001,
+    # ATM, only ESP's indicate RX Overruns, Arduino's do not.
+    canRXOverunFlag =               0b00000010,
+
+    #prechargeStatus indicates telem to interpret any 8>status>=4 as precharge updates
+    prechargeOn_Charging =          0b00000101,
+    prechargeOn_FinishedCharging =  0b00000110,
+    prechargeOff =                  0b00000111,
+}
+#
+
+#state reported in Vitals' busStatusUpdate
+global enum: twaiState = {
+    TWAI_STATE_STOPPED    = 0,            
+    TWAI_STATE_RUNNING    = 1,             
+    TWAI_STATE_BUS_OFF    = 2,             
+    TWAI_STATE_RECOVERING = 3
+}
+
+# # For HBRespUpdate # #
+# Two updates for HB, one for who responded, another for timing.
+global: HBupdateTypeBits = 1
+global: HBupdateStatus = 0b0
+global: HBupdateTiming = 0b1
+# Timing update records the three slowestNodes. (code will not adjust just by changing this param. make sure ok b4 change)
+global: slowestNodeCount = 3
+
+
+# HBupdateStatus divided into at most 2 frames: (could inc by increasing frameNoBits). must be a power of 2
+global: HBStatusFrameBits = 1
+# average time for HB resp recorded in ms takes 10 bits (unsigned)
+global: HBTimerMSBits = 10
+#how many bits of filler at start of frame0 (excluding frame ID)? 10 + 1 = 11
+global: frame0FillerBits = 11
+
+
+# #   # #
+#warningCode
+
+#node Definitions
+node: id=8, name=pedalSensor, board=esp
+CANFrame: frequency=100, dataTimeout=1000
+pedalPowerReadingmV: bitLength=16, min=-30000, max=35000, minWarning=4900, maxWarning=7100, minCritical=4500, maxCritical=7500, startingValue=6000
+pedalReadingOne: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=30
+pedalReadingTwo: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=30
+
+node: id=10, name=APSensorArduino, board=arduino
+CANFrame: frequency=700, dataTimeout=1500
+airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
+#airPressure: bitLength=32, min=-2147483648, max=2147483647, startingValue=2147483647

@@ -6,6 +6,12 @@
 .vscode/extensions.json
 .DS_Store
 .vscode/*
+build/
+scripts/Gen_For_sensors/*
+scripts/Gen_For_simpleTest/*
+src/sensors/powerSensor/*
 
 build/
 sdkconfig.*
+
+__pycache__

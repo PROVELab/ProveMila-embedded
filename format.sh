@@ -6,7 +6,7 @@ if ! command -v clang-format &> /dev/null; then
 fi
 
 # Format all h/hpp/c/cpp files in the project
-find src/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format -i
-find include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format -i
+find src/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format 
+find include/ -name "*.h" -o -name "*.hpp" -o -name "*.c" -o -name "*.cpp" | xargs clang-format 
 
 echo "Formatted all files in the project"
