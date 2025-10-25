@@ -14,7 +14,7 @@ void read_can_data() {
     while (1) {
         twai_receive_v2(motor_control_bus, &temp_msg, portMAX_DELAY);
 
-        if (temp_msg.extd && IS_H300_ID(temp_msg.identifier)) {
+        if (temp_msg.extd) { //&& IS_H300_ID(temp_msg.identifier)) {
             if (xQueueSend(h300_rx_queue_handle, &temp_msg, portMAX_DELAY) != pdPASS) {
                 // TODO: print error message
             }

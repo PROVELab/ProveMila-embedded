@@ -1,4 +1,6 @@
 // Minimal ESP-IDF console REPL (UART0) with
+// WARNING: THIS IS CHATGPT-GENERATED CODE. WE RECOMMEND YOU DON'T TOUCH IT
+// WITHOUT THE ASSISTANCE OF AN LLM TO AVOID HALLUCINATING.
 #include "driver/uart.h"
 #include "esp_clk_tree.h"
 #include "esp_console.h"
@@ -7,10 +9,16 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "print_vsr.h"
 #include "soc/clk_tree_defs.h"
 #include "tasks.h"
+#include <errno.h>
 #include <esp_chip_info.h>
+#include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define CONSOLE_MAX_TASKS 64U
 
@@ -50,6 +58,78 @@ static int cmd_free(int argc, char** argv) {
     (void) argc;
     (void) argv;
     printf("free heap: %u bytes\n", (unsigned) esp_get_free_heap_size());
+    return 0;
+}
+
+static bool console_consume_newline(void) {
+    size_t pending = 0;
+    if (uart_get_buffered_data_len(UART_NUM_0, &pending) != ESP_OK) return false;
+    bool saw_newline = false;
+    size_t remaining = pending;
+    while (remaining > 0) {
+        uint8_t byte = 0;
+        int read = uart_read_bytes(UART_NUM_0, &byte, 1, 0);
+        if (read <= 0) break;
+        if (byte == '\n' || byte == '\r') saw_newline = true;
+        --remaining;
+    }
+    return saw_newline;
+}
+
+static bool wait_for_enter(TickType_t wait_ticks) {
+    TickType_t poll_ticks = pdMS_TO_TICKS(20);
+    if (poll_ticks == 0) poll_ticks = 1;
+    TickType_t remaining = wait_ticks;
+    while (remaining > 0) {
+        if (console_consume_newline()) return true;
+        TickType_t step = (remaining > poll_ticks) ? poll_ticks : remaining;
+        vTaskDelay(step);
+        remaining -= step;
+    }
+    return console_consume_newline();
+}
+
+static int cmd_vsr_top(int argc, char** argv) {
+    if (argc < 2) {
+        puts("usage: vsr_top <topic> [rate_hz]");
+        vsr_print_available_topics();
+        return 1;
+    }
+
+    const vsr_topic_printer_t* topic = vsr_find_topic_printer(argv[1]);
+    if (!topic) {
+        printf("unknown topic '%s'\n", argv[1]);
+        vsr_print_available_topics();
+        return 1;
+    }
+
+    double rate_hz = 1.0;
+    if (argc >= 3) {
+        char* end = NULL;
+        errno = 0;
+        double parsed = strtod(argv[2], &end);
+        if (errno == 0 && end && *end == '\0' && parsed > 0.0) {
+            rate_hz = parsed;
+        } else {
+            printf("invalid rate '%s', defaulting to 1 Hz\n", argv[2]);
+        }
+    }
+
+    if (rate_hz <= 0.0) rate_hz = 1.0;
+    const double period_ticks = (double) configTICK_RATE_HZ / rate_hz;
+    TickType_t wait_ticks = (TickType_t) (period_ticks + 0.5);
+    if (wait_ticks < 1) wait_ticks = 1;
+
+    console_consume_newline(); // drop any pending bytes before we start
+    printf("vsr_top: monitoring '%s' at %.2f Hz. Press Enter to stop.\n", topic->name, rate_hz);
+
+    bool stop = false;
+    while (!stop) {
+        vsr_print_topic(topic, &vehicle_status_register);
+        stop = wait_for_enter(wait_ticks);
+    }
+
+    puts("vsr_top: stopped");
     return 0;
 }
 
@@ -114,11 +194,54 @@ static int cmd_top(int argc, char** argv) {
     return 0;
 }
 
+static int cmd_set(int argc, char** argv) {
+    const char* usage = "usage: set speed [rpm]";
+    if (argc < 2) {
+        puts(usage);
+        return 1;
+    }
+
+    const char* target = argv[1];
+    if (strcmp(target, "speed") != 0) {
+        printf("unknown setting '%s'\n", target);
+        puts(usage);
+        return 1;
+    }
+
+    int32_t rpm = 0;
+    if (argc >= 3) {
+        errno = 0;
+        char* end = NULL;
+        long parsed = strtol(argv[2], &end, 10);
+        if (errno != 0 || !end || *end != '\0') {
+            printf("invalid RPM '%s'\n", argv[2]);
+            return 1;
+        }
+        if (parsed < INT32_MIN || parsed > INT32_MAX) {
+            puts("RPM value out of range");
+            return 1;
+        }
+        rpm = (int32_t) parsed;
+    }
+
+    volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
+    ACQ_REL_VSRSEM(motor_control, { vsr->motor_control.speed_reference = rpm; })
+
+    printf("speed reference set to %" PRId32 " RPM\n", rpm);
+    return 0;
+}
+
 static void register_cmds(void) {
     const esp_console_cmd_t cmds[] = {
         {.command = "echo", .help = "Echo args back", .func = &cmd_echo},
         {.command = "free", .help = "Show free heap", .func = &cmd_free},
         {.command = "top", .help = "System info + per-task CPU/stack", .func = &cmd_top},
+        {.command = "vsr_top",
+         .help = "Stream a VSR topic: vsr_top <topic> [rate_hz], press Enter to stop",
+         .func = &cmd_vsr_top},
+        {.command = "set",
+         .help = "Set runtime parameters, e.g. set speed [rpm] (missing rpm resets to 0)",
+         .func = &cmd_set},
     };
     for (size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); ++i) ESP_ERROR_CHECK(esp_console_cmd_register(&cmds[i]));
 }

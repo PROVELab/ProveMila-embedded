@@ -29,7 +29,10 @@
     APP(motor_hspeed_status_s, motor_speed)  \
     APP(motor_safety_status_s, motor_safety) \
     APP(motor_control_s, motor_control)      \
-    APP(motor_error_state, motor_error)
+    APP(motor_error_state, motor_error)      \
+                                             \
+    APP(motor_protections_1_s, motor_prot1)  \
+    APP(motor_protections_2_s, motor_prot2)
 
 // === Full VSR definition ===
 

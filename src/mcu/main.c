@@ -28,10 +28,10 @@ static uint8_t rx_queue_databuf[H300_RX_QUEUE_LENGTH * H300_RX_ITEM_SIZE]; // th
 void start_twai(void) {
     static const char* TAG = __func__;
     // Use safe pins – avoid 0/1/3 and strap pins
-    const gpio_num_t TX_PIN = GPIO_NUM_21;
-    const gpio_num_t RX_PIN = GPIO_NUM_22;
+    const gpio_num_t TX_PIN = GPIO_NUM_33;
+    const gpio_num_t RX_PIN = GPIO_NUM_32;
 
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_PIN, RX_PIN, TWAI_MODE_NO_ACK);
+    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_PIN, RX_PIN, TWAI_MODE_NORMAL);
     // The v2 API requires controller_id on chips that have >1 controller; ESP32 classic = 0
     g_config.controller_id = 0;
 
@@ -54,7 +54,7 @@ void start_twai(void) {
 }
 
 void app_main() {
-    ESP_LOGI("MAIN", "Hello, minimal app starting");
+    ESP_LOGI(__func__, "Hello, minimal app starting");
 
     // Initialize the global VSR
     vsr_init(&vehicle_status_register);
