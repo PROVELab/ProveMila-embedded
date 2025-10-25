@@ -8,8 +8,8 @@ extern "C" { // Ensures C linkage for all functions. This is needed since
 #endif
 
 #include "../include/programConstants.h"
-#include <stdbool.h>
 #include "../programConstants.h"
+#include <stdbool.h>
 
 // pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
@@ -40,7 +40,7 @@ typedef struct { // can initialize using {0} for .c (esp). For arduino (cpp)
     int32_t id;
     uint8_t dataSize;
     bool rtr;
-    bool extendedID;  //whether or not the packet is extended. 
+    bool extendedID; // whether or not the packet is extended.
 } CANPacket;
 // A single CANListenParam
 typedef struct {
@@ -58,19 +58,18 @@ typedef struct {
     int16_t size;
 } PCANListenParamsCollection;
 
-
 #define defaultPin -1
 typedef struct {
     int nodeId;
-    int pin1;   //for ESP: txLine. for Arduino: intPin
-    int pin2;   //for ESP: rxLine. for Arduino: csPin
+    int pin1; // for ESP: txLine. for Arduino: intPin
+    int pin2; // for ESP: rxLine. for Arduino: csPin
 } pecanInit;
 
 void flexiblePrint(const char* str);
 
 void pecan_CanInit(pecanInit config);
 
-//Initializes HB response
+// Initializes HB response
 void vitalsInit(PCANListenParamsCollection* plpc, uint16_t nodeID);
 
 /// Adds a CANListenParam to the collection
@@ -111,10 +110,10 @@ bool matchFunction(uint32_t id, uint32_t mask);
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
-//makes a packet an RTR packet
-int16_t setRTR(CANPacket * p);
-//makes a packet an extended packet
-int16_t setExtended(CANPacket * p);
+// makes a packet an RTR packet
+int16_t setRTR(CANPacket* p);
+// makes a packet an extended packet
+int16_t setExtended(CANPacket* p);
 
 uint32_t formatValue(int32_t value, int32_t min,
                      int32_t max); // returns value in sensors standard format for CAN
@@ -139,7 +138,7 @@ int16_t waitPackets(PCANListenParamsCollection* plpc);
 
 /// Sends a CANPacket p
 void sendPacket(CANPacket* p);
-//shorthand for sending status update. Atm, indicates node init, and bus recovery
+// shorthand for sending status update. Atm, indicates node init, and bus recovery
 void sendStatusUpdate(uint8_t flag, uint32_t Id);
 
 #ifdef __cplusplus

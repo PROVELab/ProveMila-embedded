@@ -3,15 +3,14 @@
 
 #include <stdint.h>
 
-
 // We interpret between 5.0, 5.5, 6.0, 6.5, 7.0 V
-#define interpolationSteps       5
-#define interpolationDistancemV  500      // 0.5 V per step
-#define startingPedalmV          5000     // 5.0 V baseline
-#define maxPedalmV (startingPedalmV + (interpolationSteps * interpolationDistancemV))
+#define interpolationSteps      5
+#define interpolationDistancemV 500  // 0.5 V per step
+#define startingPedalmV         5000 // 5.0 V baseline
+#define maxPedalmV              (startingPedalmV + (interpolationSteps * interpolationDistancemV))
 
-#define risingPedalIndex 0  //pedal1
-#define fallingPedalIndex 1 //pedal2
+#define risingPedalIndex  0 // pedal1
+#define fallingPedalIndex 1 // pedal2
 
 // convert raw_mV to a percentage for pedal reading
 // - raw_mV: measured at the ADC pin (after divider/etc.)
