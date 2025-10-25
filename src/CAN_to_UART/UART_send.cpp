@@ -1,4 +1,5 @@
 #include "../pecan/pecan.h" //For Can
+#include "../programConstants.h"
 #include "UART_Com.h"
 #include <Arduino.h>
 #include <string.h>

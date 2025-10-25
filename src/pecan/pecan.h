@@ -7,9 +7,9 @@ extern "C" { // Ensures C linkage for all functions. This is needed since
              // compile all functions with C linkage
 #endif
 
-#include "../include/programConstants.h"
 #include "../programConstants.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 // pytpes moved here:
 #define MAX_SIZE_PACKET_DATA 8
@@ -109,6 +109,8 @@ bool matchFunction(uint32_t id, uint32_t mask);
 // Write size bytes to the packet, accounting
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
+
+int32_t squeeze(int32_t value, int32_t min, int32_t max);
 
 // makes a packet an RTR packet
 int16_t setRTR(CANPacket* p);

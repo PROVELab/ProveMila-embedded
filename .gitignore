@@ -13,3 +13,5 @@ src/sensors/powerSensor/*
 
 build/
 sdkconfig.*
+
+__pycache__

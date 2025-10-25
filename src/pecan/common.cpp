@@ -1,4 +1,3 @@
-#include "../include/programConstants.h"
 #include "../programConstants.h"
 #include "pecan.h"
 #include <stdbool.h>
@@ -66,8 +65,8 @@ int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size) {
     return SUCCESS;
 }
 
-int32_t squeeze(int32_t value, int32_t min,
-                int32_t max) { // returns value constrained to min of min, and max of max
+// returns value constrained to min of min, and max of max
+int32_t squeeze(int32_t value, int32_t min, int32_t max) { 
     return (value < min) ? min : (value > max ? max : value);
 }
 
