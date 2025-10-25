@@ -1,34 +1,28 @@
 #include "../include/programConstants.h"
-#include "pecan.h"
-#include <stdint.h>
-#include <string.h> // memcpy
-#include "pecan.h"
 #include "../programConstants.h"
+#include "pecan.h"
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>  //for snprintf
+#include <string.h> // memcpy
 
-uint32_t combinedID(uint32_t fn_id, uint32_t node_id){
-    return (fn_id << 7) + node_id;
-}
-uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id,uint32_t extension){
-    return combinedID(fn_id,node_id) + (extension<<11);
-}
-
-void setSensorID(CANPacket * p, uint8_t sensorId){
-    p->data[0] = sensorId;
+uint32_t combinedID(uint32_t fn_id, uint32_t node_id) { return (fn_id << 7) + node_id; }
+uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id, uint32_t extension) {
+    return combinedID(fn_id, node_id) + (extension << 11);
 }
 
- 
+void setSensorID(CANPacket* p, uint8_t sensorId) { p->data[0] = sensorId; }
+
 int16_t defaultPacketRecv(CANPacket* p) {
-    char buf[48];  
+    char buf[48];
     // Print the header
     snprintf(buf, sizeof(buf), "Default recv: id %ld\n with data:", p->id);
     flexiblePrint(buf);
 
     // Print each data element
-    if(p->rtr == false){
+    if (p->rtr == false) {
         for (int i = 0; i < p->dataSize; i++) {
-            snprintf(buf, sizeof buf, " %02X", (unsigned)p->data[i]);  // two-digit uppercase hex
+            snprintf(buf, sizeof buf, " %02X", (unsigned) p->data[i]); // two-digit uppercase hex
             flexiblePrint(buf);
         }
     }
@@ -38,8 +32,8 @@ int16_t defaultPacketRecv(CANPacket* p) {
     return 0;
 }
 
-int16_t addParam(PCANListenParamsCollection * plpc, CANListenParam clp){
-    if (plpc->size + 1 > MAX_PCAN_PARAMS){
+int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp) {
+    if (plpc->size + 1 > MAX_PCAN_PARAMS) {
         return NOSPACE;
     } else {
         plpc->arr[plpc->size] = clp;
@@ -61,14 +55,12 @@ int16_t setExtended(CANPacket* p) { // makes the given packet an extended ID pac
     return 0;
 }
 
-int16_t writeData(CANPacket * p, int8_t * dataPoint, int16_t size){
-    if(p->rtr){
-        return -4;  //this is an rtr packet, can not write data
+int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size) {
+    if (p->rtr) {
+        return -4; // this is an rtr packet, can not write data
     }
     const size_t originalSize = p->dataSize;
-    if (originalSize + size > MAX_SIZE_PACKET_DATA){
-        return NOSPACE;
-    }
+    if (originalSize + size > MAX_SIZE_PACKET_DATA) { return NOSPACE; }
     memcpy(&(p->data[originalSize]), dataPoint, size);
     (p->dataSize) += size;
     return SUCCESS;
@@ -112,11 +104,11 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit,
     return 0;
 }
 
-void sendStatusUpdate(uint8_t flag, uint32_t Id){
+void sendStatusUpdate(uint8_t flag, uint32_t Id) {
     CANPacket statusUpdatePacket;
     memset(&statusUpdatePacket, 0, sizeof(CANPacket));
-    statusUpdatePacket.id =combinedID(statusUpdate,Id);  
-    writeData(&statusUpdatePacket,(int8_t*) &flag,1);
+    statusUpdatePacket.id = combinedID(statusUpdate, Id);
+    writeData(&statusUpdatePacket, (int8_t*) &flag, 1);
     sendPacket(&statusUpdatePacket);
 }
 
