@@ -16,6 +16,7 @@
 #include "driver/twai.h"
 
 #include "freertos/FreeRTOS.h"
+#include "pecan/pecan.h"
 #define DEFAULT_STACK_SIZE 10000
 
 // === CAN static mem === //
@@ -35,7 +36,7 @@ void start_can_read_task(); // starts the CAN read task
 
 // CAN Read task puts onto these queues:
 #define H300_RX_QUEUE_LENGTH 20
-#define H300_RX_ITEM_SIZE    sizeof(twai_message_t)
+#define H300_RX_ITEM_SIZE    sizeof(CANPacket)
 extern QueueHandle_t h300_rx_queue_handle; // Queue for receiving h300 messages
 
 // ====== HANDLE H300 TASK ======= //
@@ -52,5 +53,7 @@ void start_send_motor_task();
 // read/write from console (uart)
 #define CONSOLE_TASK_PRIO 11 // Mostly low priority but
 void start_console_task();
+
+void parse_can(CANPacket* p); // task handles receiving Messages
 
 #endif

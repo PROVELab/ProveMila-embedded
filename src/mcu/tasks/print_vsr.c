@@ -86,11 +86,20 @@ static void print_motor_prot2(volatile vehicle_status_reg_s* vsr) {
     printf("  shutdown_voltage_limit_2v: %" PRIu16 "\n", data.shutdown_voltage_limit_v);
 }
 
+static void print_pedal(volatile vehicle_status_reg_s* vsr) {
+    pedal_s data;
+    ACQ_REL_VSRSEM(pedal, { data = vsr->pedal; });
+    printf("pedal:\n");
+    printf("  pedal_position_pct: %.3f\n", (double) data.pedal_position_pct);
+    printf("  tx_value: %" PRId32 "\n", data.tx_value);
+    printf("  use_pedal: %s\n", data.use_pedal ? "true" : "false");
+}
+
 static const vsr_topic_printer_t kTopics[] = {
     {.name = "motor_power", .print = &print_motor_power},   {.name = "motor_speed", .print = &print_motor_speed},
     {.name = "motor_safety", .print = &print_motor_safety}, {.name = "motor_control", .print = &print_motor_control},
     {.name = "motor_error", .print = &print_motor_error},   {.name = "motor_prot1", .print = &print_motor_prot1},
-    {.name = "motor_prot2", .print = &print_motor_prot2},
+    {.name = "motor_prot2", .print = &print_motor_prot2},   {.name = "pedal", .print = &print_pedal},
 };
 
 const vsr_topic_printer_t* vsr_find_topic_printer(const char* name) {

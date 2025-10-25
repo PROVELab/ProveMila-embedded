@@ -8,13 +8,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../espMutexes/mutex_declarations.h" //sets uo static mutexes. To add another mutex, declare it in this file, and its .c file, and increment mutexCount
 #include "../pecan/pecan.h" //helper code for CAN stuff
 
 #include "esp_log.h"
 #include "motor_h300/h300.h"
 #include "tasks/tasks.h"
 #include "vsr.h" // vehicle status register, holds all the information about the vehicle
+
+#include "sensors/pedalSensor/pedal_sensor.h" // for pedal reading
 
 // === CAN static mem === //
 twai_handle_t motor_control_bus; // externed, but initialized here
@@ -60,7 +61,28 @@ void app_main() {
     // Initialize the global VSR
     vsr_init(&vehicle_status_register);
 
-    start_twai(); // initialize can stuff
+    static PCANListenParamsCollection plpc = {
+        .arr = {{0}},
+        .defaultHandler = defaultPacketRecv,
+        .size = 0,
+    };
+
+    CANListenParam process_motor_fxn_code1 = {
+        .listen_id = combinedID(1, 0),
+        .handler = parse_packet_motor,
+        .mt = MATCH_FUNCTION,
+    };
+
+    CANListenParam process_motor_fxn_code2 = {
+        .listen_id = combinedID(0, 0),
+        .handler = parse_packet_motor,
+        .mt = MATCH_FUNCTION,
+    };
+
+    addParam(&plpc, process_motor_fxn_code1);
+    addParam(&plpc, process_motor_fxn_code2);
+
+    pedal_main(&plpc);
     ESP_LOGI(__func__, "Initializing VSR, finished TWAI");
 
     // setup the queue for receiving h300 messages (up to 20 individual messages
@@ -69,7 +91,7 @@ void app_main() {
         xQueueCreateStatic(H300_RX_QUEUE_LENGTH, H300_RX_ITEM_SIZE, rx_queue_databuf, &h300_rx_queue_buf);
 
     // Core 0 tasks
-    start_can_read_task(); // low priority, always running in background
+    // start_can_read_task(); // low priority, always running in background
     ESP_LOGI(__func__, "Started CAN Read Task");
 
     // start_handle_h300_task(); // higher priority, runs when we get h300 data

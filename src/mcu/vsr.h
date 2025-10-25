@@ -31,10 +31,17 @@
     APP(motor_control_s, motor_control)      \
     APP(motor_error_state, motor_error)      \
                                              \
+    APP(pedal_s, pedal)                      \
+                                             \
     APP(motor_protections_1_s, motor_prot1)  \
     APP(motor_protections_2_s, motor_prot2)
 
 // === Full VSR definition ===
+typedef struct {
+    float pedal_position_pct; // 0..100 %
+    int32_t tx_value;         // value to transmit over CAN
+    bool use_pedal;           // whether to use the pedal or not
+} pedal_s;
 
 typedef struct {
 // add the actual fields of the VSR via apply, adding mutexes

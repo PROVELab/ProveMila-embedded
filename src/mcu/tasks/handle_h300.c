@@ -4,7 +4,7 @@
 // pop off queue and parse the packet/handle
 void handle_h300() {
 
-    twai_message_t temp_msg;
+    CANPacket temp_msg;
     while (1) {
         if (xQueueReceive(h300_rx_queue_handle, &temp_msg, portMAX_DELAY) != pdPASS) {
             // TODO: handle Error here
