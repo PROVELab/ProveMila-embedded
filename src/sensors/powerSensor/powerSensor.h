@@ -10,6 +10,8 @@
 //It becomes widely inaccurate for <1V, (not this would be for less than 300mV after the voltage divider)
 //Reporting 400mV at 0V. So long as we measure only above 1V with divider, or 300mV raw, we are accurate enough
 //if we see 400mV, we can assume 0V input.
+//Note: very important to have accurate resistors. With bottom resistor at 2% less than top ones, 
+// the projected mesurement is ~50mV below what it should be. 
 
 
 typedef enum {
@@ -18,18 +20,19 @@ typedef enum {
     INIT_FAILURE = 2,
     READ_SUCCESS = 3,
     NOTHING_TO_READ = 4,
-    READ_FAILURE = 5
+    READ_FAILURE = 5,
+    READ_CRITICAL = 6
 } selfPowerStatus_t;
 
+#define VP_Pin 36  //ADC1_CH0
+#define VN_Pin 39  //ADC1_CH3
 
 // Per-channel configuration (same as your current single-pin struct)
 typedef struct {
     int ADCPin;          // e.g., 34 for GPIO34
-    int ADCUnit;         // must be 1 (ADC1)
     int R1;              // resistor between Vin and ADC (ohms)
     int R2;              // resistor between ADC and GND (ohms)
 } selfPowerConfig;
-
 
 
 /**
@@ -37,16 +40,22 @@ typedef struct {
  * - num_channels: number of active channels (1..MAX_CHANNELS)
  * All configs must have ADCUnit == 1. ADCPin must be ADC1-capable (GPIO32–39 on ESP32).
  */
-selfPowerStatus_t initializeSelfPowerN(const selfPowerConfig *configs, int num_channels);
+void initializeSelfPower(const selfPowerConfig *configs, int num_channels,
+                            int adc_unit, selfPowerStatus_t *out_statuses);
 
+/**
+ * Drain DMA and compute Vin (mV) for all configured channels, in the same order
+ * as provided to initializeSelfPower(). 
+ * out_vin_mV: array containing mV value for each channel.
+ * out_statuses: array containing err status for each channel
+*/
+ void collectSelfPowerAllmV(int32_t *out_vin_mV, selfPowerStatus_t *out_statuses);
 
-//returns the voltage supplied to the microcontroller (by Vin pin)
-//Assumption: For both ESP and
-selfPowerStatus_t collectSelfPowermV(int32_t *out_vin_mV);
+/** Number of channels configured at init time. */
+int getSelfPowerChannelCount();
 
-#include "../../pecan/pecan.h"  //for sendStatusUpdate
+#include "../../pecan/pecan.h"  //for send status updates
+void selfPowerStatusCheck(const selfPowerStatus_t *statuses, int num_channels, int id);
 
-//checks for errors. If theres an error, sends CAN status update, and aborts.
-void selfPowerStatusCheck(selfPowerStatus_t ADC_status, int id);
 
 #endif

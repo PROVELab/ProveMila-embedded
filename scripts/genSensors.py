@@ -138,7 +138,7 @@ def createSensors(vitalsNodes, nodeNames, boardTypes, nodeIds, dataNames, numDat
                 for frame in ACCESS(node, "CANFrames")["value"]:
                     for dataPoint in ACCESS(frame, "dataInfo")["value"]:
                         f.write("int32_t collect_{0}(){{\n    int32_t {0} = {1};\n"
-                                "mutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
+                                "\tmutexPrint(\"collecting {0}\\n\");\n    return {0};\n}}\n\n".format(
                             dataNames[localDataIndex], str(ACCESS(dataPoint, "startingValue")["value"])))
                         localDataIndex += 1
                 f.write("void recieveMSG(){  //task handles recieving Messages\n"

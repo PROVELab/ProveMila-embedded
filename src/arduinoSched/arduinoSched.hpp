@@ -7,8 +7,8 @@
 //DO NOT #define from seperate file and include this. Other src files (like sensorHelper) include this header, and would need the same value.
 #ifndef TASK_COUNT_OVERRIDE
 #define MAX_TASK_COUNT 5    //Default Max number of tasks for Arduino
-#else
-#define MAX_TASK_COUNT TASK_COUNT_OVERRIDE
+// #else
+// #define MAX_TASK_COUNT TASK_COUNT_OVERRIDE
 #endif
 
 /* "Scheduler/TaskManager" */

@@ -10,6 +10,8 @@
 
 //Sets the CAN_TO_UART function as the defaultHandler, ie, forwards all messages via UART to homebase (my computer)
 PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = CAN_TO_UART, .size = 0};
+// PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};
+
 PScheduler ts;
 
 //Forward message from UART (ie, homebase) to CAN

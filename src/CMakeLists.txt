@@ -16,9 +16,12 @@ if(CMAKE_VITALS_ESP_BUILD)
 
 elseif(CMAKE_SENSOR_ESP_BUILD)  
 
+    file(GLOB SENSOR_SRC_FILES
+        "sensors/${SENS_DIR}/*.c"
+        "sensors/${SENS_DIR}/*.cpp"
+    )
     set(SRC_FILES
-        "sensors/${SENS_DIR}/main.c"
-        "sensors/${SENS_DIR}/staticDec.cpp"
+        ${SENSOR_SRC_FILES}
         "sensors/common/sensorHelper.cpp"
         "pecan/common.cpp"
         "pecan/espSpecific.c"

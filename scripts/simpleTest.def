@@ -13,10 +13,10 @@ global enum: specialIDs = {
 }
 global: nodeIDSizeBits = 7
 
-
+//set motor controller ID = 1.
 global enum: functionCodes = {
-    CAN_Open_NMT_Function   = 0b0000,
-    CAN_Open_Synchronization= 0b0001,
+    reservedForMotorController = 0b0000,
+    reservedForMotorController = 0b0001,
     warningCode             = 0b0010,
     TelemetryCommand        = 0b0011,
     statusUpdate            = 0b0100,
@@ -114,11 +114,12 @@ global: frame0FillerBits = 11
 
 #node Definitions
 node: id=8, name=pedalSensor, board=esp
-CANFrame: frequency=400, dataTimeout=1000
-pedalReadingOne: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
-pedalReadingTwo: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
+CANFrame: frequency=100, dataTimeout=1000
+pedalPowerReadingmV: bitLength=16, min=-30000, max=35000, minWarning=4900, maxWarning=7100, minCritical=4500, maxCritical=7500, startingValue=6000
+pedalReadingOne: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=30
+pedalReadingTwo: bitLength=8, min=-20, max=120, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=30
 
-node: id=10, name=APSensorESP, board=esp
+node: id=10, name=APSensorArduino, board=arduino
 CANFrame: frequency=700, dataTimeout=1500
 airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
 #airPressure: bitLength=32, min=-2147483648, max=2147483647, startingValue=2147483647
