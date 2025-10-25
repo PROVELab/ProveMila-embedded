@@ -1,5 +1,6 @@
 #include "pecan.h"
 #include "CAN.h"
+#include "pecan.h"
 
 #include <stdint.h>
 #include <string.h>

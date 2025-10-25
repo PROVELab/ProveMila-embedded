@@ -2,8 +2,8 @@
 #include "avr/wdt.h"
 #include <TaskScheduler.h>
 
-#include "../pecan/pecan.h"
 #include "../arduinoSched/arduinoSched.hpp"
+#include "../pecan/pecan.h"
 #include "CAN.h"
 
 #include <Arduino.h>

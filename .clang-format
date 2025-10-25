@@ -1,0 +1,26 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4 # 4 spaces for indentation
+UseTab: Never # Always use spaces, never tabs
+
+BreakBeforeBraces: Attach # Puts braces on the same line
+
+ColumnLimit: 120 # Wrap lines longer than 80 characters
+InsertNewlineAtEOF: true
+KeepEmptyLinesAtEOF: false # to play nice with the above option
+IndentCaseLabels: true
+
+
+AllowShortBlocksOnASingleLine: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLambdasOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+
+PointerAlignment: Left
+SpaceAfterCStyleCast: true
+SpaceAfterLogicalNot: false
+AlignConsecutiveMacros: true
+AlignEscapedNewlines: Left
