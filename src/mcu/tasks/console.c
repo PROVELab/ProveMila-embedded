@@ -91,16 +91,23 @@ static bool wait_for_enter(TickType_t wait_ticks) {
 
 static int cmd_vsr_top(int argc, char** argv) {
     if (argc < 2) {
-        puts("usage: vsr_top <topic> [rate_hz]");
+        puts("usage: vsr_top <topic|all> [rate_hz]");
         vsr_print_available_topics();
         return 1;
     }
 
-    const vsr_topic_printer_t* topic = vsr_find_topic_printer(argv[1]);
-    if (!topic) {
-        printf("unknown topic '%s'\n", argv[1]);
-        vsr_print_available_topics();
-        return 1;
+    const char* requested = argv[1];
+    bool print_all = false;
+    const vsr_topic_printer_t* topic = NULL;
+    if (strcmp(requested, "all") == 0) {
+        print_all = true;
+    } else {
+        topic = vsr_find_topic_printer(requested);
+        if (!topic) {
+            printf("unknown topic '%s'\n", requested);
+            vsr_print_available_topics();
+            return 1;
+        }
     }
 
     double rate_hz = 1.0;
@@ -121,11 +128,19 @@ static int cmd_vsr_top(int argc, char** argv) {
     if (wait_ticks < 1) wait_ticks = 1;
 
     console_consume_newline(); // drop any pending bytes before we start
-    printf("vsr_top: monitoring '%s' at %.2f Hz. Press Enter to stop.\n", topic->name, rate_hz);
+    printf("vsr_top: monitoring '%s' at %.2f Hz. Press Enter to stop.\n", print_all ? "all topics" : topic->name,
+           rate_hz);
 
     bool stop = false;
     while (!stop) {
-        vsr_print_topic(topic, &vehicle_status_register);
+        printf("\033[2J\033[H"); // clear screen and move cursor home
+        if (print_all) {
+            // print mila lol!!!
+            printf("%s\n", mila_text);
+            vsr_print_all_topics(&vehicle_status_register);
+        } else {
+            vsr_print_topic(topic, &vehicle_status_register);
+        }
         stop = wait_for_enter(wait_ticks);
     }
 
@@ -225,7 +240,11 @@ static int cmd_set(int argc, char** argv) {
     }
 
     volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
-    ACQ_REL_VSRSEM(motor_control, { vsr->motor_control.speed_reference = rpm; })
+    ACQ_REL_VSRSEM(motor_control, {
+        vsr->motor_control.speed_reference = rpm;
+        vsr->motor_control.discharge_limit_pct = 50;
+        vsr->motor_control.charge_limit_pct = 50;
+    })
 
     printf("speed reference set to %" PRId32 " RPM\n", rpm);
     return 0;

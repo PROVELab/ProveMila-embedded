@@ -10,17 +10,17 @@ static void print_motor_power(volatile vehicle_status_reg_s* vsr) {
     motor_mspeed_status_s data;
     ACQ_REL_VSRSEM(motor_power, { data = vsr->motor_power; });
     printf("motor_power:\n");
-    printf("  measured_dc_voltage_v: %" PRId32 "\n", data.measured_dc_voltage_v);
-    printf("  calculated_dc_current_a: %" PRId32 "\n", data.calculated_dc_current_a);
-    printf("  motor_current_limit_arms: %" PRIu32 "\n", data.motor_current_limit_arms);
+    printf("  measured_dc_voltage_v: %.3f\n", (double) data.measured_dc_voltage_v);
+    printf("  calculated_dc_current_a: %.3f\n", (double) data.calculated_dc_current_a);
+    printf("  motor_current_limit_arms: %.3f\n", (double) data.motor_current_limit_arms);
 }
 
 static void print_motor_speed(volatile vehicle_status_reg_s* vsr) {
     motor_hspeed_status_s data;
     ACQ_REL_VSRSEM(motor_speed, { data = vsr->motor_speed; });
     printf("motor_speed:\n");
-    printf("  quadrature_current: %" PRId32 "\n", data.quadrature_current);
-    printf("  direct_current: %" PRId32 "\n", data.direct_current);
+    printf("  quadrature_current: %.3f\n", (double) data.quadrature_current);
+    printf("  direct_current: %.3f\n", (double) data.direct_current);
     printf("  motor_speed: %" PRId16 "\n", data.motor_speed);
 }
 
@@ -104,6 +104,14 @@ const vsr_topic_printer_t* vsr_find_topic_printer(const char* name) {
 void vsr_print_topic(const vsr_topic_printer_t* topic, volatile vehicle_status_reg_s* vsr) {
     if (!topic || !vsr) return;
     topic->print(vsr);
+}
+
+void vsr_print_all_topics(volatile vehicle_status_reg_s* vsr) {
+    if (!vsr) return;
+    for (size_t i = 0; i < sizeof(kTopics) / sizeof(kTopics[0]); ++i) {
+        kTopics[i].print(vsr);
+        if (i + 1 < sizeof(kTopics) / sizeof(kTopics[0])) puts("");
+    }
 }
 
 void vsr_print_available_topics(void) {

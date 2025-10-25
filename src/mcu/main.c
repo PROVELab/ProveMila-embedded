@@ -36,6 +36,7 @@ void start_twai(void) {
     g_config.controller_id = 0;
 
     twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
+    // twai_timing_config_t t_config = T();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
     esp_err_t err = twai_driver_install_v2(&g_config, &t_config, &f_config, &motor_control_bus);
@@ -76,6 +77,7 @@ void app_main() {
     ESP_LOGI(__func__, "StartedConsole");
 
     // // Send data to the motor task
+    start_handle_h300_task();
     start_send_motor_task();
     // while (true) {
     //     vTaskDelay(pdMS_TO_TICKS(5000));
