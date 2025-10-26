@@ -39,11 +39,11 @@
 // === Full VSR definition ===
 typedef struct {
     float pedal_supply_voltage; // in mV
-    float pedal_position_pct; // 0..100 %
-    float pedal_raw_1;       // raw ADC value of pedal reading 1
-    float pedal_raw_2;       // raw ADC value of pedal reading 2
-    int32_t tx_value;         // value to transmit over CAN
-    bool use_pedal;           // whether to use the pedal or not
+    float pedal_position_pct;   // 0..100 %
+    float pedal_raw_1;          // raw ADC value of pedal reading 1
+    float pedal_raw_2;          // raw ADC value of pedal reading 2
+    int32_t tx_value;           // value to transmit over CAN
+    bool use_pedal;             // whether to use the pedal or not
 } pedal_s;
 
 typedef struct {
