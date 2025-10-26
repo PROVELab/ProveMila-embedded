@@ -19,5 +19,7 @@ int vsr_init(volatile vehicle_status_reg_s* vsr) {
     VSR_ITEMS
 #undef APP
 
+    vsr->pedal.use_pedal = true; // default to using the pedal
+
     return 0;
 }

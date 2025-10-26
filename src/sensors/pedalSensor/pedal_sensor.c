@@ -13,6 +13,7 @@
 #include "../../sensors/common/sensorHelper.hpp" //used for compliance with vitals and sending data
 #include "myDefines.hpp"                         //contains #define statements specific to this node like myId.
 
+#include "../../mcu/motor_h300/h300.h"
 #include "../../mcu/vsr.h"
 #include "../powerSensor/powerSensor.h"
 #include "pedalInterpolation.h"
@@ -32,6 +33,31 @@ typedef enum {
 
 int32_t ADC_Readings[numADCChannels];
 selfPowerStatus_t ADC_ReadingStatuses[numADCChannels];
+
+#include <stdint.h>
+
+// Tune these:
+#define ADC_START 10  // below this => 0 speed
+#define ADC_END   100 // at/above this => MAX_SPEED
+#define MIN_SPEED 50  // speed when a == ADC_START
+#define MAX_SPEED 200 // speed when a >= ADC_END
+
+#define PEDAL_START 10
+#define PEDAL_END   100
+#define MIN_SPEED   0
+#define MAX_SPEED   MPH_TO_RPM(20) // max 10 mph
+
+static inline int scale_pedal_to_speed(int a) {
+    if (a < PEDAL_START) return 0;        // deadband -> 0
+    if (a >= PEDAL_END) return MAX_SPEED; // clamp high
+
+    const int in_span = (ADC_END - ADC_START);
+    const int out_span = (MAX_SPEED - MIN_SPEED);
+
+    // Linear map with rounding to nearest, using wide intermediate to avoid overflow.
+    int64_t num = (int64_t) (a - ADC_START) * out_span + in_span / 2;
+    return MIN_SPEED + (int) (num / in_span);
+}
 
 int32_t collect_pedalPowerReadingmV() {
     // mutexPrint("collecting pedalPowerReadingmV\n");
@@ -159,7 +185,7 @@ void pedal_main(PCANListenParamsCollection* plpc) {
         "msgRecieve",                                             /* Text name for the task. */
         STACK_SIZE,                                               /* Number of indexes in the xStack array. */
         (void*) plpc,       /* Task Parameter. Must remain in scope or be constant!*/
-        tskIDLE_PRIORITY,   /* Priority at which the task is created. */
+        10,                 /* Priority at which the task is created. */
         recieveMSG_Stack,   /* Array to use as the task's stack. */
         &recieveMSG_Buffer, /* Variable to hold the task's data structure. */
         tskNO_AFFINITY);    // assign to either core
