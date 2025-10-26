@@ -28,25 +28,25 @@ void checkBusStatus(void* pvParameters) {
     esp_err_t alertStatus;
     for (;;) {
         alertStatus = twai_read_alerts(&alerts, portMAX_DELAY);
-        mutexPrint("reading alert\n");
+        // mutexPrint("reading alert\n");
         if (alertStatus == ESP_OK) {
             if (alerts & TWAI_ALERT_BUS_OFF) {
-                mutexPrint("initiating recovery\n");
+                // mutexPrint("initiating recovery\n");
                 if (twai_initiate_recovery() != ESP_OK) {
-                    mutexPrint("invalid recovery attempting to reboot. This should never happen\n");
-                    esp_restart();
+                    // mutexPrint("invalid recovery attempting to reboot. This should never happen\n");
+                    // esp_restart();
                 }
 
             } else if (alerts & TWAI_ALERT_BUS_RECOVERED) {
                 // After recovering, twai enters stopped state. Lets enter the start state
                 int err = twai_start();
                 if (err != ESP_OK) {
-                    char buffer[70];
-                    sprintf(buffer, "error restarting Can: %d. Attempting to reboot\n", err);
-                    mutexPrint(buffer);
-                    esp_restart();
+                    // char buffer[70];
+                    // sprintf(buffer, "error restarting Can: %d. Attempting to reboot\n", err);
+                    // mutexPrint(buffer);
+                    // esp_restart();
                 } else {
-                    mutexPrint("Can Driver Started\n\n");
+                    // mutexPrint("Can Driver Started\n\n");
                     // send update indicating Bus restarted
                     sendStatusUpdate(canRecoveryFlag, myNodeId);
                 }
@@ -186,16 +186,16 @@ void sendPacket(CANPacket* p) {
         if (err != ESP_OK) {
             vTaskDelay(pdMS_TO_TICKS(
                 10)); // give 10ms to let other message send, bus recover, or whatever else is going wrong.
-            char buffer[70];
-            sprintf(buffer, "error sending Can: %d\n", err);
-            mutexPrint(buffer);
+            // char buffer[70];
+            // sprintf(buffer, "error sending Can: %d\n", err);
+            // mutexPrint(buffer);
         }
         transmitAttemptCount += 1;
     } while (err != ESP_OK && transmitAttemptCount != 50);
 
     if (transmitAttemptCount == 50) {
-        mutexPrint("Unable to transmit msg for at least 1 second of time. attempting reboot\n");
-        esp_restart();
+        // mutexPrint("Unable to transmit msg for at least 1 second of time. attempting reboot\n");
+        // esp_restart();
     }
     // mutexPrint("sent Packet\n");
     // in current implementation, will always return ESP_OK.

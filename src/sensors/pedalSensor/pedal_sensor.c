@@ -102,6 +102,10 @@ int32_t collect_pedalReadingTwo() {
     bool use_pedal = false;
     ACQ_REL_VSRSEM(pedal, {
         vsr->pedal.pedal_position_pct = (float) a;
+        vsr->pedal.pedal_raw_1 = (float) ADC_Readings[reading1_Index];
+        vsr->pedal.pedal_raw_2 = (float) ADC_Readings[reading2_Index];
+        vsr->pedal.pedal_supply_voltage = (float) ADC_Readings[pedalPower_Index];
+
         vsr->pedal.tx_value = b;
         use_pedal = vsr->pedal.use_pedal;
     });

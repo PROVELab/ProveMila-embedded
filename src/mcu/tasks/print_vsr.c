@@ -90,7 +90,9 @@ static void print_pedal(volatile vehicle_status_reg_s* vsr) {
     pedal_s data;
     ACQ_REL_VSRSEM(pedal, { data = vsr->pedal; });
     printf("pedal:\n");
+    printf("  pedal_supply_voltage: %.3fmV\n", (double) data.pedal_supply_voltage);
     printf("  pedal_position_pct: %.3f\n", (double) data.pedal_position_pct);
+    printf("  [pedal_raw_1, pedal_raw_2]: [%.3f, %.3f]\n", (double) data.pedal_raw_1, (double) data.pedal_raw_2);
     printf("  tx_value: %" PRId32 "\n", data.tx_value);
     printf("  use_pedal: %s\n", data.use_pedal ? "true" : "false");
 }
