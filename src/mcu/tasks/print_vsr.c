@@ -40,7 +40,7 @@ static void print_motor_control(volatile vehicle_status_reg_s* vsr) {
     motor_control_s data;
     ACQ_REL_VSRSEM(motor_control, { data = vsr->motor_control; });
     printf("motor_control:\n");
-    printf("  speed_reference: %" PRId32 "\n", data.speed_reference);
+    printf("  speed_reference (in 8ths): %" PRId32 "\n", data.current_reference);
     printf("  discharge_limit_pct: %" PRIu8 "\n", data.discharge_limit_pct);
     printf("  charge_limit_pct: %" PRIu8 "\n", data.charge_limit_pct);
 }

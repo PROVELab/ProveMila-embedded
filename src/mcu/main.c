@@ -85,6 +85,9 @@ void app_main() {
     pedal_main(&plpc);
     ESP_LOGI(__func__, "Initializing VSR, finished TWAI");
 
+    twai_message_t msg;
+    msg.identifier = msg.data_length_code = 0;
+
     // setup the queue for receiving h300 messages (up to 20 individual messages
     // are can be buffered here)
     h300_rx_queue_handle =

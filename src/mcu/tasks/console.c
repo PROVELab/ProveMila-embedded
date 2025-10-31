@@ -209,46 +209,46 @@ static int cmd_top(int argc, char** argv) {
     return 0;
 }
 
-static int cmd_set(int argc, char** argv) {
-    const char* usage = "usage: set speed [rpm]";
-    if (argc < 2) {
-        puts(usage);
-        return 1;
-    }
+// static int cmd_set(int argc, char** argv) {
+//     const char* usage = "usage: set speed [rpm]";
+//     if (argc < 2) {
+//         puts(usage);
+//         return 1;
+//     }
 
-    const char* target = argv[1];
-    if (strcmp(target, "speed") != 0) {
-        printf("unknown setting '%s'\n", target);
-        puts(usage);
-        return 1;
-    }
+//     const char* target = argv[1];
+//     if (strcmp(target, "speed") != 0) {
+//         printf("unknown setting '%s'\n", target);
+//         puts(usage);
+//         return 1;
+//     }
 
-    int32_t rpm = 0;
-    if (argc >= 3) {
-        errno = 0;
-        char* end = NULL;
-        long parsed = strtol(argv[2], &end, 10);
-        if (errno != 0 || !end || *end != '\0') {
-            printf("invalid RPM '%s'\n", argv[2]);
-            return 1;
-        }
-        if (parsed < INT32_MIN || parsed > INT32_MAX) {
-            puts("RPM value out of range");
-            return 1;
-        }
-        rpm = (int32_t) parsed;
-    }
+//     int32_t rpm = 0;
+//     if (argc >= 3) {
+//         errno = 0;
+//         char* end = NULL;
+//         long parsed = strtol(argv[2], &end, 10);
+//         if (errno != 0 || !end || *end != '\0') {
+//             printf("invalid RPM '%s'\n", argv[2]);
+//             return 1;
+//         }
+//         if (parsed < INT32_MIN || parsed > INT32_MAX) {
+//             puts("RPM value out of range");
+//             return 1;
+//         }
+//         rpm = (int32_t) parsed;
+//     }
 
-    volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
-    ACQ_REL_VSRSEM(motor_control, {
-        vsr->motor_control.speed_reference = rpm;
-        vsr->motor_control.discharge_limit_pct = 50;
-        vsr->motor_control.charge_limit_pct = 50;
-    })
+//     volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
+//     ACQ_REL_VSRSEM(motor_control, {
+//         vsr->motor_control.current_reference= rpm;
+//         vsr->motor_control.discharge_limit_pct = 50;
+//         vsr->motor_control.charge_limit_pct = 50;
+//     })
 
-    printf("speed reference set to %" PRId32 " RPM\n", rpm);
-    return 0;
-}
+//     printf("speed reference set to %" PRId32 " RPM\n", rpm);
+//     return 0;
+// }
 
 static int cmd_pedal(int argc, char** argv) {
     volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
@@ -273,9 +273,9 @@ static void register_cmds(void) {
         {.command = "vsr_top",
          .help = "Stream a VSR topic: vsr_top <topic> [rate_hz], press Enter to stop",
          .func = &cmd_vsr_top},
-        {.command = "set",
-         .help = "Set runtime parameters, e.g. set speed [rpm] (missing rpm resets to 0)",
-         .func = &cmd_set},
+        // {.command = "set",
+        //  .help = "Set runtime parameters, e.g. set speed [rpm] (missing rpm resets to 0)",
+        //  .func = &cmd_set},
         {.command = "pedal", .help = "Toggle pedal use on/off", .func = &cmd_pedal},
     };
     for (size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); ++i) ESP_ERROR_CHECK(esp_console_cmd_register(&cmds[i]));

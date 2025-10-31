@@ -110,12 +110,12 @@ int32_t collect_pedalReadingTwo() {
 
     int b = 0;
     if (a < 10) {
-        // RPM 0
+        // Current 0
         b = 0;
     } else if (a > 100) {
-        b = 200;
+        b = 50;
     } else {
-        b = 2 * a;
+        b = a / 2;
     }
 
     // Send the speed (if necessary)
@@ -132,7 +132,7 @@ int32_t collect_pedalReadingTwo() {
     });
 
     if (use_pedal) {
-        ACQ_REL_VSRSEM(motor_control, { vsr->motor_control.speed_reference = (int32_t) b; });
+        ACQ_REL_VSRSEM(motor_control, { vsr->motor_control.current_reference = (int32_t) b; });
     }
 
     return ADC_Readings[reading2_Index];
