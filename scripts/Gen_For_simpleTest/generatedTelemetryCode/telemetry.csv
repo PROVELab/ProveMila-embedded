@@ -1,0 +1,5 @@
+nodeID,frameIndex,dataIndex,nodeName,dataName,nodeID,numData,dataTimeout,bitLength,minCritical,maxCritical,min,max,minWarning,maxWarning
+8,0,0,pedalSensor,pedalPowerReadingmV,8,3,1000,16,4500,7500,-30000,35000,4900,7100
+8,0,1,pedalSensor,pedalReadingOne,8,3,1000,8,5,95,-20,120,20,80
+8,0,2,pedalSensor,pedalReadingTwo,8,3,1000,8,5,95,-20,120,20,80
+10,0,0,APSensorArduino,airPressure,10,1,1500,32,5,95,-2147483648,2147483647,20,80
