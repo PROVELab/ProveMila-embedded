@@ -31,6 +31,7 @@ void pecan_CanInit(pecanInit config) {
         Serial.println("Starting CAN failed!");
         while (1);
     }
+    //comment me back in please! (just for debuging rn)
     sendStatusUpdate(initFlag, config.nodeId);
     return;
 }

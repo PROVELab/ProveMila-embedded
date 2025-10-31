@@ -85,6 +85,7 @@ def createVitals(vitalsNodes, nodeNames, nodeIds, missingIDs, nodeCount, frameCo
         f.write("#include <stdio.h>\n")
         f.write("#include <stdint.h>\n")
         f.write('#include <stdatomic.h>\n')
+        f.write('#include <stdbool.h>\n')
         f.write("#include \"../../programConstants.h\"\n")
         f.write("#define R10(x) {x,x,x,x,x,x,x,x,x,x}\n\n")
 

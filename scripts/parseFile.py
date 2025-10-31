@@ -48,6 +48,8 @@ CANFrame_fields = [
 vitalsNode_fields = [   # these fields are only used by vitals. ATM each processed manually (dont specify
     {"name": "flags",       "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
     {"name": "milliSeconds","type": "int16_t", "expectation": "dontSpecify", "value": 0, "Atomic" : True, "isSet": False},
+    {"name": "outlierData", "type": "int32_t", "expectation": "dontSpecify", "value": 0, "Atomic" : False, "isSet": False},
+    {"name": "outlierPresent", "type": "bool", "expectation": "dontSpecify", "value": 0, "Atomic" : False, "isSet": False},
     {"name": "numFrames",   "type": "int8_t", "expectation": "dontSpecify", "value": 0, "Atomic" : False, "isSet": False},
     {"name": "CANFrames",   "type": "list",   "expectation": "dontSpecify", "value": [], "Atomic" : False, "isSet": False}  # List of CANFrame structs
 ]
