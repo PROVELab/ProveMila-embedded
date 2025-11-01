@@ -37,6 +37,13 @@ set(SRC_FILES
     "pecan/espSpecific.c"
     "espBase/debug_esp.c"
 )
+elseif(CMAKE_EEPROM_BUILD)  
+
+
+  file(GLOB SRC_FILES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_LIST_DIR}/EEPROM/*.c"
+  )
+  
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"

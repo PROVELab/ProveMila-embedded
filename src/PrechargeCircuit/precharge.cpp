@@ -18,20 +18,40 @@ void setup() {
     digitalWrite(13, LOW); // indicates if in charge phase.
 }
 
+static constexpr unsigned long chargeDelay = 5000;
+#define success 1
+#define fail 0
+//dealys for chargeDelay ms, if 9 goes low, write contactors low and exit charge phase early
+int monitored_Delay(){
+    unsigned long start = millis();
+    while(millis() - start < chargeDelay){
+        if(digitalRead(9) == LOW){  //stop delaying, go low
+            digitalWrite(10, LOW); // turn all the contactors off when car is off
+            digitalWrite(11, LOW);
+            digitalWrite(12, LOW);
+            return fail;
+        }
+    }
+    return success;
+}
+
 void loop() {
-    if (digitalRead(9) == HIGH) { // car is turned on
-        digitalWrite(11, HIGH);   // Close RL2 and RL3 for 2 seconds
-        digitalWrite(12, HIGH);
-        digitalWrite(13, HIGH);          // turn LED on during precharge
-        delay(5000);                     // wait 5 seconds
-        digitalWrite(13, LOW);           // turn LED off after precharge
-        while (digitalRead(9) == HIGH) { // while the car is still on, after two second delay
-            digitalWrite(10, HIGH);
+
+        if (digitalRead(9) == HIGH) { // car is turned on
+            digitalWrite(11, HIGH);   // Close RL2 and RL3 for 2 seconds
+            digitalWrite(12, HIGH);
+            digitalWrite(13, HIGH);          // turn LED on during precharge
+            if(monitored_Delay() == fail){ //we went low
+                return;
+            }
+
+            digitalWrite(13, LOW);           // turn LED off after precharge
+            while (digitalRead(9) == HIGH) { // while the car is still on, after two second delay
+                digitalWrite(10, HIGH);
+                digitalWrite(12, LOW);
+            }
+            digitalWrite(10, LOW); // turn all the contactors off when car is
+            digitalWrite(11, LOW);
             digitalWrite(12, LOW);
         }
-        digitalWrite(10, LOW); // turn all the comparators off when car is
-                               // turned off, return to default
-        digitalWrite(11, LOW);
-        digitalWrite(12, LOW);
-    }
 }
