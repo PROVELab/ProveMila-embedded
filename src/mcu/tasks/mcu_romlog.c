@@ -13,11 +13,11 @@
 typedef struct {
     struct {
         uint32_t timestamp_ms;
-        float avg_calculated_current_a;  // Calculated current in Amps
-        float avg_measured_voltage_v;    // Measured Voltage
-        float avg_motor_speed;           // Average Motor Speed, RPM
-        float avg_pedal;                 // Average pedal "value"
-    } __attribute__((packed)) log_block; // 1s worth of data
+        float avg_calculated_current_a; // Calculated current in Amps
+        float avg_measured_voltage_v;   // Measured Voltage
+        float avg_motor_speed;          // Average Motor Speed, RPM
+        float avg_pedal;                // Average pedal "value"
+    } log_block;                        // 1s worth of data
 
     struct {
         // Metadata we need to calculate the log block
@@ -34,7 +34,10 @@ typedef struct {
     char magic[4];          //"The magic"
     uint32_t bytes_written; // Total bytes written to the log
     uint16_t _end_addr;     // The end address of the "ringbuffer"
-} __attribute((packed)) log_file_superblock;
+} log_file_superblock;
+
+_Static_assert(sizeof(((log_struct_s*) 0)->log_block) <= IDEAL_BLOCK_SIZE, "log_block too big");
+_Static_assert(EEPROM_BYTES % IDEAL_BLOCK_SIZE == 0, "EEPROM size not page-multiple");
 
 // Call this guy every 5 log writes
 void write_superblock(log_file_superblock* sb) {
@@ -81,10 +84,11 @@ void write_log_struct(log_file_superblock* sb, log_struct_s* log_struct) {
 
 void setup_log(log_file_superblock* sb, log_struct_s* log_struct) {
     // Write log_file_superblock
+    memset(sb, 0, sizeof(log_file_superblock));
     const char* magic_val = MAGIC;
     memcpy(sb->magic, magic_val, sizeof(sb->magic));
     sb->_end_addr = 1 * IDEAL_BLOCK_SIZE;
-    sb->bytes_written = sizeof(log_file_superblock);
+    sb->bytes_written = 0;
 
     write_superblock(sb);
 
