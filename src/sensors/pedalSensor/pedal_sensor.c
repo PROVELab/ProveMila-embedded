@@ -84,9 +84,9 @@ int32_t collect_pedalReadingOne() {
         ADC_Readings[reading1_Index] =
             transformPedalReading(ADC_Readings[reading1_Index], ADC_Readings[pedalPower_Index], risingPedalIndex);
     }
-    // char buffer[64];
-    // sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
-    // mutexPrint(buffer);
+    char buffer[64];
+    sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
+    mutexPrint(buffer);
     return ADC_Readings[reading1_Index];
 }
 
@@ -100,22 +100,23 @@ int32_t collect_pedalReadingTwo() {
         ADC_Readings[reading2_Index] =
             transformPedalReading(ADC_Readings[reading2_Index], ADC_Readings[pedalPower_Index], fallingPedalIndex);
     }
-    // char buffer[64];
-    // sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
-    // mutexPrint(buffer);
+    char buffer[64];
+    sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
+    mutexPrint(buffer);
 
     // speed stuff
     int a = (ADC_Readings[reading1_Index] < ADC_Readings[reading2_Index]) ? ADC_Readings[reading1_Index]
                                                                           : ADC_Readings[reading2_Index];
+    // int a = ADC_Readings[reading1_Index];
 
     int b = 0;
     if (a < 10) {
         // Current 0
         b = 0;
     } else if (a > 100) {
-        b = 50;
+        b = 600;
     } else {
-        b = a / 2;
+        b = 6*a ;
     }
 
     // Send the speed (if necessary)

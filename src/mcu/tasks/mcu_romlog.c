@@ -66,7 +66,13 @@ void write_log_struct(log_file_superblock* sb, log_struct_s* log_struct) {
     memcpy(buf, &log_struct->log_block, sizeof(log_struct->log_block));
 
     // Force write its ideal size to EEPROM
-    eeprom_write(sb->_end_addr, buf, sizeof(buf));
+    static const char *TAG = "ROMLOG";
+
+    if (eeprom_write(sb->_end_addr, buf, sizeof(buf)) != ESP_OK) {
+        ESP_LOGE(TAG, "Error logging data");
+    } else {
+        ESP_LOGI(TAG, "Logged data");
+    }
 
     // Zero out log_struct
     memset(log_struct, 0, sizeof(log_struct_s));
