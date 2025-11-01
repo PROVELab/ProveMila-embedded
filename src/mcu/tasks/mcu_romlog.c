@@ -1,7 +1,13 @@
 #include "../vsr.h"
+#include "EEPROM/EEPROM.h"
+#include "esp_log.h"
+#include "esp_timer.h"
 #include "tasks.h"
+#include <string.h>
+
 #define IDEAL_BLOCK_SIZE 64
 #define TARGET_PERIOD    1000000 // Ideally we log at 1s intervals
+#define EEPROM_BYTES     32768
 
 // In need of SERIOUS refactoring lol
 typedef struct {
@@ -25,30 +31,18 @@ typedef struct {
 
 #define MAGIC "MILA"
 typedef struct {
-    struct superblock_header {
-        const char magic[4];    //"The magic"
-        uint32_t bytes_written; // Total bytes written to the log
-        uint16_t _end_addr;     // The end address of the "ringbuffer"
-    } header;
-    uint8_t reserved[IDEAL_BLOCK_SIZE - sizeof(struct superblock_header)];
+    char magic[4];          //"The magic"
+    uint32_t bytes_written; // Total bytes written to the log
+    uint16_t _end_addr;     // The end address of the "ringbuffer"
 } __attribute((packed)) log_file_superblock;
-
-void setup_log(log_file_superblock* sb, log_struct_s* log_struct) {
-    // Write log_file_superblock
-    const char* magic_val = MAGIC;
-    memcpy(sb->header.magic, magic_val, sizeof(sb->header.magic));
-    sb->header._end_addr = 1 * IDEAL_BLOCK_SIZE;
-    sb->header.bytes_written = sizeof(log_file_superblock);
-
-    // TODO: write this to first block
-
-    // Setup the log struct
-    memset(log_struct, 0, sizeof(log_struct_s));
-}
 
 // Call this guy every 5 log writes
 void write_superblock(log_file_superblock* sb) {
     // TODO: Write SB (with updated _end)
+    uint8_t buf[IDEAL_BLOCK_SIZE];
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, sb, sizeof(*sb));
+    eeprom_write(0, buf, sizeof(buf));
 }
 
 void write_log_struct(log_file_superblock* sb, log_struct_s* log_struct) {
@@ -68,18 +62,34 @@ void write_log_struct(log_file_superblock* sb, log_struct_s* log_struct) {
     memset(buf, 0, sizeof(buf));
     memcpy(buf, &log_struct->log_block, sizeof(log_struct->log_block));
 
+    // Force write its ideal size to EEPROM
+    eeprom_write(sb->_end_addr, buf, sizeof(buf));
+
     // Zero out log_struct
     memset(log_struct, 0, sizeof(log_struct_s));
 
     // Increment end addr
     // If this is the last block, wrap around
-    if (sb->header._end_addr >= (UINT16_MAX - IDEAL_BLOCK_SIZE)) {
-        sb->header._end_addr = IDEAL_BLOCK_SIZE; // wrap around and start at chunk 1
+    if (sb->_end_addr >= (EEPROM_BYTES - IDEAL_BLOCK_SIZE)) {
+        sb->_end_addr = IDEAL_BLOCK_SIZE; // wrap around and start at chunk 1
     } else {
         // Simply increment
-        sb->header._end_addr += IDEAL_BLOCK_SIZE;
+        sb->_end_addr += IDEAL_BLOCK_SIZE;
     }
-    sb->header.bytes_written += IDEAL_BLOCK_SIZE;
+    sb->bytes_written += sizeof(buf);
+}
+
+void setup_log(log_file_superblock* sb, log_struct_s* log_struct) {
+    // Write log_file_superblock
+    const char* magic_val = MAGIC;
+    memcpy(sb->magic, magic_val, sizeof(sb->magic));
+    sb->_end_addr = 1 * IDEAL_BLOCK_SIZE;
+    sb->bytes_written = sizeof(log_file_superblock);
+
+    write_superblock(sb);
+
+    // Setup the log struct
+    memset(log_struct, 0, sizeof(log_struct_s));
 }
 
 void collect_data(log_struct_s* log_struct, volatile vehicle_status_reg_s* vsr) {
@@ -114,12 +124,18 @@ void mcu_eeprom_vsr_log() {
 
     volatile vehicle_status_reg_s* vsr = &vehicle_status_register; // easier to type
 
+    if (eeprom_init_default() != ESP_OK) {
+        // Uhhhh yeah you should figure this out and reflash
+        while (1) ESP_LOGE(__func__, "Failed to initialize EEPROM for VSR logging");
+        return;
+    }
+
     // Setup the log "file"
     log_file_superblock sb;
     log_struct_s ls;
     setup_log(&sb, &ls);
 
-    int64_t period_start = 0;
+    int64_t period_start = esp_timer_get_time(); // prime once before the loop
     int log_writes = 0;
 
     // infinite loop log
@@ -128,14 +144,15 @@ void mcu_eeprom_vsr_log() {
         collect_data(&ls, vsr);
 
         // Check if it's time to write to the logfile
-        if (period_start + TARGET_PERIOD >= esp_timer_get_time()) {
+        if (esp_timer_get_time() - period_start >= TARGET_PERIOD) {
             // Write (at 1s interval)
             write_log_struct(&sb, &ls);
             // On the 10th write, update the superblock as well
-            if ((log_writes = (log_writes + 1) % 10) == 0) {
+            if (++log_writes % 10 == 0) {
                 write_superblock(&sb);
                 log_writes = 0;
             }
+            period_start = esp_timer_get_time();
         }
 
         // Wait to get to 200 Hz
