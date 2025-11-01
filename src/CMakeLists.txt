@@ -48,6 +48,19 @@ if(CMAKE_SENSOR_ESP_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
     # message(SEND_ERROR "DECPATH: ${DECPATH}")
     # message(SEND_ERROR "Source files: ${SRC_FILES}")
 endif()
+
+if(CMAKE_READ_MCU_EEPROM_BUILD)  #CMAKE_SENSOR_ESP_BUILD <- Assumed
+    # message(SEND_ERROR "Path is set to: ${DECPath}")
+
+    set(SRC_FILES
+        # "sensors/${SENS_DIR}/main.c"
+        "read_MCU_EEPROM/main.c"
+        "mcu/tasks/EEPROM/EEPROM.c"
+    )
+    # message(SEND_ERROR "DECPATH: ${DECPATH}")
+    # message(SEND_ERROR "Source files: ${SRC_FILES}")
+endif()
+
 if(CMAKE_MCU_ESP_BUILD)
     # message(SEND_ERROR "CMAKE_MCU_ESP_BUILD is set, using MCU ESP build configuration")
     # Recursively collect sources under mcu/ (makes stuff easier)

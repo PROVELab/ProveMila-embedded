@@ -31,18 +31,18 @@ extern twai_handle_t motor_control_bus;
 
 // ======== CAN READ TASK ======= //
 // reads from CAN bus and puts onto various queues
-#define READ_TASK_PRIO 10   // low priority
-void start_can_read_task(); // starts the CAN read task
+// #define READ_TASK_PRIO 10   // low priority
+// void start_can_read_task(); // starts the CAN read task
 
-// CAN Read task puts onto these queues:
-#define H300_RX_QUEUE_LENGTH 20
-#define H300_RX_ITEM_SIZE    sizeof(CANPacket)
-extern QueueHandle_t h300_rx_queue_handle; // Queue for receiving h300 messages
+// // CAN Read task puts onto these queues:
+// #define H300_RX_QUEUE_LENGTH 20
+// #define H300_RX_ITEM_SIZE    sizeof(CANPacket)
+// extern QueueHandle_t h300_rx_queue_handle; // Queue for receiving h300 messages
 
-// ====== HANDLE H300 TASK ======= //
-// pops off h300 queue and parses/handles the packet
-#define HANDLE_H300_PRIO 15    // higher priority
-void start_handle_h300_task(); // Starts the handle_h300 task
+// // ====== HANDLE H300 TASK ======= //
+// // pops off h300 queue and parses/handles the packet
+// #define HANDLE_H300_PRIO 15    // higher priority
+// void start_handle_h300_task(); // Starts the handle_h300 task
 
 // ======= SEND MOTOR DATA TASK ======= //
 // sends motor data at 200 Hz
@@ -53,6 +53,10 @@ void start_send_motor_task();
 // read/write from console (uart)
 #define CONSOLE_TASK_PRIO 11 // Mostly low priority but
 void start_console_task();
+
+// Logging
+#define LOGGING_TASK_PRIO 11 // Similar priority to ~console
+void start_logging_task();
 
 void parse_can(CANPacket* p); // task handles receiving Messages
 
