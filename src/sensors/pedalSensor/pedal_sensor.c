@@ -121,7 +121,7 @@ int32_t collect_pedalReadingTwo() {
     // Send the speed (if necessary)
     vehicle_status_reg_s* vsr = &vehicle_status_register; // easier to type
     bool use_pedal = false;
-    ACQ_REL_VSRSEM(pedal, {
+    ACQ_REL_VSRSEM_W(pedal, {
         vsr->pedal.pedal_position_pct = (float) a;
         vsr->pedal.pedal_raw_1 = (float) ADC_Readings[reading1_Index];
         vsr->pedal.pedal_raw_2 = (float) ADC_Readings[reading2_Index];
@@ -132,7 +132,7 @@ int32_t collect_pedalReadingTwo() {
     });
 
     if (use_pedal) {
-        ACQ_REL_VSRSEM(motor_control, { vsr->motor_control.current_reference = (int32_t) b; });
+        ACQ_REL_VSRSEM_W(motor_control, { vsr->motor_control.current_reference = (int32_t) b; });
     }
 
     return ADC_Readings[reading2_Index];

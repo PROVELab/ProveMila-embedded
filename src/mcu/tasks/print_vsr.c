@@ -8,7 +8,7 @@
 
 static void print_motor_power(volatile vehicle_status_reg_s* vsr) {
     motor_mspeed_status_s data;
-    ACQ_REL_VSRSEM(motor_power, { data = vsr->motor_power; });
+    ACQ_REL_VSRSEM_R(motor_power, { data = vsr->motor_power; });
     printf("motor_power:\n");
     printf("  measured_dc_voltage_v: %.3f\n", (double) data.measured_dc_voltage_v);
     printf("  calculated_dc_current_a: %.3f\n", (double) data.calculated_dc_current_a);
@@ -17,7 +17,7 @@ static void print_motor_power(volatile vehicle_status_reg_s* vsr) {
 
 static void print_motor_speed(volatile vehicle_status_reg_s* vsr) {
     motor_hspeed_status_s data;
-    ACQ_REL_VSRSEM(motor_speed, { data = vsr->motor_speed; });
+    ACQ_REL_VSRSEM_R(motor_speed, { data = vsr->motor_speed; });
     printf("motor_speed:\n");
     printf("  quadrature_current: %.3f\n", (double) data.quadrature_current);
     printf("  direct_current: %.3f\n", (double) data.direct_current);
@@ -26,7 +26,7 @@ static void print_motor_speed(volatile vehicle_status_reg_s* vsr) {
 
 static void print_motor_safety(volatile vehicle_status_reg_s* vsr) {
     motor_safety_status_s data;
-    ACQ_REL_VSRSEM(motor_safety, { data = vsr->motor_safety; });
+    ACQ_REL_VSRSEM_R(motor_safety, { data = vsr->motor_safety; });
     printf("motor_safety:\n");
     printf("  protection_code: %" PRIu8 "\n", data.protection_code);
     printf("  safety_error_code: %" PRIu8 "\n", data.safety_error_code);
@@ -38,7 +38,7 @@ static void print_motor_safety(volatile vehicle_status_reg_s* vsr) {
 
 static void print_motor_control(volatile vehicle_status_reg_s* vsr) {
     motor_control_s data;
-    ACQ_REL_VSRSEM(motor_control, { data = vsr->motor_control; });
+    ACQ_REL_VSRSEM_R(motor_control, { data = vsr->motor_control; });
     printf("motor_control:\n");
     printf("  speed_reference (in 8ths): %" PRId32 "\n", data.current_reference);
     printf("  discharge_limit_pct: %" PRIu8 "\n", data.discharge_limit_pct);
@@ -55,14 +55,14 @@ static const char* motor_state_to_str(high_level_motor_state state) {
 
 static void print_motor_error(volatile vehicle_status_reg_s* vsr) {
     motor_error_state data;
-    ACQ_REL_VSRSEM(motor_error, { data = vsr->motor_error; });
+    ACQ_REL_VSRSEM_R(motor_error, { data = vsr->motor_error; });
     printf("motor_error:\n");
     printf("  motor_state: %s (%d)\n", motor_state_to_str(data.motor_state), (int) data.motor_state);
 }
 
 static void print_motor_prot1(volatile vehicle_status_reg_s* vsr) {
     motor_protections_1_s data;
-    ACQ_REL_VSRSEM(motor_prot1, { data = vsr->motor_prot1; });
+    ACQ_REL_VSRSEM_R(motor_prot1, { data = vsr->motor_prot1; });
     printf("motor_prot1:\n");
     printf("  can_timeout_ms: %" PRIu16 "\n", data.can_timeout_ms);
     printf("  dc_regen_current_limit_a (neg): %" PRIu16 "\n", data.dc_regen_current_limit_neg_a);
@@ -75,7 +75,7 @@ static void print_motor_prot1(volatile vehicle_status_reg_s* vsr) {
 
 static void print_motor_prot2(volatile vehicle_status_reg_s* vsr) {
     motor_protections_2_s data;
-    ACQ_REL_VSRSEM(motor_prot2, { data = vsr->motor_prot2; });
+    ACQ_REL_VSRSEM_R(motor_prot2, { data = vsr->motor_prot2; });
     printf("motor_prot2:\n");
     printf("  max_motor_temp_c: %" PRIu8 "\n", data.max_motor_temp_c);
     printf("  motor_temp_high_gain_a_per_c: %" PRIu8 "\n", data.motor_temp_high_gain_a_per_c);
@@ -88,7 +88,7 @@ static void print_motor_prot2(volatile vehicle_status_reg_s* vsr) {
 
 static void print_pedal(volatile vehicle_status_reg_s* vsr) {
     pedal_s data;
-    ACQ_REL_VSRSEM(pedal, { data = vsr->pedal; });
+    ACQ_REL_VSRSEM_R(pedal, { data = vsr->pedal; });
     printf("pedal:\n");
     printf("  pedal_supply_voltage: %.3fmV\n", (double) data.pedal_supply_voltage);
     printf("  pedal_position_pct: %.3f\n", (double) data.pedal_position_pct);

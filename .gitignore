@@ -9,3 +9,4 @@
 
 build/
 sdkconfig*.old
+sdkconfig.*

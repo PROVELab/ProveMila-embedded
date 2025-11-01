@@ -9,6 +9,7 @@
 #include <stdint.h> // for fixed size
 #include <string.h>
 
+#include "esp_timer.h" // for getting timestamps, since start
 #include "freertos/FreeRTOS.h"
 #include "motor_h300/vsr_motor.h" // motor speed status
 
@@ -19,7 +20,15 @@
 // (but ideally FreeRTOS will give others time here)
 // Use body to do whatever you want while you have the lock, ideally copying
 // out items from vsr->mutating_element
-#define ACQ_REL_VSRSEM(mutating_element, body)                    \
+// Also updates the timestamp for that element
+#define ACQ_REL_VSRSEM_W(mutating_element, body)                  \
+    xSemaphoreTake(vsr->mutating_element##_mutex, portMAX_DELAY); \
+    vsr->mutating_element##_timestamp = esp_timer_get_time();     \
+    body xSemaphoreGive(vsr->mutating_element##_mutex);
+
+// This one does the same as above, but doesn't set timestamp
+// (so use it when reading)
+#define ACQ_REL_VSRSEM_R(mutating_element, body)                  \
     xSemaphoreTake(vsr->mutating_element##_mutex, portMAX_DELAY); \
     body xSemaphoreGive(vsr->mutating_element##_mutex);
 
@@ -50,6 +59,7 @@ typedef struct {
 // add the actual fields of the VSR via apply, adding mutexes
 #define APP(type, name)             \
     SemaphoreHandle_t name##_mutex; \
+    int64_t name##_timestamp;       \
     type name;
     // END APP Macro
 
