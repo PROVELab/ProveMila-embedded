@@ -1,12 +1,12 @@
 #include "../mcu/tasks/EEPROM/EEPROM.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #define IDEAL_BLOCK_SIZE 64
 #define TARGET_PERIOD    1000000 // Ideally we log at 1s intervals
@@ -20,7 +20,7 @@ typedef struct {
     float avg_pedal;                // Average pedal "value"
 } log_block;                        // 1s worth of data
 
-#define MAGIC "MILA"
+#define MAGIC     "MILA"
 #define MAGIC_LEN 4
 
 typedef struct {
@@ -29,27 +29,26 @@ typedef struct {
     uint16_t _end_addr;     // End address (write pointer) of the ring buffer (absolute EEPROM addr)
 } log_file_superblock;
 
-_Static_assert(sizeof(log_file_superblock) <= IDEAL_BLOCK_SIZE,
-               "Superblock must fit in IDEAL_BLOCK_SIZE");
+_Static_assert(sizeof(log_file_superblock) <= IDEAL_BLOCK_SIZE, "Superblock must fit in IDEAL_BLOCK_SIZE");
 
-static const char *TAG = "LOG_DUMP";
+static const char* TAG = "LOG_DUMP";
 
 // Layout:
 // [ 0 .. IDEAL_BLOCK_SIZE-1 ]        : superblock
 // [ IDEAL_BLOCK_SIZE .. EEPROM_BYTES ): ring buffer of log_block
 static inline uint32_t ring_start(void) { return IDEAL_BLOCK_SIZE; }
 static inline uint32_t ring_bytes(void) { return EEPROM_BYTES - IDEAL_BLOCK_SIZE; }
-static inline uint32_t block_size(void) { return (uint32_t)sizeof(log_block); }
+static inline uint32_t block_size(void) { return (uint32_t) sizeof(log_block); }
 static inline uint32_t ring_capacity_blocks(void) { return ring_bytes() / block_size(); }
 
 // Snap an absolute EEPROM address to the ring range and to block boundaries.
 static uint32_t clamp_end_addr(uint32_t end_addr_abs) {
     uint32_t start = ring_start();
-    uint32_t end   = start + ring_capacity_blocks() * block_size(); // last valid byte + 1
-    if (end <= start) return start; // degenerate, but safe-guard
+    uint32_t end = start + ring_capacity_blocks() * block_size(); // last valid byte + 1
+    if (end <= start) return start;                               // degenerate, but safe-guard
     // If out of bounds, wrap it into the ring range
     uint32_t span = end - start;
-    uint32_t rel  = (end_addr_abs >= start) ? (end_addr_abs - start) : (UINT32_MAX - start + 1 + end_addr_abs) % span;
+    uint32_t rel = (end_addr_abs >= start) ? (end_addr_abs - start) : (UINT32_MAX - start + 1 + end_addr_abs) % span;
     rel %= span;
     // Align to block boundary
     rel -= (rel % block_size());
@@ -58,7 +57,7 @@ static uint32_t clamp_end_addr(uint32_t end_addr_abs) {
 
 // Reads, validates, and (if needed) repairs the superblock in EEPROM.
 // Also normalizes _end_addr from bytes_written modulo ring capacity.
-static void readSuper(log_file_superblock *super) {
+static void readSuper(log_file_superblock* super) {
     uint8_t buf[IDEAL_BLOCK_SIZE];
     eeprom_read(0, buf, sizeof(buf));
 
@@ -76,20 +75,20 @@ static void readSuper(log_file_superblock *super) {
         ESP_LOGW(TAG, "Superblock missing/invalid. Reinitialized.");
     } else {
         *super = on_disk;
-        ESP_LOGI(TAG, "Superblock found. bytes_written=%" PRIu32 ", _end_addr=%" PRIu16,
-                 super->bytes_written, super->_end_addr);
+        ESP_LOGI(TAG, "Superblock found. bytes_written=%" PRIu32 ", _end_addr=%" PRIu16, super->bytes_written,
+                 super->_end_addr);
     }
 
     // Normalize _end_addr from bytes_written (authoritative) and clamp
     uint32_t blocks_written_total = (super->bytes_written / block_size());
     uint32_t cap_blocks = ring_capacity_blocks();
-    uint32_t end_index  = (cap_blocks == 0) ? 0 : (blocks_written_total % cap_blocks);
+    uint32_t end_index = (cap_blocks == 0) ? 0 : (blocks_written_total % cap_blocks);
     uint32_t computed_end = ring_start() + end_index * block_size();
-    uint32_t clamped_end  = clamp_end_addr(computed_end);
+    uint32_t clamped_end = clamp_end_addr(computed_end);
 
-    if (super->_end_addr != (uint16_t)clamped_end) {
-        ESP_LOGI(TAG, "Fixing _end_addr: %u -> %u", (unsigned)super->_end_addr, (unsigned)clamped_end);
-        super->_end_addr = (uint16_t)clamped_end;
+    if (super->_end_addr != (uint16_t) clamped_end) {
+        ESP_LOGI(TAG, "Fixing _end_addr: %u -> %u", (unsigned) super->_end_addr, (unsigned) clamped_end);
+        super->_end_addr = (uint16_t) clamped_end;
     }
 
     // Write back the (possibly repaired) superblock
@@ -99,21 +98,15 @@ static void readSuper(log_file_superblock *super) {
 }
 
 // Pretty-print a single log block
-static void print_log_block(const log_block *b, uint32_t index, uint32_t base_ms) {
+static void print_log_block(const log_block* b, uint32_t index, uint32_t base_ms) {
     // If timestamp_ms is absolute, print directly. If it’s relative, base_ms can help.
-    (void)base_ms;
-    ESP_LOGI(TAG,
-             "[%5" PRIu32 "] t=%" PRIu32 " ms | I=%.3f A | V=%.3f V | RPM=%.1f | pedal=%.3f",
-             index,
-             b->timestamp_ms,
-             b->avg_calculated_current_a,
-             b->avg_measured_voltage_v,
-             b->avg_motor_speed,
-             b->avg_pedal);
+    (void) base_ms;
+    ESP_LOGI(TAG, "[%5" PRIu32 "] t=%" PRIu32 " ms | I=%.3f A | V=%.3f V | RPM=%.1f | pedal=%.3f", index,
+             b->timestamp_ms, b->avg_calculated_current_a, b->avg_measured_voltage_v, b->avg_motor_speed, b->avg_pedal);
 }
 
 void app_main(void) {
-    vTaskDelay(pdMS_TO_TICKS(500));   // wait for monitor to open
+    vTaskDelay(pdMS_TO_TICKS(500)); // wait for monitor to open
     eeprom_init_default();
     // 1) Read/repair superblock
     log_file_superblock sb = {0};
@@ -141,8 +134,8 @@ void app_main(void) {
     const uint32_t end_index = (sb._end_addr - ring_start()) / block_size();
     const uint32_t start_index = (end_index + cap_blocks - live_blocks) % cap_blocks;
 
-    ESP_LOGI(TAG, "Dumping %" PRIu32 " blocks (capacity=%" PRIu32 ", start=%" PRIu32 ", end=%" PRIu32 ")",
-             live_blocks, cap_blocks, start_index, end_index);
+    ESP_LOGI(TAG, "Dumping %" PRIu32 " blocks (capacity=%" PRIu32 ", start=%" PRIu32 ", end=%" PRIu32 ")", live_blocks,
+             cap_blocks, start_index, end_index);
 
     // 5) Walk from oldest -> newest, read and print
     for (uint32_t i = 0; i < live_blocks; ++i) {

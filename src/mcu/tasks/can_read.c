@@ -2,7 +2,7 @@
 #include "esp_log.h"
 #include "tasks.h"
 
-// idk why I'm passing it in as a param
+// // idk why I'm passing it in as a param
 // void read_can_data() {
 
 //     twai_message_t temp_msg;

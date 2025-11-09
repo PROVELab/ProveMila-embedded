@@ -68,9 +68,9 @@ int32_t collect_pedalPowerReadingmV() {
         ADC_ReadingStatuses[reading1_Index] = READ_CRITICAL;
         ADC_ReadingStatuses[reading2_Index] = READ_CRITICAL;
     }
-    // char buffer[64];
-    // sprintf(buffer, "collecting pedalPowermV: %ld\n", ADC_Readings[pedalPower_Index]);
-    // mutexPrint(buffer);
+    char buffer[64];
+    sprintf(buffer, "collecting pedalPowermV: %ld\n", ADC_Readings[pedalPower_Index]);
+    mutexPrint(buffer);
     return ADC_Readings[pedalPower_Index];
 }
 
@@ -116,7 +116,7 @@ int32_t collect_pedalReadingTwo() {
     } else if (a > 100) {
         b = 600;
     } else {
-        b = 6*a ;
+        b = 6 * a;
     }
 
     // Send the speed (if necessary)

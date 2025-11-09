@@ -83,6 +83,18 @@ if(CMAKE_MCU_ESP_BUILD)
     )
 endif()
 
+if(CMAKE_TEST_SD_BUILD)
+    set(SRC_FILES
+        "SD_card_Test/main.c"
+        "SD_card_Test/SD_logger.c"
+    
+    )
+endif()
+if(CMAKE_SD_READER_BUILD)
+    set(SRC_FILES
+        "SD_Reader/main.c"
+    )
+endif()
 # else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
 #     set(SRC_FILES
 #         "${CMAKE_SRC_FILE}"
