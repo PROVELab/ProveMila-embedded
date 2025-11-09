@@ -209,62 +209,6 @@ static int cmd_top(int argc, char** argv) {
     return 0;
 }
 
-// static int cmd_set(int argc, char** argv) {
-//     const char* usage = "usage: set speed [rpm]";
-//     if (argc < 2) {
-//         puts(usage);
-//         return 1;
-//     }
-
-//     const char* target = argv[1];
-//     if (strcmp(target, "speed") != 0) {
-//         printf("unknown setting '%s'\n", target);
-//         puts(usage);
-//         return 1;
-//     }
-
-//     int32_t rpm = 0;
-//     if (argc >= 3) {
-//         errno = 0;
-//         char* end = NULL;
-//         long parsed = strtol(argv[2], &end, 10);
-//         if (errno != 0 || !end || *end != '\0') {
-//             printf("invalid RPM '%s'\n", argv[2]);
-//             return 1;
-//         }
-//         if (parsed < INT32_MIN || parsed > INT32_MAX) {
-//             puts("RPM value out of range");
-//             return 1;
-//         }
-//         rpm = (int32_t) parsed;
-//     }
-
-//     volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
-//     ACQ_REL_VSRSEM(motor_control, {
-//         vsr->motor_control.current_reference= rpm;
-//         vsr->motor_control.discharge_limit_pct = 50;
-//         vsr->motor_control.charge_limit_pct = 50;
-//     })
-
-//     printf("speed reference set to %" PRId32 " RPM\n", rpm);
-//     return 0;
-// }
-
-static int cmd_pedal(int argc, char** argv) {
-    volatile vehicle_status_reg_s* vsr = &vehicle_status_register;
-
-    bool pedal_was_used = false;
-    ACQ_REL_VSRSEM(pedal, {
-        pedal_was_used = vsr->pedal.use_pedal;
-        vsr->pedal.use_pedal = !pedal_was_used;
-    })
-    char* arr[] = {"not used", "used"};
-
-    printf("pedal was %s, now %s\n", arr[pedal_was_used ? 1 : 0], arr[pedal_was_used ? 0 : 1]);
-
-    return 0;
-}
-
 static void register_cmds(void) {
     const esp_console_cmd_t cmds[] = {
         {.command = "echo", .help = "Echo args back", .func = &cmd_echo},
@@ -276,7 +220,7 @@ static void register_cmds(void) {
         // {.command = "set",
         //  .help = "Set runtime parameters, e.g. set speed [rpm] (missing rpm resets to 0)",
         //  .func = &cmd_set},
-        {.command = "pedal", .help = "Toggle pedal use on/off", .func = &cmd_pedal},
+        // {.command = "pedal", .help = "Toggle pedal use on/off", .func = &cmd_pedal},
     };
     for (size_t i = 0; i < sizeof(cmds) / sizeof(cmds[0]); ++i) ESP_ERROR_CHECK(esp_console_cmd_register(&cmds[i]));
 }

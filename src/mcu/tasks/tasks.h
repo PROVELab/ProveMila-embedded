@@ -54,6 +54,10 @@ void start_send_motor_task();
 #define CONSOLE_TASK_PRIO 11 // Mostly low priority but
 void start_console_task();
 
+// Logging
+#define LOGGING_TASK_PRIO 11 // Similar priority to ~console
+void start_logging_task();
+
 void parse_can(CANPacket* p); // task handles receiving Messages
 
 #endif
