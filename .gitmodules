@@ -1,0 +1,4 @@
+[submodule "src/mcu/motor_h300"]
+	path = src/mcu/motor_h300
+	url = git@github.com:PROVELab/motor_h300.git
+	branch = main
