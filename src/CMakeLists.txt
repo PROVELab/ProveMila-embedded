@@ -42,26 +42,17 @@ set(SRC_FILES
 )
 set(INC_FILES
 ".")
-elseif(CMAKE_IMU_CYBER)
+elseif(CMAKE_IMU_BASIC)
 set(SRC_FILES
-    "IMU_Sample/main.c"
-    "cyberGearICM/icm20948.c"
-    "cyberGearICM/icm20948_i2c.c"
-    "espMutexes/mutex_declarations.c"
-)
-set(INC_FILES
-".")
-elseif(CMAKE_IMU_SENSE)
-set(SRC_FILES
-    "IMU_Sample/main.c"
+    "IMU_Basic/main.c"
     "icm20948/icm20948.c"
     "espMutexes/mutex_declarations.c"
 )
 set(INC_FILES
 ".")
-elseif(CMAKE_ESP_IMU_SENSE)
+elseif(CMAKE_IMU_COMPONENT_FILTERS)
 set(SRC_FILES
-    "ESP_IMU_Sample/main.cpp")
+    "IMU_Component_Filters/main.cpp")
     # "ESP_IMU_Sample/sample.cpp")
     set(INC_FILES
         "."

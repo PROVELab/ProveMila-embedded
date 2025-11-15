@@ -31,19 +31,6 @@ using namespace std::chrono_literals;
     #define I2C_MASTER_FREQ_HZ 100000    /*!< I2C master clock frequency */
 
 
-
-    // ICM20948 imu;
-
-    // // Task handle
-    // StaticTask_t imu_task_buffer;
-    // StackType_t imu_task_stack[4096];
-
-    // This function runs in a separate task
-// void imu_task(void *pvParameters) {
-
-// }
-
-
 extern "C" void app_main(void) {
     espp::Logger logger({.tag = "ICM20948 Example", .level = espp::Logger::Verbosity::INFO});
     logger.info("Starting example!");

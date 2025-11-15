@@ -97,18 +97,19 @@ icm_read_task(void *args)
 
 	icm20948_acce_value_t acce;
 	icm20948_gyro_value_t gyro;
-	for (int i = 0; i < 100; ++i) {
+	// for (int i = 0; i < 100; ++i) {
+		while(1){
 		ret = icm20948_get_acce(icm20948, &acce);
 		if (ret == ESP_OK)
 			printf("[Accelerometer INFO] ax: %lf ay: %lf az: %lf\n", acce.acce_x, acce.acce_y, acce.acce_z);
 		ret = icm20948_get_gyro(icm20948, &gyro);
 		if (ret == ESP_OK)
 			printf("[Gyro INFO] gx: %lf gy: %lf gz: %lf\n", gyro.gyro_x, gyro.gyro_y, gyro.gyro_z);
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
-	while(1){
-		printf("end!\n");
-	}
+	// while(1){
+	// 	printf("end!\n");
+	// }
 
 	vTaskDelete(NULL);
 }
