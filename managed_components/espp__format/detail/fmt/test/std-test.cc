@@ -12,14 +12,18 @@
 #include <string>
 #include <vector>
 
-#include "fmt/os.h"  // fmt::system_category
-#include "fmt/ranges.h"
+#include "fmt/os.h"       // fmt::system_category
 #include "gtest-extra.h"  // StartsWith
 
 #ifdef __cpp_lib_filesystem
 TEST(std_test, path) {
   using std::filesystem::path;
   EXPECT_EQ(fmt::format("{}", path("/usr/bin")), "/usr/bin");
+
+  // see #4303
+  const path p = "/usr/bin";
+  EXPECT_EQ(fmt::format("{}", p), "/usr/bin");
+
   EXPECT_EQ(fmt::format("{:?}", path("/usr/bin")), "\"/usr/bin\"");
   EXPECT_EQ(fmt::format("{:8}", path("foo")), "foo     ");
 
@@ -35,9 +39,17 @@ TEST(std_test, path) {
                                    L"\x0447\x044B\x043D\x0430")),
             "Шчучыншчына");
   EXPECT_EQ(fmt::format("{}", path(L"\xd800")), "�");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xd800 TAIL")), "HEAD � TAIL");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xD83D\xDE00 TAIL")),
+            "HEAD \xF0\x9F\x98\x80 TAIL");
+  EXPECT_EQ(fmt::format("{}", path(L"HEAD \xD83D\xD83D\xDE00 TAIL")),
+            "HEAD �\xF0\x9F\x98\x80 TAIL");
   EXPECT_EQ(fmt::format("{:?}", path(L"\xd800")), "\"\\ud800\"");
 #  endif
 }
+
+// Intentionally delayed include to test #4303
+#  include "fmt/ranges.h"
 
 // Test ambiguity problem described in #2954.
 TEST(ranges_std_test, format_vector_path) {
@@ -66,10 +78,37 @@ TEST(std_test, thread_id) {
 }
 
 TEST(std_test, complex) {
+  using limits = std::numeric_limits<double>;
+  EXPECT_EQ(fmt::format("{}", std::complex<double>(1, limits::quiet_NaN())),
+            "(1+nan i)");
+  EXPECT_EQ(fmt::format("{}", std::complex<double>(1, -limits::infinity())),
+            "(1-inf i)");
+
+  EXPECT_EQ(fmt::format("{}", std::complex<int>(1, 2)), "(1+2i)");
+
   EXPECT_EQ(fmt::format("{}", std::complex<double>(1, 2.2)), "(1+2.2i)");
+  EXPECT_EQ(fmt::format("{}", std::complex<double>(1, -2.2)), "(1-2.2i)");
   EXPECT_EQ(fmt::format("{}", std::complex<double>(0, 2.2)), "2.2i");
+  EXPECT_EQ(fmt::format("{}", std::complex<double>(0, -2.2)), "-2.2i");
+
+  EXPECT_EQ(fmt::format("{:+}", std::complex<double>(0, 2.2)), "+2.2i");
+  EXPECT_EQ(fmt::format("{:+}", std::complex<double>(0, -2.2)), "-2.2i");
+  EXPECT_EQ(fmt::format("{:+}", std::complex<double>(1, -2.2)), "(+1-2.2i)");
+  EXPECT_EQ(fmt::format("{:+}", std::complex<double>(1, 2.2)), "(+1+2.2i)");
+  EXPECT_EQ(fmt::format("{: }", std::complex<double>(1, 2.2)), "( 1+2.2i)");
+  EXPECT_EQ(fmt::format("{: }", std::complex<double>(1, -2.2)), "( 1-2.2i)");
+
+  EXPECT_EQ(fmt::format("{:8}", std::complex<double>(1, 2)), "(1+2i)  ");
+  EXPECT_EQ(fmt::format("{:-<8}", std::complex<double>(1, 2)), "(1+2i)--");
+
   EXPECT_EQ(fmt::format("{:>20.2f}", std::complex<double>(1, 2.2)),
             "        (1.00+2.20i)");
+  EXPECT_EQ(fmt::format("{:<20.2f}", std::complex<double>(1, 2.2)),
+            "(1.00+2.20i)        ");
+  EXPECT_EQ(fmt::format("{:<20.2f}", std::complex<double>(1, -2.2)),
+            "(1.00-2.20i)        ");
+  EXPECT_EQ(fmt::format("{:<{}.{}f}", std::complex<double>(1, -2.2), 20, 2),
+            "(1.00-2.20i)        ");
 }
 
 #ifdef __cpp_lib_source_location
@@ -111,6 +150,7 @@ TEST(std_test, optional) {
 
 TEST(std_test, expected) {
 #ifdef __cpp_lib_expected
+  EXPECT_EQ(fmt::format("{}", std::expected<void, int>{}), "expected()");
   EXPECT_EQ(fmt::format("{}", std::expected<int, int>{1}), "expected(1)");
   EXPECT_EQ(fmt::format("{}", std::expected<int, int>{std::unexpected(1)}),
             "unexpected(1)");
@@ -134,6 +174,7 @@ TEST(std_test, expected) {
   EXPECT_FALSE(
       (fmt::is_formattable<std::expected<int, unformattable2>>::value));
   EXPECT_TRUE((fmt::is_formattable<std::expected<int, int>>::value));
+  EXPECT_TRUE((fmt::is_formattable<std::expected<void, int>>::value));
 #endif
 }
 
@@ -234,15 +275,19 @@ TEST(std_test, variant) {
 }
 
 TEST(std_test, error_code) {
-  EXPECT_EQ("generic:42",
-            fmt::format(FMT_STRING("{0}"),
-                        std::error_code(42, std::generic_category())));
-  EXPECT_EQ("system:42",
-            fmt::format(FMT_STRING("{0}"),
-                        std::error_code(42, fmt::system_category())));
-  EXPECT_EQ("system:-42",
-            fmt::format(FMT_STRING("{0}"),
-                        std::error_code(-42, fmt::system_category())));
+  auto& generic = std::generic_category();
+  EXPECT_EQ(fmt::format("{}", std::error_code(42, generic)), "generic:42");
+  EXPECT_EQ(fmt::format("{:>12}", std::error_code(42, generic)),
+            "  generic:42");
+  EXPECT_EQ(fmt::format("{:12}", std::error_code(42, generic)), "generic:42  ");
+  EXPECT_EQ(fmt::format("{}", std::error_code(42, fmt::system_category())),
+            "system:42");
+  EXPECT_EQ(fmt::format("{}", std::error_code(-42, fmt::system_category())),
+            "system:-42");
+  auto ec = std::make_error_code(std::errc::value_too_large);
+  EXPECT_EQ(fmt::format("{:s}", ec), ec.message());
+  EXPECT_EQ(fmt::format("{:?}", std::error_code(42, generic)),
+            "\"generic:42\"");
 }
 
 template <typename Catch> void exception_test() {
@@ -338,11 +383,12 @@ TEST(std_test, format_atomic) {
 
 #ifdef __cpp_lib_atomic_flag_test
 TEST(std_test, format_atomic_flag) {
-  std::atomic_flag f = ATOMIC_FLAG_INIT;
+  std::atomic_flag f;
   (void)f.test_and_set();
   EXPECT_EQ(fmt::format("{}", f), "true");
 
-  const std::atomic_flag cf = ATOMIC_FLAG_INIT;
+  f.clear();
+  const std::atomic_flag& cf = f;
   EXPECT_EQ(fmt::format("{}", cf), "false");
 }
 #endif  // __cpp_lib_atomic_flag_test
@@ -363,4 +409,35 @@ TEST(std_test, format_shared_ptr) {
   std::shared_ptr<int> sp(new int(1));
   EXPECT_EQ(fmt::format("{}", fmt::ptr(sp.get())),
             fmt::format("{}", fmt::ptr(sp)));
+}
+
+TEST(std_test, format_reference_wrapper) {
+  int num = 35;
+  EXPECT_EQ(fmt::to_string(std::cref(num)), "35");
+  EXPECT_EQ(fmt::to_string(std::ref(num)), "35");
+  EXPECT_EQ(fmt::format("{}", std::cref(num)), "35");
+  EXPECT_EQ(fmt::format("{}", std::ref(num)), "35");
+}
+
+// Regression test for https://github.com/fmtlib/fmt/issues/4424.
+struct type_with_format_as {};
+int format_as(type_with_format_as) { return 20; }
+
+TEST(std_test, format_reference_wrapper_with_format_as) {
+  type_with_format_as t;
+  EXPECT_EQ(fmt::to_string(std::cref(t)), "20");
+  EXPECT_EQ(fmt::to_string(std::ref(t)), "20");
+  EXPECT_EQ(fmt::format("{}", std::cref(t)), "20");
+  EXPECT_EQ(fmt::format("{}", std::ref(t)), "20");
+}
+
+struct type_with_format_as_string {};
+std::string format_as(type_with_format_as_string) { return "foo"; }
+
+TEST(std_test, format_reference_wrapper_with_format_as_string) {
+  type_with_format_as_string t;
+  EXPECT_EQ(fmt::to_string(std::cref(t)), "foo");
+  EXPECT_EQ(fmt::to_string(std::ref(t)), "foo");
+  EXPECT_EQ(fmt::format("{}", std::cref(t)), "foo");
+  EXPECT_EQ(fmt::format("{}", std::ref(t)), "foo");
 }

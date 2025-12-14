@@ -1,6 +1,5 @@
 dependencies:
-  espp/logger:
-    version: '>=0.22.0'
+  espp/logger: '>=1.0'
   idf:
     version: '>=5.0'
 description: A C++ base component class for ESP-IDF
@@ -9,8 +8,11 @@ license: MIT
 maintainers:
 - William Emfinger <waemfinger@gmail.com>
 repository: git://github.com/esp-cpp/espp.git
+repository_info:
+  commit_sha: ea6e470ea8253c912aebbe8c2fb7b101c889be32
+  path: components/base_component
 tags:
 - cpp
 - Component
 url: https://github.com/esp-cpp/espp/tree/main/components/base_component
-version: 0.22.0
+version: 1.0.31

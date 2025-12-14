@@ -7,6 +7,7 @@
 #include "freertos/semphr.h"
 #include <string.h>
 #include "esp_timer.h"
+#include <stdint.h>
 
 #include <chrono>
 #include <vector>
@@ -21,6 +22,9 @@
 #include "icm20948.hpp"
 #include "i2c.hpp"
 
+
+#include "circularArray.h"
+
 // #include "sample.hpp"
 using namespace std::chrono_literals;
 
@@ -32,6 +36,10 @@ using namespace std::chrono_literals;
 
 
 extern "C" void app_main(void) {
+    struct Point myPoint = {7,5,3};
+    myPoint.posX=1;
+    addDataPoint(myPoint);
+
     espp::Logger logger({.tag = "ICM20948 Example", .level = espp::Logger::Verbosity::INFO});
     logger.info("Starting example!");
   

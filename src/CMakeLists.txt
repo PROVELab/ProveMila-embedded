@@ -52,7 +52,8 @@ set(INC_FILES
 ".")
 elseif(CMAKE_IMU_COMPONENT_FILTERS)
 set(SRC_FILES
-    "IMU_Component_Filters/main.cpp")
+    "IMU_Component_Filters/main.cpp"
+    "IMU_Component_Filters/circularArray.cpp")
     # "ESP_IMU_Sample/sample.cpp")
     set(INC_FILES
         "."
