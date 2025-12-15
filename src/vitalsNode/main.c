@@ -100,9 +100,9 @@ void recieveMSG() {
     //
 
     // Data process listen Param
-    initializeDataTimers(); // initialize timers needed to moniter data
+    initializeDataTimers(); // initialize timers needed to monitor data
     CANListenParam processData;
-    processData.handler = moniterData;
+    processData.handler = monitorData;
     processData.listen_id =
         combinedID(transmitData, vitalsID); // setting vitals ID doesnt matter, just checking function
     processData.mt = MATCH_FUNCTION; // MATCH_EXACT to make id and function code require match. MATCH_ID for same 7 bits

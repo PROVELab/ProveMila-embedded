@@ -7,9 +7,9 @@
 .DS_Store
 .vscode/*
 build/
+scripts/Gen*/
 scripts/Gen_For_sensors/*
 scripts/Gen_For_simpleTest/*
-src/sensors/powerSensor/*
 
 build/
 sdkconfig.*

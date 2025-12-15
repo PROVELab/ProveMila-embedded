@@ -19,7 +19,7 @@ TimerHandle_t missingDataTimers[totalNumFrames];  // one of these timers going o
 StaticTimer_t xTimerBuffers[totalNumFrames];      // array for the buffers of these timers
 static void vTimerCallback(TimerHandle_t xTimer); // callback for CanFrame Timeouts
 
-int16_t moniterData(
+int16_t monitorData(
     CANPacket* message) { // for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
     int16_t nodeId = IDTovitalsIndex(message->id);
     if (nodeId == invalidVitalsIndex) {
@@ -75,7 +75,7 @@ int16_t moniterData(
     frame->dataLocation++; // increment the dataIndex
     if (frame->dataLocation == 10) { frame->dataLocation = 0; }
     frame->consecutiveMisses = 0;
-    mutexPrint("moniter complete\n");
+    mutexPrint("monitor complete\n");
     return 0;
 }
 

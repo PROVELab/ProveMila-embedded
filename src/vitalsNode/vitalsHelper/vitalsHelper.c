@@ -1,8 +1,15 @@
+#include <stdint.h>
+
 #include "vitalsHelper.h"
 #include "../../pecan/pecan.h"
-#include "../../programConstants.h"
-#include "vitalsStaticDec.h"
-#include <stdint.h>
+
+#if defined(__cplusplus)
+#define STATIC_ASSERT(cond, msg) static_assert((cond), msg)
+#else
+#define STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
+#endif
+
+static inline uint32_t mask_u32(unsigned bits) { return (bits >= 32) ? 0xFFFFFFFFu : ((1u << bits) - 1u); }
 
 // Must ensure the ID/index is valid before calling either of these.
 int32_t IDTovitalsIndex(uint32_t nodeID) { // returns which index of vitalsArray a node corresponds to
@@ -32,25 +39,18 @@ uint32_t vitalsIndexToID(uint32_t nodeIndex) { // inverse of above function
 }
 
 int32_t isolateBits(uint8_t* value, int8_t startingIndex, int8_t numBits) {
-
-    int32_t mask = 1U << (numBits - 1); // Ex 7 -> 0b111111
-    return (*((uint64_t*) value) >> startingIndex) & mask;
+    if (value == NULL || startingIndex < 0 || numBits <= 0 || numBits > 32 || startingIndex + numBits > 64) {
+        return 0;
+    }
+    const uint64_t data = *((uint64_t*) value);
+    const uint64_t mask = ((uint64_t) 1u << numBits) - 1u; // create numBits-wide mask
+    return (int32_t) ((data >> startingIndex) & mask);
 }
-
-// Compile-time check for warnings fitting in 32 bits.
-#if defined(__cplusplus)
-#define STATIC_ASSERT(cond, msg) static_assert((cond), msg)
-#else
-#define STATIC_ASSERT(cond, msg) _Static_assert((cond), msg)
-#endif
 
 // The last bit used is [warningDataFlagIndex + maxDataInFrameBits - 1]
 STATIC_ASSERT(warningDataFlagIndex + maxDataInFrameBits <= 32,
               "Warning payload exceeds 32 bits; widen to uint64_t or reduce fields");
 STATIC_ASSERT(warningFrameFlagIndex >= warningNodeFlagIndex, "warningFrameFlagIndex must be >= warningNodeFlagIndex");
-
-// Helper to build safe masks without shifting by 32
-static inline uint32_t mask_u32(unsigned bits) { return (bits >= 32) ? 0xFFFFFFFFu : ((1u << bits) - 1u); }
 
 // Helpers for sending warnings.
 //  Layout (LSB -> MSB):

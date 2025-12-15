@@ -3,8 +3,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define R10(x) \
-    { x, x, x, x, x, x, x, x, x, x }
 // Node 0: pedalSensor
 dataPoint n0f0DPs[3] = {
     {.bitLength = 16,

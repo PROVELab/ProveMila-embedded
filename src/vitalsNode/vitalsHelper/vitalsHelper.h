@@ -1,7 +1,11 @@
 #ifndef vitalsHelp
 #define vitalsHelp
+
+#include <stdatomic.h>
+
 #include "../../programConstants.h"
 #include "vitalsStructs.h"
+#include "vitalsStaticDec.h"
 
 // fixed vitals Constants
 enum internalVitalsFlags { // flags being placed in Vitals' flags field for each node
@@ -22,14 +26,11 @@ void sendWarningForDataPoint(const CANFrame* problemFrame, uint8_t dataPointInde
 void sendWarningForNode(uint8_t nodeID, uint32_t flags);
 
 // helpers for atomic use of modifiable fields
-#include "vitalsStaticDec.h"
-#include <stdatomic.h>
-
 inline void VitalsFlagSet(uint8_t nodeIndex, uint32_t bit) { atomic_fetch_or(&(nodes[nodeIndex].flags), bit); }
 inline void VitalsFlagClear(uint8_t nodeIndex, uint32_t bit) { atomic_fetch_and(&(nodes[nodeIndex].flags), ~bit); }
 inline uint8_t VitalsFlagsGet(uint8_t nodeIndex) { return atomic_load(&(nodes[nodeIndex].flags)); }
 
-inline void HBTimeSet(uint8_t nodeIndex, uint16_t time) { atomic_store(&(nodes[nodeIndex].flags), time); }
+inline void HBTimeSet(uint8_t nodeIndex, uint16_t time) { atomic_store(&(nodes[nodeIndex].milliSeconds), time); }
 inline int16_t HBTimeGet(uint8_t nodeIndex) { return atomic_load(&(nodes[nodeIndex].milliSeconds)); }
 //
 #endif

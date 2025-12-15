@@ -30,13 +30,6 @@ elseif(CMAKE_SENSOR_ESP_BUILD)
         "sensors/powerSensor/espPower.c"
     )
 
-elseif(CMAKE_MOTOR_CONTROLLER)
-set(SRC_FILES
-    "motorConfig/main.c"
-    "pecan/common.cpp"
-    "pecan/espSpecific.c"
-    "espBase/debug_esp.c"
-)
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"
