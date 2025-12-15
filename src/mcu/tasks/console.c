@@ -30,12 +30,12 @@ typedef union {
 // Reused scratch space to avoid per-command heap usage.
 static console_scratch_t console_scratch;
 
-char* mila_text = "\n      __  __ ___ _        _    "
-                  "\n     |  \\/  |_ _| |      / \\   "
-                  "\n     | |\\/| || || |     / _ \\  "
-                  "\n     | |  | || || |___ / ___ \\ "
-                  "\n     |_|  |_|___|_____/_/   \\_\\ "
-                  "\n ";
+static const char mila_text[] = "\n      __  __ ___ _        _    "
+                                "\n     |  \\/  |_ _| |      / \\   "
+                                "\n     | |\\/| || || |     / _ \\  "
+                                "\n     | |  | || || |___ / ___ \\ "
+                                "\n     |_|  |_|___|_____/_/   \\_\\ "
+                                "\n ";
 
 // Redirect logging
 static int uart_log_vprintf(const char* fmt, va_list ap) {

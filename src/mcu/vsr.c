@@ -3,7 +3,7 @@
 // Initialize the vehicle status register:
 volatile vehicle_status_reg_s vehicle_status_register = {};
 
-int vsr_init(volatile vehicle_status_reg_s* vsr) {
+int vsr_init(vehicle_status_reg_s* vsr) {
 
     // initialize the mutexes, and zero out the structs
 #define APP(type, name)                                                 \

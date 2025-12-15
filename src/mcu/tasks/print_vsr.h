@@ -5,11 +5,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef void (*vsr_topic_print_fn_t)(volatile vehicle_status_reg_s* vsr);
+typedef void (*vsr_print_function)(volatile vehicle_status_reg_s* vsr);
 
 typedef struct {
     const char* name;
-    vsr_topic_print_fn_t print;
+    vsr_print_function print;
 } vsr_topic_printer_t;
 
 const vsr_topic_printer_t* vsr_find_topic_printer(const char* name);
