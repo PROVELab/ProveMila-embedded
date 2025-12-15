@@ -256,10 +256,14 @@ void initializeSelfPower(const selfPowerConfig* configs, int num_channels, int a
     for (int i = 0; i < num_channels; ++i) {
         if (!S.slot[i].enabled) continue;
         char buffer[192];
-        snprintf(buffer, sizeof(buffer), "SelfPower init: slot%d GPIO%d (%s_CH%u), gain=%.3f, %lu Hz total\n", i,
-                 S.slot[i].gpio, (S.unit == ADC_UNIT_1) ? "ADC1" : "ADC2", (unsigned) S.slot[i].ch,
-                 (double) S.slot[i].divider_gain, (unsigned long) MIN_FREQUENCY_HZ);
-        mutexPrint(buffer);
+        // Optional Debug Line
+        // snprintf(buffer, sizeof(buffer),
+        //          "SelfPower init: slot%d GPIO%d (%s_CH%u), gain=%.3f, %lu Hz total\n",
+        //          i, S.slot[i].gpio,
+        //          (S.unit == ADC_UNIT_1) ? "ADC1" : "ADC2",
+        //          (unsigned)S.slot[i].ch,
+        //          (double)S.slot[i].divider_gain, (unsigned long)MIN_FREQUENCY_HZ);
+        // mutexPrint(buffer);
     }
 }
 
@@ -336,10 +340,12 @@ void collectSelfPowerAllmV(int32_t* out_vin_mV, selfPowerStatus_t* out_statuses)
         out_statuses[i] = READ_SUCCESS;
 
         // Optional debug line
-        char pb[144];
-        snprintf(pb, sizeof(pb), "SelfPower[%s slot %d]: avg=%d raw -> pin=%d mV -> Vin=%" PRId32 " mV (samples=%d)\n",
-                 (S.unit == ADC_UNIT_1) ? "ADC1" : "ADC2", i, avg_raw, pin_mV, out_vin_mV[i], cnt[i]);
-        mutexPrint(pb);
+        // char pb[144];
+        // snprintf(pb, sizeof(pb),
+        //          "SelfPower[%s slot %d]: avg=%d raw -> pin=%d mV -> Vin=%" PRId32 " mV (samples=%d)\n",
+        //          (S.unit == ADC_UNIT_1) ? "ADC1" : "ADC2",
+        //          i, avg_raw, pin_mV, out_vin_mV[i], cnt[i]);
+        // mutexPrint(pb);
     }
 }
 
@@ -355,9 +361,9 @@ void selfPowerStatusCheck(const selfPowerStatus_t* statuses, int num_channels, i
     for (int i = 0; i < num_channels; ++i) {
         const selfPowerStatus_t s = statuses[i];
         if (s == NOTHING_TO_READ || s == READ_FAILURE) {
-            char buffer[64];
-            sprintf(buffer, "SelfPower channel %d read failed\n", i);
-            mutexPrint(buffer);
+            // char buffer[64];
+            // sprintf(buffer, "SelfPower channel %d read failed\n", i);
+            // mutexPrint(buffer);
             sendStatusUpdate(s, id);
         }
         if (s == INIT_FAILURE) any_init_failure = true;

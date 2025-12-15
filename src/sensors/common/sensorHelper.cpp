@@ -60,9 +60,6 @@ void sendFrame(int8_t frameNum) {
     if (frameNum < 0 || frameNum >= numFrames) {
         flexiblePrint("attempted to send out of bounds frame. not sending!\n");
     }
-    char buffer[50];
-    sprintf(buffer, "sending frame NO.: %d\n", frameNum);
-    flexiblePrint(buffer);
 
     int8_t frameNumData = myframes[frameNum].numData;
     int8_t collectorFuncIndex = myframes[frameNum].startingDataIndex;
