@@ -1,46 +1,36 @@
 #ifndef ARDUINO_SPEC_H
 #define ARDUINO_SPEC_H
 #include "../pecan/pecan.h"
+// Nothing Arduno sepcific in the header, we can use this same header for other schedulers in the future.
 
-struct PTask {
-    void (*function)(void); // Function to call
-    int16_t delay = 0;      // Milliseconds from start before a task runs
-    int16_t interval;       // Milliseconds between task runs, a negative interval
-                            // indicates a task occruing one time, -interval ms after
-                            // its declared
-    int16_t location;       // Location of Task in task array, assigned upon task
-                            // scheduling
-    bool locked;            // Lock CAN - Only applicable to multithreading
-};
+// Optionally pass via platformio build flags if you have concerns about number of tasks (not enough space, or not
+// enough tasks) DO NOT #define from seperate file and include this. Other src files (like sensorHelper) include this
+// header, and would need the same value.
+#ifndef TASK_COUNT_OVERRIDE
+#define MAX_TASK_COUNT 5 // Default Max number of tasks for Arduino
+// #else
+// #define MAX_TASK_COUNT TASK_COUNT_OVERRIDE
+#endif
 
 /* "Scheduler/TaskManager" */
 class PScheduler {
   private:
-    int16_t ctr = 0; // Counts how many events are in queue
-                     // PTask tasks[MAX_TASK_COUNT];    //delete wen decide not to use originally
-                     // scheduling int16_t dCtr=0;
-
+    int16_t taskSpaceRemaining = MAX_TASK_COUNT; // Counts how many events are in queue
   public:
-    int scheduleTask(PTask* t);
+    // Main functions that will suffice for most nodes
+    // interval = interval in ms between running function
+    int scheduleTask(void (*function)(void), int16_t interval);
+    void execute(); // run the scheduler. Call this in a loop.
+    //
 
-    // use the returned int to reference this task in runOneTimeTask
-    int scheduleOneTimeTask(PTask* t);
-
+    // Other stuff:
+    int scheduleOneTimeTask(void (*function)(void),
+                            int16_t delay); // use the returned int to reference this task in runOneTimeTask
     void runOneTimeTask(int task, int delay);
-
     void changeInterval(int task, int newInterval);
-
-    void changeIterations(int task, int numtIterations); //-1 for set forever
-
-    void mainloop(PCANListenParamsCollection* listens);
+    void changeIterations(int task, int numtIterations);
+    //
 
     PScheduler();
-    /* Add the task to the task queue (will all be enabled
-    when mainloop is called)
-    return: PCAN_ERR - denotes if the we have too many tasks,
-        or success
-     */
-    // Loop through the tasks, enabling all of them with
-    // their specifications listening for packets
 };
 #endif

@@ -106,6 +106,8 @@ bool matchFunction(uint32_t id, uint32_t mask);
 // For Max Length
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size);
 
+int32_t squeeze(int32_t value, int32_t min, int32_t max);
+
 // makes a packet an RTR packet
 int16_t setRTR(CANPacket* p);
 // makes a packet an extended packet

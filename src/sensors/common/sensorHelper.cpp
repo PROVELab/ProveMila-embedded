@@ -20,7 +20,7 @@
 TimerHandle_t dataCollection_Timers[numFrames]; // one of these timers going off trigers callback function for missing
                                                 // CAN Data Frane
 StaticTimer_t xTimerBuffers[numFrames];         // array for the buffers of these timers
-// task for monitering bus status, and restarting if needed
+// task for monitoring bus status, and restarting if needed
 #define SENSOR_STACK_SIZE 1000 // checkBus task is reliabley small, so we can use a smaller stack size
 StaticTask_t checkBus_Buffer;
 StackType_t checkBus_Stack[SENSOR_STACK_SIZE]; // buffer that the task will use as its stack
@@ -57,12 +57,9 @@ void sendFrame(TimerHandle_t xTimer) {
 #elif defined(SENSOR_ARDUINO_BUILD)
 void sendFrame(int8_t frameNum) {
 #endif
-    if (frameNum < 0 || frameNum > numFrames) {
+    if (frameNum < 0 || frameNum >= numFrames) {
         flexiblePrint("attempted to send out of bounds frame. not sending!\n");
     }
-    // char buffer[50];
-    // sprintf(buffer, "sending frame NO.: %d\n", frameNum);
-    // flexiblePrint(buffer);
 
     int8_t frameNumData = myframes[frameNum].numData;
     int8_t collectorFuncIndex = myframes[frameNum].startingDataIndex;

@@ -256,6 +256,7 @@ void initializeSelfPower(const selfPowerConfig* configs, int num_channels, int a
     for (int i = 0; i < num_channels; ++i) {
         if (!S.slot[i].enabled) continue;
         char buffer[192];
+        // Optional Debug Line
         // snprintf(buffer, sizeof(buffer),
         //          "SelfPower init: slot%d GPIO%d (%s_CH%u), gain=%.3f, %lu Hz total\n",
         //          i, S.slot[i].gpio,

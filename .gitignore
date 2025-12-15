@@ -6,7 +6,14 @@
 .vscode/extensions.json
 .DS_Store
 .vscode/*
+build/
+scripts/Gen*/
+scripts/Gen_For_sensors/*
+scripts/Gen_For_simpleTest/*
 
 build/
 sdkconfig*.old
 sdkconfig.*
+
+__pycache__
+managed_components/
