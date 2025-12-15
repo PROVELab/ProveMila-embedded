@@ -5,8 +5,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
-#define R10(x) \
-    { x, x, x, x, x, x, x, x, x, x }
+#define R10(x) {x, x, x, x, x, x, x, x, x, x}
 
 typedef struct {
     int8_t bitLength;

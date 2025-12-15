@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#include "vitalsHelper.h"
 #include "../../pecan/pecan.h"
+#include "vitalsHelper.h"
 
 #if defined(__cplusplus)
 #define STATIC_ASSERT(cond, msg) static_assert((cond), msg)
@@ -109,7 +109,7 @@ void sendWarningForNode(uint8_t nodeID, uint32_t flags) {
     const uint8_t payloadSize = (uint8_t) ((totalBits + 7u) >> 3);
 
     // send the warning
-    CANPacket message = (CANPacket){0};
+    CANPacket message = (CANPacket) {0};
     message.id = combinedID(warningCode, vitalsID);
     writeData(&message, (int8_t*) &data, payloadSize);
     sendPacket(&message);

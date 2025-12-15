@@ -19,7 +19,7 @@ typedef Task ard_event;
 Task dTasks[MAX_TASK_COUNT] = {}; // Container holds the arkhipenko library Tasks
 Scheduler Arduino_ts;             // arkhipenko's scheduler
 
-PScheduler::PScheduler(){};
+PScheduler::PScheduler() {};
 
 // function is the callback. interval to execute the functoin is in ms
 int PScheduler::scheduleTask(void (*function)(void), int16_t interval) {

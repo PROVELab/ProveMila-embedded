@@ -66,9 +66,7 @@ int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size) {
 }
 
 // returns value constrained to min of min, and max of max
-int32_t squeeze(int32_t value, int32_t min, int32_t max) { 
-    return (value < min) ? min : (value > max ? max : value);
-}
+int32_t squeeze(int32_t value, int32_t min, int32_t max) { return (value < min) ? min : (value > max ? max : value); }
 
 bool exact(uint32_t id, uint32_t mask) { // does not check extended bits of Id
     return (id & 0b11111111111) == mask;
