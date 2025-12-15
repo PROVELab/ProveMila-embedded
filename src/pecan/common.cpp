@@ -1,6 +1,8 @@
-#include "../include/programConstants.h"
+#include "../programConstants.h"
 #include "pecan.h"
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>  //for snprintf
 #include <string.h> // memcpy
 
 uint32_t combinedID(uint32_t fn_id, uint32_t node_id) { return (fn_id << 7) + node_id; }
@@ -9,6 +11,25 @@ uint32_t combinedIDExtended(uint32_t fn_id, uint32_t node_id, uint32_t extension
 }
 
 void setSensorID(CANPacket* p, uint8_t sensorId) { p->data[0] = sensorId; }
+
+int16_t defaultPacketRecv(CANPacket* p) {
+    char buf[48];
+    // Print the header
+    snprintf(buf, sizeof(buf), "Default recv: id %ld\n with data:", p->id);
+    flexiblePrint(buf);
+
+    // Print each data element
+    if (p->rtr == false) {
+        for (int i = 0; i < p->dataSize; i++) {
+            snprintf(buf, sizeof buf, " %02X", (unsigned) p->data[i]); // two-digit uppercase hex
+            flexiblePrint(buf);
+        }
+    }
+
+    // Print the final newline
+    flexiblePrint("\n");
+    return 0;
+}
 
 int16_t addParam(PCANListenParamsCollection* plpc, CANListenParam clp) {
     if (plpc->size + 1 > MAX_PCAN_PARAMS) {
@@ -32,32 +53,20 @@ int16_t setExtended(CANPacket* p) { // makes the given packet an extended ID pac
     p->extendedID = 1;
     return 0;
 }
-// int16_t setExtended(struct CANPacket *p)
+
 int16_t writeData(CANPacket* p, int8_t* dataPoint, int16_t size) {
     if (p->rtr) {
         return -4; // this is an rtr packet, can not write data
     }
-    int16_t current_size = p->dataSize;
-    int16_t i = 0;
-    if (i + size > MAX_SIZE_PACKET_DATA) { return NOSPACE; }
-    for (; current_size + i < current_size + size; i++) {
-        // DataSize can be interpreted as both
-        // Size, and Index
-        // Casting to 16-bit because compiler not happy
-        p->data[(int16_t) p->dataSize] = dataPoint[i];
-        p->dataSize++;
-
-        // This check should've been working above
-        // But just in case, we'll do it in the loop as well
-        if (i > MAX_SIZE_PACKET_DATA) { return NOSPACE; }
-    }
+    const size_t originalSize = p->dataSize;
+    if (originalSize + size > MAX_SIZE_PACKET_DATA) { return NOSPACE; }
+    memcpy(&(p->data[originalSize]), dataPoint, size);
+    (p->dataSize) += size;
     return SUCCESS;
 }
 
-int32_t squeeze(int32_t value, int32_t min,
-                int32_t max) { // returns value constrained to min of min, and max of max
-    return (value < min) ? min : (value > max ? max : value);
-}
+// returns value constrained to min of min, and max of max
+int32_t squeeze(int32_t value, int32_t min, int32_t max) { return (value < min) ? min : (value > max ? max : value); }
 
 bool exact(uint32_t id, uint32_t mask) { // does not check extended bits of Id
     return (id & 0b11111111111) == mask;
@@ -92,12 +101,12 @@ int16_t copyDataToValue(uint32_t* target, uint8_t* data, int8_t startBit,
     return 0;
 }
 
-int16_t sendStatusUpdate(uint8_t flag, uint32_t Id) {
+void sendStatusUpdate(uint8_t flag, uint32_t Id) {
     CANPacket statusUpdatePacket;
     memset(&statusUpdatePacket, 0, sizeof(CANPacket));
     statusUpdatePacket.id = combinedID(statusUpdate, Id);
     writeData(&statusUpdatePacket, (int8_t*) &flag, 1);
-    return sendPacket(&statusUpdatePacket);
+    sendPacket(&statusUpdatePacket);
 }
 
 // note: ID sent over CAN is 11 bit long, with first 7 bitsbeing the identifier
