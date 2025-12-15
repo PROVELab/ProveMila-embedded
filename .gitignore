@@ -12,6 +12,7 @@ scripts/Gen_For_sensors/
 scripts/Gen_For_simpleTest/
 
 build/
+sdkconfig.*
 sdkconfig*.old
 
 __pycache__/
