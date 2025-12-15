@@ -1,5 +1,5 @@
-#include "../common/sensorHelper.hpp"
 #include "myDefines.hpp"
+#include "../common/sensorHelper.hpp"
 
 // creates CANFrame array from this node. It stores data to be sent, and info for how to send
 

@@ -13,7 +13,6 @@ scripts/Gen_For_simpleTest/*
 
 build/
 sdkconfig*.old
-sdkconfig.*
 
 __pycache__
 managed_components/

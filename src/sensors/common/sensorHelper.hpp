@@ -7,7 +7,7 @@ extern "C" { // Need C linkage since ESP uses C "C"
 #include "../../programConstants.h"
 #define STRINGIZE_(a) #a
 #define STRINGIZE(a)  STRINGIZE_(a)
-#include "../pedalSensor/myDefines.hpp" //includes node Constants
+#include STRINGIZE(../NODE_CONFIG) //includes node Constants
 
 #include "../../pecan/pecan.h"
 #include <stdint.h>
