@@ -14,5 +14,5 @@ scripts/Gen_For_simpleTest/
 build/
 sdkconfig*.old
 
-__pycache__
+__pycache__/
 managed_components/
