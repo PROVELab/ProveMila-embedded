@@ -57,7 +57,7 @@ void app_main() {
     start_console_task();
     ESP_LOGI(__func__, "StartedConsole");
 
-    start_logging_task();    //<- replaced with SD card version.
+    start_logging_task(); //<- replaced with SD card version.
     ESP_LOGI(__func__, "StartedLogging");
 
     // Send data to the motor task
