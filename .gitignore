@@ -8,8 +8,8 @@
 .vscode/*
 build/
 scripts/Gen*/
-scripts/Gen_For_sensors/*
-scripts/Gen_For_simpleTest/*
+scripts/Gen_For_sensors/
+scripts/Gen_For_simpleTest/
 
 build/
 sdkconfig*.old
