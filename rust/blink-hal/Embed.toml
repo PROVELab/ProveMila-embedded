@@ -1,0 +1,11 @@
+[default.general]
+chip = "STM32F405RGTx"
+
+[default.rtt]
+enabled = true
+
+[default.reset]
+halt_afterwards = false
+
+[default.gdb]
+enabled = false

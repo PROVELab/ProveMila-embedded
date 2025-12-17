@@ -1,12 +1,12 @@
 #ifndef VITALS_STRUCTS_H
 #define VITALS_STRUCTS_H
 
-#include "../../programConstants.h"
-#include <stdatomic.h>
-#include <stdint.h>
 #include <stdio.h>
-#define R10(x) \
-    { x, x, x, x, x, x, x, x, x, x }
+#include <stdint.h>
+#include <stdatomic.h>
+#include <stdbool.h>
+#include "../../programConstants.h"
+#define R10(x) {x,x,x,x,x,x,x,x,x,x}
 
 typedef struct {
     int8_t bitLength;
@@ -17,13 +17,15 @@ typedef struct {
     int32_t minWarning;
     int32_t maxWarning;
     int32_t startingValue;
+    int32_t outlierData;
+    bool outlierPresent;
 } dataPoint;
 
 typedef struct {
     int8_t nodeID;
     int8_t frameID;
     int8_t numData;
-    dataPoint* dataInfo; /* Replaced list with dataPoint pointer */
+    dataPoint *dataInfo; /* Replaced list with dataPoint pointer */
     int8_t isCritical;
     int8_t flags;
     int8_t dataLocation;
@@ -37,7 +39,7 @@ typedef struct {
     _Atomic int8_t flags;
     _Atomic int16_t milliSeconds;
     int8_t numFrames;
-    CANFrame* CANFrames;
+    CANFrame *CANFrames; 
 } vitalsNode;
 
 #endif

@@ -123,3 +123,25 @@ node: id=10, name=APSensorArduino, board=arduino
 CANFrame: frequency=700, dataTimeout=1500
 airPressure: bitLength=32, min=-2147483648, max=2147483647, minWarning=20, maxWarning=80, minCritical=5, maxCritical=95, startingValue=50
 #airPressure: bitLength=32, min=-2147483648, max=2147483647, startingValue=2147483647
+
+node: id = 11, name = tempSensor, board=esp
+CANFrame: frequency = 1000, dataTimeout= 2000
+VoltageJ0: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ1: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ2: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ3: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+CANFrame: frequency = 1000, dataTimeout= 2000
+VoltageJ4: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ5: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ6: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ7: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+CANFrame: frequency = 1000, dataTimeout= 2000
+VoltageJ8: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ9: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ10: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ11: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+CANFrame: frequency = 1000, dataTimeout= 2000
+VoltageJ12: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ13: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ14: bitLength= 16, min =-32768, max = 32767, startingValue = 10
+VoltageJ15: bitLength= 16, min =-32768, max = 32767, startingValue = 10

@@ -28,7 +28,9 @@ dataPoint_fields = [
     {"name": "max",             "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals", "sensor", "telemetry"], "isSet": False},
     {"name": "minWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
     {"name": "maxWarning",      "type": "int32_t", "expectation": "optional",    "value": 0,  "node": ["vitals", "telemetry"], "isSet": False},
-    {"name": "startingValue",   "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals"], "isSet": False}
+    {"name": "startingValue",   "type": "int32_t", "expectation": "required",    "value": 0,  "node": ["vitals"], "isSet": False},
+    {"name": "outlierData",     "type": "int32_t", "expectation": "dontSpecify", "value": 0,  "node": ["vitals"], "Atomic" : False, "isSet": False},
+    {"name": "outlierPresent",  "type": "bool",  "expectation": "dontSpecify", "value": 0,  "node": ["vitals"], "Atomic" : False, "isSet": False}
 ]
 
 # A copy of each of these will be made for every CANFrame

@@ -1,0 +1,32 @@
+
+[package]
+name = "blink"
+edition = "2018"
+
+[profile.release]
+opt-level = 'z'
+lto = true
+
+[build]
+target = "thumbv7em-none-eabihf"
+
+[dependencies]
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+rtt-target = "0.5.0"
+embedded-hal = "^0.2.4"
+panic-halt = "1.0.0"
+heapless = "0.9"
+
+# CAN stack
+bxcan = "0.8"
+embedded-can = "0.4"
+nb = "1.1"
+
+[dependencies.stm32f4xx-hal]
+version = "0.23.0"
+features = ["stm32f405", "can"]
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.69"  # Add this

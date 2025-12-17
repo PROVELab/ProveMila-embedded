@@ -19,6 +19,8 @@ TimerHandle_t missingDataTimers[totalNumFrames];  // one of these timers going o
 StaticTimer_t xTimerBuffers[totalNumFrames];      // array for the buffers of these timers
 static void vTimerCallback(TimerHandle_t xTimer); // callback for CanFrame Timeouts
 
+void checkCriticalData(int32_t recvData, dataPoint* dataInfo);
+
 int16_t moniterData(
     CANPacket* message) { // for now just stores the data (printing the past 10 node-frame- data (past 10) on each line)
     int16_t nodeId = IDTovitalsIndex(message->id);
@@ -65,6 +67,8 @@ int16_t moniterData(
         copyDataToValue(&temp, message->data, bitIndex, dataInfo->bitLength);
         int32_t recvdata = ((int32_t) temp) + dataInfo->min;
 
+        checkCriticalData(recvdata, dataInfo);
+
         frame->data[i][frame->dataLocation] = recvdata; // update the data
         sprintf(str, "recD: %ld", recvdata);
         mutexPrint(str);
@@ -77,6 +81,10 @@ int16_t moniterData(
     frame->consecutiveMisses = 0;
     mutexPrint("moniter complete\n");
     return 0;
+}
+
+void checkCriticalData(int32_t recvData, dataPoint* dataInfo){
+    
 }
 
 void initializeDataTimers() { // initializes timeOuts for Data collection, as soon as this runs, we need data from every
@@ -121,6 +129,7 @@ void initializeDataTimers() { // initializes timeOuts for Data collection, as so
     }
 }
 
+
 static void vTimerCallback(TimerHandle_t xTimer) { // called when data is never recieved. Triggers extrapolation, and
                                                    // extrapolation warning, sent directly to telem
     CANFrame* missingFrame = (CANFrame*) pvTimerGetTimerID(xTimer);
@@ -135,6 +144,7 @@ static void vTimerCallback(TimerHandle_t xTimer) { // called when data is never 
     // and closed function,
     //  but I might end up doing it anyway). Also it would be good to get other people to agree on the algorithm
     //  (whether it be mine, theres, or a mix of both)
+
 
     // Send warning for extrapolation
     sendWarningForDataPoint(missingFrame, 0, missingFrameFlag | nonCriticalWarning);

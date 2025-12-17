@@ -37,6 +37,10 @@ set(SRC_FILES
     "pecan/espSpecific.c"
     "espBase/debug_esp.c"
 )
+elseif(CMAKE_BLE_SCAN)
+set(SRC_FILES
+    "tirePressureBLEUtil/main.c"
+)
 else()  #assumed "CMAKE_BASIC_NODE" configuration, just using one path
     set(SRC_FILES
         "${CMAKE_SRC_FILE}"

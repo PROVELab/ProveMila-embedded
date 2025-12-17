@@ -1,0 +1,15 @@
+# was .cargo/config
+
+[build]
+# This sets the default target to Cortex-M4F (Hard Float)
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+# 1. RUST LINKING: This tells Rust to use the Tlink.x script for memory layout
+rustflags = [ "-C", "link-arg=-Tlink.x" ]
+
+# 2. C CROSS-COMPILATION: This forces the 'cc' crate to use the ARM compiler
+#    Without this, you get the "-mthumb" error because it tries to use your PC's compiler.
+[env]
+CC_thumbv7em_none_eabihf = "arm-none-eabi-gcc"
+CFLAGS_thumbv7em_none_eabihf = "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16"

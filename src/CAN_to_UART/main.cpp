@@ -9,8 +9,8 @@
 #include <stdint.h>
 
 // Sets the CAN_TO_UART function as the defaultHandler, ie, forwards all messages via UART to homebase (my computer)
-PCANListenParamsCollection plpc = {.arr = {{0}}, .defaultHandler = CAN_TO_UART, .size = 0};
-// PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};
+// PCANListenParamsCollection plpc = {.arr = {{0}}, .defaultHandler = CAN_TO_UART, .size = 0};
+PCANListenParamsCollection plpc={ .arr={{0}}, .defaultHandler = defaultPacketRecv, .size = 0};
 
 PScheduler ts;
 
@@ -37,7 +37,9 @@ void setup() {
     Serial.println("CAN_TO_UART_START");
     wdt_enable(WDTO_2S); // enable watchdog with 2s timeout. reset in ts.mainloop
     pecanInit config = {.nodeId = telemetryID, .pin1 = defaultPin, .pin2 = defaultPin};
+    Serial.println("can init");
     pecan_CanInit(config);
+    Serial.println("vitalInit");
     vitalsInit(&plpc, telemetryID);
 
     ts.scheduleTask(UART_TO_CAN, 1000);
@@ -47,5 +49,7 @@ void setup() {
 void loop() {
     wdt_reset();
     ts.execute();
+    Serial.println("loop");
+    delay(500);
     while (waitPackets(&plpc) != NOT_RECEIVED);
 }
