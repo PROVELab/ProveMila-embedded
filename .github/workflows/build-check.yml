@@ -1,0 +1,53 @@
+name: PlatformIO CI
+
+on:
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.MOTOR_NDA_SECRET }}
+
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: python3-dev libffi-dev libssl-dev
+          version: 1.0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install PlatformIO (via uv tool)
+        run: |
+          uv tool install platformio
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+          pio --version
+
+      - name: Cache PlatformIO Core and dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            ~/.platformio/platforms
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-${{ hashFiles('**/lockfile.json') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}-
+            ${{ runner.os }}-pio-
+
+      - name: Run PlatformIO Build
+        run: pio run
