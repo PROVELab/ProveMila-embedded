@@ -74,32 +74,113 @@ int32_t collect_pedalPowerReadingmV() {
     return ADC_Readings[pedalPower_Index];
 }
 
+#ifdef QEMU_BUILD
+#define QEMU_PEDAL_PERCENT 50
+#define QEMU_PEDAL_SUPPLY_MV 5000
+#endif
+
+// int32_t collect_pedalReadingOne() {
+//     if (ADC_ReadingStatuses[reading1_Index] != READ_SUCCESS) {
+//         // we should not be driving if we cant read something
+//         ADC_Readings[reading1_Index] = -1;
+//         mutexPrint("invalid pedal reading 1\n");
+//     } else {
+//         // transform pedal power reading mV to pedal reading percentage
+//         ADC_Readings[reading1_Index] =
+//             transformPedalReading(ADC_Readings[reading1_Index], ADC_Readings[pedalPower_Index], risingPedalIndex);
+//     }
+//     char buffer[64];
+//     sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
+//     mutexPrint(buffer);
+//     return ADC_Readings[reading1_Index];
+// }
+
 int32_t collect_pedalReadingOne() {
+#ifdef QEMU_BUILD
+    ADC_Readings[reading1_Index] = QEMU_PEDAL_PERCENT;
+    ADC_Readings[pedalPower_Index] = QEMU_PEDAL_SUPPLY_MV;
+#else
     if (ADC_ReadingStatuses[reading1_Index] != READ_SUCCESS) {
-        // we should not be driving if we cant read something
         ADC_Readings[reading1_Index] = -1;
         mutexPrint("invalid pedal reading 1\n");
     } else {
-        // transform pedal power reading mV to pedal reading percentage
         ADC_Readings[reading1_Index] =
-            transformPedalReading(ADC_Readings[reading1_Index], ADC_Readings[pedalPower_Index], risingPedalIndex);
+            transformPedalReading(ADC_Readings[reading1_Index],
+                                  ADC_Readings[pedalPower_Index],
+                                  risingPedalIndex);
     }
+#endif
+
     char buffer[64];
     sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
     mutexPrint(buffer);
     return ADC_Readings[reading1_Index];
 }
 
+// int32_t collect_pedalReadingTwo() {
+//     if (ADC_ReadingStatuses[reading2_Index] != READ_SUCCESS) {
+//         // we should not be driving if we cant read something
+//         ADC_Readings[reading2_Index] = -1;
+//         mutexPrint("invalid pedal reading 2\n");
+//     } else {
+//         // transform pedal power reading mV to pedal reading percentage
+//         ADC_Readings[reading2_Index] =
+//             transformPedalReading(ADC_Readings[reading2_Index], ADC_Readings[pedalPower_Index], fallingPedalIndex);
+//     }
+//     char buffer[64];
+//     sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
+//     mutexPrint(buffer);
+
+//     // speed stuff
+//     int a = (ADC_Readings[reading1_Index] < ADC_Readings[reading2_Index]) ? ADC_Readings[reading1_Index]
+//                                                                           : ADC_Readings[reading2_Index];
+//     // int a = ADC_Readings[reading1_Index];
+
+//     int b = 0;
+//     if (a < 10) {
+//         // Current 0
+//         b = 0;
+//     } else if (a > 100) {
+//         b = 600;
+//     } else {
+//         b = 6 * a;
+//     }
+
+//     // Send the speed (if necessary)
+//     vehicle_status_reg_s* vsr = &vehicle_status_register; // easier to type
+//     bool use_pedal = false;
+//     ACQ_REL_VSRSEM_W(pedal, {
+//         vsr->pedal.pedal_position_pct = (float) a;
+//         vsr->pedal.pedal_raw_1 = (float) ADC_Readings[reading1_Index];
+//         vsr->pedal.pedal_raw_2 = (float) ADC_Readings[reading2_Index];
+//         vsr->pedal.pedal_supply_voltage = (float) ADC_Readings[pedalPower_Index];
+
+//         vsr->pedal.tx_value = b;
+//         use_pedal = vsr->pedal.use_pedal;
+//     });
+
+//     if (use_pedal) {
+//         ACQ_REL_VSRSEM_W(motor_control, { vsr->motor_control.current_reference = (int32_t) b; });
+//     }
+
+//     return ADC_Readings[reading2_Index];
+// }
+
 int32_t collect_pedalReadingTwo() {
+#ifdef QEMU_BUILD
+    ADC_Readings[reading2_Index] = QEMU_PEDAL_PERCENT;
+#else
     if (ADC_ReadingStatuses[reading2_Index] != READ_SUCCESS) {
-        // we should not be driving if we cant read something
         ADC_Readings[reading2_Index] = -1;
         mutexPrint("invalid pedal reading 2\n");
     } else {
-        // transform pedal power reading mV to pedal reading percentage
         ADC_Readings[reading2_Index] =
-            transformPedalReading(ADC_Readings[reading2_Index], ADC_Readings[pedalPower_Index], fallingPedalIndex);
+            transformPedalReading(ADC_Readings[reading2_Index],
+                                  ADC_Readings[pedalPower_Index],
+                                  fallingPedalIndex);
     }
+#endif
+
     char buffer[64];
     sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
     mutexPrint(buffer);

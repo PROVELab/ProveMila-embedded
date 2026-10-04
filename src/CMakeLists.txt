@@ -63,4 +63,18 @@ endif()
 #         "${CMAKE_SRC_FILE}"
 #     )   
 # endif()
-idf_component_register(SRCS ${SRC_FILES} INCLUDE_DIRS ".")
+
+idf_component_register(
+    SRCS ${SRC_FILES}
+    INCLUDE_DIRS "."
+    REQUIRES esp_driver_uart esp_timer driver console fatfs
+    PRIV_REQUIRES esp_driver_gpio esp_adc
+)
+
+if(CMAKE_MCU_ESP_BUILD)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE
+        NODE_CONFIG=pedalSensor/myDefines.hpp
+        SENSOR_ESP_BUILD=ON
+    )
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE QEMU_BUILD=1)
+endif()
