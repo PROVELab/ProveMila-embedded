@@ -34,6 +34,20 @@ typedef enum {
 int32_t ADC_Readings[numADCChannels];
 selfPowerStatus_t ADC_ReadingStatuses[numADCChannels];
 
+#ifdef QEMU_BUILD
+// Emulated pedal: QEMU has no ADC input, so the host sets the pedal position by sending a CAN frame with id
+// combinedID(QEMU_PEDAL_SET_FUNCTION_ID, myId) and data[0] = percent (0..100) over the QEMU CAN-over-UART bus.
+#define QEMU_PEDAL_PERCENT         50 // pedal position until the host sends one
+#define QEMU_PEDAL_SUPPLY_MV       5000
+#define QEMU_PEDAL_SET_FUNCTION_ID 0b1101 // function code not used by any other message
+static volatile int32_t qemuPedalPercent = QEMU_PEDAL_PERCENT;
+
+static int16_t recvQemuPedal(CANPacket* p) {
+    if (p->dataSize >= 1) { qemuPedalPercent = p->data[0] > 100 ? 100 : p->data[0]; }
+    return 0;
+}
+#endif
+
 #include <stdint.h>
 
 // Tune these:
@@ -68,16 +82,14 @@ int32_t collect_pedalPowerReadingmV() {
         ADC_ReadingStatuses[reading1_Index] = READ_CRITICAL;
         ADC_ReadingStatuses[reading2_Index] = READ_CRITICAL;
     }
+#ifdef QEMU_BUILD
+    ADC_Readings[pedalPower_Index] = QEMU_PEDAL_SUPPLY_MV;
+#endif
     char buffer[64];
     sprintf(buffer, "collecting pedalPowermV: %ld\n", ADC_Readings[pedalPower_Index]);
     mutexPrint(buffer);
     return ADC_Readings[pedalPower_Index];
 }
-
-#ifdef QEMU_BUILD
-#define QEMU_PEDAL_PERCENT 50
-#define QEMU_PEDAL_SUPPLY_MV 5000
-#endif
 
 // int32_t collect_pedalReadingOne() {
 //     if (ADC_ReadingStatuses[reading1_Index] != READ_SUCCESS) {
@@ -97,7 +109,7 @@ int32_t collect_pedalPowerReadingmV() {
 
 int32_t collect_pedalReadingOne() {
 #ifdef QEMU_BUILD
-    ADC_Readings[reading1_Index] = QEMU_PEDAL_PERCENT;
+    ADC_Readings[reading1_Index] = qemuPedalPercent;
     ADC_Readings[pedalPower_Index] = QEMU_PEDAL_SUPPLY_MV;
 #else
     if (ADC_ReadingStatuses[reading1_Index] != READ_SUCCESS) {
@@ -105,9 +117,7 @@ int32_t collect_pedalReadingOne() {
         mutexPrint("invalid pedal reading 1\n");
     } else {
         ADC_Readings[reading1_Index] =
-            transformPedalReading(ADC_Readings[reading1_Index],
-                                  ADC_Readings[pedalPower_Index],
-                                  risingPedalIndex);
+            transformPedalReading(ADC_Readings[reading1_Index], ADC_Readings[pedalPower_Index], risingPedalIndex);
     }
 #endif
 
@@ -168,16 +178,14 @@ int32_t collect_pedalReadingOne() {
 
 int32_t collect_pedalReadingTwo() {
 #ifdef QEMU_BUILD
-    ADC_Readings[reading2_Index] = QEMU_PEDAL_PERCENT;
+    ADC_Readings[reading2_Index] = qemuPedalPercent;
 #else
     if (ADC_ReadingStatuses[reading2_Index] != READ_SUCCESS) {
         ADC_Readings[reading2_Index] = -1;
         mutexPrint("invalid pedal reading 2\n");
     } else {
         ADC_Readings[reading2_Index] =
-            transformPedalReading(ADC_Readings[reading2_Index],
-                                  ADC_Readings[pedalPower_Index],
-                                  fallingPedalIndex);
+            transformPedalReading(ADC_Readings[reading2_Index], ADC_Readings[pedalPower_Index], fallingPedalIndex);
     }
 #endif
 
@@ -228,6 +236,15 @@ void recieveMSG(void* param) { // task handles recieving Messages
 
     // declare CanListenparams here, each param has 3 entries:
     // When recv msg with id = 'listen_id' according to matchtype (or 'mt'), 'handler' is called.
+
+#ifdef QEMU_BUILD
+    CANListenParam qemuPedalParam = {
+        .listen_id = combinedID(QEMU_PEDAL_SET_FUNCTION_ID, myId),
+        .handler = recvQemuPedal,
+        .mt = MATCH_EXACT,
+    };
+    if (addParam(plpc, qemuPedalParam) != SUCCESS) { mutexPrint("no room for the QEMU pedal listener\n"); }
+#endif
 
     // task calls the appropriate ListenParams function when a CAN message is recieved
     for (;;) {
