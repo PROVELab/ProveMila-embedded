@@ -76,5 +76,11 @@ if(CMAKE_MCU_ESP_BUILD)
         NODE_CONFIG=pedalSensor/myDefines.hpp
         SENSOR_ESP_BUILD=ON
     )
+endif()
+
+# QEMU mocks (pedal ADC, CAN over UART1) are opt-in so hardware builds never get them: pass -D CMAKE_QEMU_BUILD=ON
+if(CMAKE_QEMU_BUILD)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE QEMU_BUILD=1)
+    # motor_h300 (submodule) calls twai_transmit directly; route it to the QEMU CAN-over-UART transport (espSpecific.c)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=twai_transmit")
 endif()
