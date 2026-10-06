@@ -1,0 +1,3 @@
+# everything the demos build or log (builds, flash images, test projects)
+demo_tmp/
+__pycache__/

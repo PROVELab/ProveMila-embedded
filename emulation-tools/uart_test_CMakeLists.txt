@@ -1,0 +1,6 @@
+﻿idf_component_register(SRCS "uart_test.c"
+                    INCLUDE_DIRS "."
+                    REQUIRES driver)
+if(DEFINED NODE_ID)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE NODE_ID=${NODE_ID})
+endif()
