@@ -14,6 +14,7 @@
 #include "motor_h300/h300.h"
 #include "tasks/tasks.h"
 #include "vsr.h" // vehicle status register, holds all the information about the vehicle
+#include "qemu_brake_mock.h"
 
 #include "sensors/pedalSensor/pedal_sensor.h" // for pedal reading
 
@@ -41,6 +42,10 @@ void app_main() {
 
     // Initialize the global VSR
     vsr_init(&vehicle_status_register);
+
+    #ifdef QEMU_BUILD
+        start_qemu_brake_mock();
+    #endif
 
     static PCANListenParamsCollection plpc = {
         .arr = {{0}},

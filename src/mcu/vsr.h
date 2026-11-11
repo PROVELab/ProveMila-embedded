@@ -41,6 +41,7 @@
     APP(motor_error_state, motor_error)      \
                                              \
     APP(pedal_s, pedal)                      \
+    APP(brake_pedal_s, brake_pedal)          \
                                              \
     APP(motor_protections_1_s, motor_prot1)  \
     APP(motor_protections_2_s, motor_prot2)
@@ -54,6 +55,12 @@ typedef struct {
     int32_t tx_value;           // value to transmit over CAN
     bool use_pedal;             // whether to use the pedal or not
 } pedal_s;
+
+typedef struct {
+    float brake_supply_voltage; // mV
+    float brake_position_pct;   // raw reading for now; scaling comes later
+    float brake_raw_1;          // raw ADC value of brake reading
+} brake_pedal_s;
 
 typedef struct {
 // add the actual fields of the VSR via apply, adding mutexes

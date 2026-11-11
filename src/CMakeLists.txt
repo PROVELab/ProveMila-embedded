@@ -76,5 +76,9 @@ if(CMAKE_MCU_ESP_BUILD)
         NODE_CONFIG=pedalSensor/myDefines.hpp
         SENSOR_ESP_BUILD=ON
     )
+endif()
+
+if(CMAKE_QEMU_BUILD)
     target_compile_definitions(${COMPONENT_LIB} PRIVATE QEMU_BUILD=1)
+    target_link_libraries(${COMPONENT_LIB} INTERFACE "-Wl,--wrap=twai_transmit")
 endif()

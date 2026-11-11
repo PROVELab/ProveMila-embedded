@@ -12,6 +12,7 @@
 #include "../../pecan/pecan.h"                   //used for CAN
 #include "../../sensors/common/sensorHelper.hpp" //used for compliance with vitals and sending data
 #include "myDefines.hpp"                         //contains #define statements specific to this node like myId.
+#include "../../mcu/qemu_brake_mock.h"
 
 #include "../../mcu/motor_h300/h300.h"
 #include "../../mcu/vsr.h"
@@ -68,9 +69,9 @@ int32_t collect_pedalPowerReadingmV() {
         ADC_ReadingStatuses[reading1_Index] = READ_CRITICAL;
         ADC_ReadingStatuses[reading2_Index] = READ_CRITICAL;
     }
-    char buffer[64];
-    sprintf(buffer, "collecting pedalPowermV: %ld\n", ADC_Readings[pedalPower_Index]);
-    mutexPrint(buffer);
+    // char buffer[64];
+    // sprintf(buffer, "collecting pedalPowermV: %ld\n", ADC_Readings[pedalPower_Index]);
+    // mutexPrint(buffer);
     return ADC_Readings[pedalPower_Index];
 }
 
@@ -111,9 +112,9 @@ int32_t collect_pedalReadingOne() {
     }
 #endif
 
-    char buffer[64];
-    sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
-    mutexPrint(buffer);
+    // char buffer[64];
+    // sprintf(buffer, "collecting pedalReadingOne: %ld\n", ADC_Readings[reading1_Index]);
+    // mutexPrint(buffer);
     return ADC_Readings[reading1_Index];
 }
 
@@ -181,9 +182,9 @@ int32_t collect_pedalReadingTwo() {
     }
 #endif
 
-    char buffer[64];
-    sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
-    mutexPrint(buffer);
+    // char buffer[64];
+    // sprintf(buffer, "collecting pedalReadingTwo: %ld\n", ADC_Readings[reading2_Index]);
+    // mutexPrint(buffer);
 
     // speed stuff
     int a = (ADC_Readings[reading1_Index] < ADC_Readings[reading2_Index]) ? ADC_Readings[reading1_Index]
@@ -225,6 +226,12 @@ int16_t defaultPacketRecv2(CANPacket* p) { return 1; }
 void recieveMSG(void* param) { // task handles recieving Messages
     PCANListenParamsCollection* plpc = (PCANListenParamsCollection*) param;
     sensorInit(plpc, NULL); // vitals Compliance
+
+#ifdef QEMU_BUILD
+    if (qemu_brake_register_listener(plpc, myId) != 0) {
+        mutexPrint("no room for the QEMU brake listener\n");
+    }
+#endif
 
     // declare CanListenparams here, each param has 3 entries:
     // When recv msg with id = 'listen_id' according to matchtype (or 'mt'), 'handler' is called.
